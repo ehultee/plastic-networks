@@ -282,47 +282,65 @@ class PlasticNetwork(Ice):
             upstream_limits: array determining where to cut off modelling on each flowline, ordered by index.  Default is full length of lines.
             use_mainline_tau=False will force use of each line's own yield strength & type
     
-        returns [TYPE] model output
+        returns model output as dictionary for each flowline 
         """
         if thinvalues is None:  
             thinvals = np.full(len(testyears), thinrate)
         else:
             thinvals = thinvalues
         
-        dt = mean(diff(testyears))
+        dt = mean(diff(testyears)) #size of time step
         
-        model_output_dicts = [{} for l in self.flowlines]
-        for j,fl in enumerate(self.flowlines):
-            #print 'Currently running {} line {}'.format(self.name, j)
-            #sarr = fl.ref_profile[0] #arclength array of reference profile...but here this is an interpolated function, so might not work
-            amax = upstream_limits[j]
-            #amin = ArcArray(fl.coords) #probably always 0?
-            refpt = min(amax, upgl_ref) #forces at top of branch if shorter than reference distance.  In general would expect forcing farther downstream to give weaker response
-            refht = fl.ref_profile(refpt)
+        model_output_dicts = [{'Termini': [0],
+        'Terminus_heights': [fl.surface_function(0)],
+        'Termrates': []
+        } for fl in self.flowlines]
+        
+        #Setting up reference branch (default = mainline)
+        refdict = model_output_dicts[ref_branch_index]
+        ref_line = self.flowlines[ref_branch_index]
+        ref_amax = upstream_limits[ref_branch_index]
+        ref_bed = ref_line.bed_function
+        ref_surface = ref_line.surface_function
+        refpt = min(ref_amax, upgl_ref) #apply forcing at top of branch if shorter than reference distance.  In general would expect forcing farther downstream to give weaker response
+        refht = ref_line.ref_profile(refpt)
+        if use_mainline_tau:
+            ref_tau_j = self.network_tau
+            ref_line.yield_type = self.network_yield_type
+        else:
+            ref_tau_j = ref_line.optimal_tau
+        
+        #Create plastic profiles on all branches of network, following methodology described in Ultee & Bassis (2017), for each time step
+        for k, yr in enumerate(testyears):
+            thinning = np.sum(thinvals[:k])
             
-            bed = fl.bed_function
-            surf = fl.surface_fuction
-            if use_mainline_tau:
-                tau_j = self.network_tau
-                fl.yield_type = self.network_yield_type #this is probably too powerful, but unclear how else to exploit Bingham_number functionality
-            else:
-                tau_j = fl.optimal_tau #use mainline value and type, surely?
+            #Forcing on reference branch (default ref branch = mainline)
+            fwdmodel = PlasticProfile(ref_bed, ref_tau_j, ref_line.Bingham_num, refpt, refht - thinning, 0, 25000, ref_surface)
+            modelterm_pos = self.L0*min(fwdmodel[0]) #in m
+            modelterm_height = self.H0*(fwdmodel[1][-1]) #in m - need to confirm this is the right value in output
+            full_line_model = PlasticProfile(ref_bed, ref_tau_j, ref_line.Bingham_num, modelterm_pos, modelterm_height, ref_amax, 25000, ref_surface)
+
             
-            dmodel = model_output_dicts[j]
-            #dmodel['Termini'] = [(self.L0)*amin]
-            dmodel['Termini'] = [0]
-            dmodel['Termrates'] = []
+            dL = modelterm_pos - refdict['Termini'][-1]
+            refdict[yr] = full_line_model #saving full modelled profile. need to change this output type
+            refdict['Termini'].append(modelterm_pos)
+            refdict['Terminus_heights'].append(modelterm_height) 
+            refdict['Termrates'].append(dL/dt)
             
-            #NEED TO DO THIS DIFFERENTLY FOR MAINLINE THAN FOR OTHER LINES
-            #TIME STEP OUTSIDE OF FLOWLINE FOR-LOOP
-            for k, yr in enumerate(testyears):
-                thinning = np.sum(thinvals[:k])
-                fwdmodel = PlasticProfile(bed, tau_j, fl.Bingham_num, refpt, refht - thinning, 0, 25000, surf)
-                bkmodel = PlasticProfile(bed, tau_j, fl.Bingham_num, refpt, refht - thinning, amax, 25000, surf)
-                modelterm = L0*min(fwdmodel[0]) #in m
-                dL = modelterm - dmodel['Termini'][-1]
-                dmodel[yr] = fwdmodel
-                dmodel['Termini'].append(modelterm)
-                dmodel['Termrates'].append(dL/dt)
+            #Run from terminus upstream for non-ref branches
+            for j, fl in enumerate(self.flowlines):
+                out_dict = model_output_dicts[j]
+                if j==ref_branch_index:
+                    continue
+                else:
+                    if use_mainline_tau:
+                        tau_j = self.network_tau
+                        fl.yield_type = self.network_yield_type #this is probably too powerful, but unclear how else to exploit Bingham_number functionality
+                    else:
+                        tau_j = fl.optimal_tau
+                    branchmodel = PlasticProfile(fl.bed_function,tau_j, fl.Bingham_num, modelterm_pos, modelterm_height, 0, 25000, fl.surface_function)
+                    out_dict[yr] = branchmodel
+
+        return model_output_dicts
                 
             
