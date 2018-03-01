@@ -1,5 +1,5 @@
-# First stab at defining a class that can run plastic model, etc.
-# 28 Nov 16  EHU
+# Defining a class to run plastic model functions
+# 16 Nov 17  EHU
 from plastic_utilities_v2 import *
 
 ##Bingham stress functions-----------------
