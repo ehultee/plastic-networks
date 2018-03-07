@@ -96,14 +96,19 @@ class Flowline(Ice):
         """Make callable ice thickness function along this flowline.  H_field should be 2d-interpolated."""
         self.thickness_function = FlowProcess(self.coords, H_field)
     
-    def optimize_yield_strength(self, testrange=range(50e3, 150e3, 5e3), arcmax=self.length):
+    def optimize_yield_strength(self, testrange=np.arange(50e3, 500e3, 5e3), arcmax=None):
         """Run optimization and set the result to be the optimal value for the flowline instance.  
-        Arcmax over which to run optimization can be adjusted according to how high up we think plastic approximation should go."""
+        Arcmax over which to run optimization can be adjusted according to how high up we think plastic approximation should go.
+        NOTE: arcmax default is None but will set to self.length.  self unavailable at function define-time"""
+        
+        #Fixing default that could not be used in definition of arguments
+        if arcmax is None:
+            arcmax = self.length
         CV_const_arr = []
         CV_var_arr = []
         
         bedf = self.bed_function
-        surf = self.bed_function
+        surf = self.surface_function
         
         for tau in testrange:
                 
@@ -126,7 +131,7 @@ class Flowline(Ice):
         if np.min(CV_const_arr)<np.min(CV_var_arr):
             yieldtype = 'constant'
             t_opt = constopt
-        elif np.min(CV_const_arr_)>np.min(CV_var_arr):
+        elif np.min(CV_const_arr)>np.min(CV_var_arr):
             yieldtype = 'variable'
             t_opt = varopt
         else:
@@ -155,10 +160,70 @@ class Flowline(Ice):
             tau_y = self.optimal_tau/ + mu*N
             return tau_y/(rho_ice*g*H0**2/L0)
             
+    def plastic_profile(self, bedf=None, startpoint=0, hinit=None, endpoint=None, Npoints=25000, surf=None):
+        """
+        This snippet translates functionality of plastic_utilities_v2.PlasticProfile"""
+        
+        H0 = self.H0
+        L0 = self.L0
+        
+        if bedf is None:
+            bedf = self.bed_function
+        if hinit is None:
+            hinit = self.surface_function(0)/H0
+        if endpoint is None:
+            endpoint = self.length
+        if surf is None:
+            surf = self.surface_function
+        
+        horiz = linspace(startpoint, endpoint, Npoints)
+        dx = mean(diff(horiz))
+            
+        if dx<0:
+            print 'Detected: running from upglacier down to terminus.'
+        elif dx>0:
+            print 'Detected: running from terminus upstream.'
+        
+        SEarr = []
+        thickarr = []
+        basearr = []
+        obsarr = []
+        
+        SEarr.append(hinit)
+        thickarr.append(hinit-(bedf(startpoint)/H0))
+        basearr.append(bedf(startpoint)/H0)
+        obsarr.append((surf(startpoint))/H0)
+        
+        for x in horiz[1::]:
+            bed = bedf(x)/H0  # value of interpolated bed function
+            obsheight = (surf(x))/H0
+            modelthick = thickarr[-1]
+            B = self.Bingham_num(bed, modelthick, None, None)
+            #Break statements for thinning below yield, water balance, or flotation
+            if dx<0:
+                if modelthick<BalanceThick(bed,B):
+                    print 'Thinned below water balance at x=' + str(10*x)+'km'
+                    break
+            if modelthick<FlotationThick(bed):
+                print 'Thinned below flotation at x=' + str(10*x)+'km'
+                break
+            if modelthick<4*B*H0/L0:
+                print 'Thinned below yield at x=' +str(10*x)+'km'
+                break
+            else:
+                basearr.append(bed)
+                SEarr.append(SEarr[-1]+(B/modelthick)*dx) 
+                thickarr.append(SEarr[-1]-basearr[-1])
+                obsarr.append(obsheight)
+        
+        return (horiz[0:len(SEarr)], SEarr, basearr, obsarr)        
+
     def set_ref_profile(self):
-        """Creates 1d interpolated function of reference profile height along flowline.  
+        """Creates 1d interpolated function of reference profile height along flowline.
+        Assigns function to be self.ref_profile  
         Give argument of nondim arclength, returns nondim surface elevation.  Useful for initial condition in thinning."""
-        plasticref = PlasticProfile(self.bed_function, self.Bingham_num, 0, self.surface_function(0)/H0, self.length, 10000, self.surface_function)
+        #plasticref = PlasticProfile(self.bed_function, self.Bingham_num, 0, self.surface_function(0)/H0, self.length, 10000, self.surface_function)
+        plasticref = self.plastic_profile()
         ref_prof_interpolated = interpolate.interp1d(plasticref[0], plasticref[1], kind='linear', copy=True)
         self.ref_profile = ref_prof_interpolated
     
@@ -180,10 +245,10 @@ class PlasticNetwork(Ice):
         if init_type is 'Branch':
             self.branches = branches
             self.flowlines = []
-            print 'You have initialised with glacier Branches.  Please call make_full_lines and process_full_lines to proceed.'
+            print 'You have initialised {} with glacier Branches.  Please call make_full_lines and process_full_lines to proceed.'.format(name)
         elif init_type is 'Flowline':
             self.flowlines = branches
-            print 'You have initialised with glacier Flowlines.  Ready to proceed with simulations.'
+            print 'You have initialised {} with glacier Flowlines.  Ready to proceed with simulations.'.format(name)
         else:
             self.branches = branches
             self.flowlines = []
@@ -191,6 +256,8 @@ class PlasticNetwork(Ice):
         self.main_terminus = main_terminus
     
     def make_full_lines(self):
+        """Runs spatial KDTree search to connect flowlines at nearest points. Creates Flowline objects that reach from each branch head to the terminus.
+        """
         #KDTree search just connects at closest points...may still be wonky
         #project somehow with Shapely?
         mainline = self.branches[0].coords
@@ -201,8 +268,8 @@ class PlasticNetwork(Ice):
         
 
         while j<len(self.branches): #making full length flowline for each branch
-            branch = self.branches[j] 
-            pt = branch[0]
+            br = self.branches[j].coords 
+            pt = br[0]
             dist, idx = maintree.query(pt, distance_upper_bound=5000)
             #print dist, idx
             if idx==len(mainline): #if branch does not intersect with the main line
@@ -211,22 +278,24 @@ class PlasticNetwork(Ice):
                 dist_t, idx_t = tribtree.query(pt, distance_upper_bound=1000)
                 if idx==len(full_lines[j-1]):
                     print 'Branch {} also does not intersect tributary {}.  Appending raw line.  Use with caution.'.format(j, j-1)
-                    full_lines[j] = branch
+                    full_lines[j] = br
                 else:
                     tribfrag = branchlist[j-1][:idx_t]
-                    fullbranch = np.concatenate((tribfrag, branch))
+                    fullbranch = np.concatenate((tribfrag, br))
                     full_lines[j] = fullbranch
                 j+=1
             else:
                 print mainline[idx]
                 mainfrag = mainline[:idx]
-                fullbranch = np.concatenate((mainfrag, branch)) #Shapely project here
+                fullbranch = np.concatenate((mainfrag, br)) #Shapely project here
                 full_lines[j] = fullbranch
                 j+=1
         
+        k = 0
         while k<len(full_lines):
             coordinates = np.asarray(full_lines[k])
-            self.flowlines[k] = Flowline(coordinates, index=k)
+            self.flowlines.append(Flowline(coordinates, index=k))
+            k+=1
     
     def process_full_lines(self, bed_field, surface_field, thickness_field):
         """Processes bed, surface, and thickness functions for new flowlines.  Use if network initialized with Branches.
@@ -236,12 +305,15 @@ class PlasticNetwork(Ice):
             line.process_surface(surface_field)
             line.process_thickness(thickness_field)
 
-    def optimize_network_yield(self, testrange=range(50e3, 150e3, 5e3), arcmax_list = [self.flowlines[i].length for i in range(len(self.flowlines))], check_all=False):
+    def optimize_network_yield(self, testrange=arange(50e3, 500e3, 5e3), arcmax_list = None, check_all=False):
         """Runs yield strength optimization on each of the network Flowline objects and sets the yield strength of the 'main' branch as the network's default.
         Could find a better way to do this...
-        arcmax_list: list of how high up to optimise in order of flowline index; default is full length
+        arcmax_list: list of how high up to optimise in order of flowline index; default is full length (NOTE: default of "None" is set to more sensible default in function.  Same problem with self unavailable at define-time)
         check_all=False/True decides whether to do full optimisation to find tau_y on each line (True) or just take the main line value (False)
         """
+        #Fixing default that could not be used in definition of arguments
+        if arcmax_list is None:
+            arcmax_list = [self.flowlines[i].length for i in range(len(self.flowlines))]
         
         if check_all:
             for j,line in enumerate(self.flowlines):
@@ -269,7 +341,7 @@ class PlasticNetwork(Ice):
                 #could also insert code here to use spatially variable tau_y
             line.set_ref_profile()
     
-    def network_time_evolve(self, testyears=arange(100), ref_branch_index=0, upgl_ref=15000/L0, thinrate=10/H0, thinvalues=None, upstream_limits=[fl.length for fl in self.flowlines], use_mainline_tau=True):
+    def network_time_evolve(self, testyears=arange(100), ref_branch_index=0, upgl_ref=15000/L0, thinrate=10/H0, thinvalues=None, upstream_limits=None, use_mainline_tau=True):
         """Time evolution on a network of Flowlines.  Lines should be already optimised and include reference profiles from network_ref_profiles 
         Arguments:
             testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
@@ -284,6 +356,11 @@ class PlasticNetwork(Ice):
     
         returns model output as dictionary for each flowline 
         """
+        
+        #Fixing default values
+        if upstream_limits is None:
+            upstream_limits=[fl.length for fl in self.flowlines]
+        
         if thinvalues is None:  
             thinvals = np.full(len(testyears), thinrate)
         else:
@@ -300,25 +377,24 @@ class PlasticNetwork(Ice):
         refdict = model_output_dicts[ref_branch_index]
         ref_line = self.flowlines[ref_branch_index]
         ref_amax = upstream_limits[ref_branch_index]
-        ref_bed = ref_line.bed_function
         ref_surface = ref_line.surface_function
         refpt = min(ref_amax, upgl_ref) #apply forcing at top of branch if shorter than reference distance.  In general would expect forcing farther downstream to give weaker response
         refht = ref_line.ref_profile(refpt)
         if use_mainline_tau:
-            ref_tau_j = self.network_tau
+            ref_line.optimal_tau = self.network_tau
             ref_line.yield_type = self.network_yield_type
         else:
-            ref_tau_j = ref_line.optimal_tau
+            pass
         
         #Create plastic profiles on all branches of network, following methodology described in Ultee & Bassis (2017), for each time step
         for k, yr in enumerate(testyears):
             thinning = np.sum(thinvals[:k])
             
             #Forcing on reference branch (default ref branch = mainline)
-            fwdmodel = PlasticProfile(ref_bed, ref_tau_j, ref_line.Bingham_num, refpt, refht - thinning, 0, 25000, ref_surface)
+            fwdmodel = ref_line.plastic_profile(startpoint=refpt, hinit = refht - thinning, endpoint=0, surf=ref_surface)
             modelterm_pos = self.L0*min(fwdmodel[0]) #in m
             modelterm_height = self.H0*(fwdmodel[1][-1]) #in m - need to confirm this is the right value in output
-            full_line_model = PlasticProfile(ref_bed, ref_tau_j, ref_line.Bingham_num, modelterm_pos, modelterm_height, ref_amax, 25000, ref_surface)
+            full_line_model = ref_line.plastic_profile(startpoint=modelterm_pos/self.L0, hinit=modelterm_height/self.H0, endpoint=ref_amax, surf=ref_surface)
 
             
             dL = modelterm_pos - refdict['Termini'][-1]
@@ -330,17 +406,18 @@ class PlasticNetwork(Ice):
             #Run from terminus upstream for non-ref branches
             for j, fl in enumerate(self.flowlines):
                 out_dict = model_output_dicts[j]
+                fl_amax = upstream_limits[j]
                 if j==ref_branch_index:
                     continue
                 else:
                     if use_mainline_tau:
-                        tau_j = self.network_tau
+                        fl.optimal_tau = self.network_tau
                         fl.yield_type = self.network_yield_type #this is probably too powerful, but unclear how else to exploit Bingham_number functionality
                     else:
-                        tau_j = fl.optimal_tau
-                    branchmodel = PlasticProfile(fl.bed_function,tau_j, fl.Bingham_num, modelterm_pos, modelterm_height, 0, 25000, fl.surface_function)
+                        pass
+                    branchmodel = fl.plastic_profile(startpoint=modelterm_pos/self.L0, hinit = modelterm_height/self.H0, endpoint=fl_amax, surf = fl.surface_function)
                     out_dict[yr] = branchmodel
 
-        return model_output_dicts
+        self.model_output = model_output_dicts
                 
             
