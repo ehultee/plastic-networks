@@ -134,6 +134,9 @@ class Flowline(Ice):
         elif np.min(CV_const_arr)>np.min(CV_var_arr):
             yieldtype = 'variable'
             t_opt = varopt
+        #elif np.min(CV_const_arr)==np.min(CV_var_arr): # This is rare enough that it probably means something else is wrong.
+        #    yieldtype = 'variable'
+        #    t_opt = varopt
         else:
             warnings.warn('Did not find minimum CV_RMS; cannot define optimal yield type.')
             
@@ -235,7 +238,7 @@ class PlasticNetwork(Ice):
     Attributes:
         name: A string with what we call the glacier for modelling/analysis
         init_type: Can be 'Branch' or 'Flowline'. If we already have Flowlines we don't need to call make_full_lines
-        branches: A list of Flowline objects describing the branches of this glacier
+        branches: A tuple of Flowline objects describing the branches of this glacier.  MUST USE (BRANCH,) SYNTAX IF ONLY ONE BRANCH
         main_terminus: Coordinates of the terminus of the "main branch" (index 0) in the initial state
     """
     
@@ -247,9 +250,14 @@ class PlasticNetwork(Ice):
             self.flowlines = []
             print 'You have initialised {} with glacier Branches.  Please call make_full_lines and process_full_lines to proceed.'.format(name)
         elif init_type is 'Flowline':
-            self.flowlines = branches
-            print 'You have initialised {} with glacier Flowlines.  Ready to proceed with simulations.'.format(name)
+            self.flowlines = [branches]
+            if not isinstance(branches, tuple):
+                branches = (branches,)
+            self.branches = branches
+            print 'You have initialised {} with glacier Flowlines.  Please call process_full_lines to proceed with simulations.'.format(name)
         else:
+            if not isinstance(branches, tuple):
+                branches = (branches,)
             self.branches = branches
             self.flowlines = []
             print 'Unrecognised initialisation type.'
@@ -304,7 +312,33 @@ class PlasticNetwork(Ice):
             line.process_bed(bed_field)
             line.process_surface(surface_field)
             line.process_thickness(thickness_field)
-
+            
+            if line.thickness_function(0) < FlotationThick(line.bed_function(0)): #uses FlotationThick from plastic_utilities_v2
+                warnings.warn('{} line {} may have a floating terminus.  Run remove_floating and re-initialise.'.format(self.name, line.index))
+    
+    def remove_floating(self):
+        """Checks mainline for floating terminus, removes offending coordinates.
+        """
+        fltest = []
+        mainline = self.flowlines[0]
+        arc = ArcArray(mainline.coords)
+        for pt in arc:
+            thick_init = mainline.thickness_function(pt)
+            bed_init = mainline.bed_function(pt)
+            flthick = FlotationThick(bed_init)
+            fltest.append(thick_init - flthick)
+        nonfloating = argwhere(sign(fltest)>0) #all points where thickness exceeds flotation
+        cleanfrom = nonfloating[0] #first point where thickness exceeds flotation
+        
+        cleaned_coords = mainline.coords[cleanfrom::]
+        
+        self.flowlines[0].coords = cleaned_coords
+        self.branches[0].coords = cleaned_coords
+        self.flowlines[0].length = ArcArray(cleaned_coords)[-1]
+        
+        print 'Coordinates with ice thickness less than flotation removed.  Please re-run make_full_lines and process_full_lines for network {}.'.format(self.name)
+            
+    
     def optimize_network_yield(self, testrange=arange(50e3, 500e3, 5e3), arcmax_list = None, check_all=False):
         """Runs yield strength optimization on each of the network Flowline objects and sets the yield strength of the 'main' branch as the network's default.
         Could find a better way to do this...
@@ -315,17 +349,19 @@ class PlasticNetwork(Ice):
         if arcmax_list is None:
             arcmax_list = [self.flowlines[i].length for i in range(len(self.flowlines))]
         
+        try:
+            self.network_yield_type = self.flowlines[0].yield_type
+            self.network_tau = self.flowlines[0].optimal_tau
+        except AttributeError:
+            self.flowlines[0].optimize_yield_strength(testrange, arcmax=arcmax_list[0])
+            self.network_yield_type = self.flowlines[0].yield_type
+            self.network_tau = self.flowlines[0].optimal_tau
+        
         if check_all:
             for j,line in enumerate(self.flowlines):
                 line.optimize_yield_strength(testrange, arcmax=arcmax_list[j]) #run optimisation for each flowline
         else:
-            try:
-                self.network_yield_type = self.flowlines[0].yield_type
-                self.network_tau = self.flowlines[0].optimal_tau
-            except AttributeError:
-                self.flowlines[0].optimize_yield_strength(testrange, arcmax=arcmax_list[0])
-                self.network_yield_type = self.flowlines[0].yield_type
-                self.network_tau = self.flowlines[0].optimal_tau
+            pass
 
     def network_ref_profiles(self, use_mainline_tau=True):
         """1D interpolated profile of reference surface along each processed flowline of the network.  Uses set_ref_profile from Flowline class.
