@@ -60,15 +60,15 @@ vf = interpolate.interp2d(xv, yv[::-1], v_upper[::-1, ::])
 #Vm = np.ma.masked_greater(Vl, 10000)
 
 
-## Functions that step downstream from head or upstream from terminus
-def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff_v = 5, dw=20):
-    """Finds glacier width by searching velocity of points normal to direction of flow
+## Functions to search for flowlines
+def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff_v = 1, dw=20):
+    """Finds glacier width by searching velocity of points normal to direction of flow and comparing to a cutoff value. 
     x: x-coordinate of current point along flowline
     y: y-coordinate of current point along flowline
     Vx: 2D interpolated function of the x-velocity field
     Vy: 2D interpolated function of the y-velocity field
     V: 2d interpolated function of magnitude of surface velocity
-    side_cutoff_v: the minimum velocity, in units of V field, for ice to be included in branch.  Default is 1m/d.
+    side_cutoff_v: the minimum velocity, in units of V field, for ice to be included in branch.  Default is 1 m/d.
     dw: spatial step size, in meters, for checking width.  Default is 20 m.
     """
     vx = Vx(x, y)
