@@ -148,3 +148,21 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
     outarr = np.asarray(outarr)
 
     return outarr
+
+
+def WriteNetwork(startcoords, trace_up=False, output_name='glacier-network-lines.csv'):
+    """Given a list of starting coordinates, applies Trace_wWidth sequentially and writes output to a CSV file.
+    """
+    outdict = {}
+    for j in range(len(startcoords)):
+        k = startcoords[j]
+        line_coords = Trace_wWidth(k[0], k[1], trace_up)
+        outdict[j] = (line_coords)
+        
+    with open(output_name, 'wb') as csvfile:
+        linewriter = csv.writer(csvfile, delimiter=',')
+        linewriter.writerow(['Line-number', 'x-coord', 'y-coord', 'width'])
+        for n in range(len(outdict)):
+            for m in range(len(outdict[n])):
+                linewriter.writerow([str(n), outdict[n][m][0], outdict[n][m][1], outdict[n][m][2]])
+        
