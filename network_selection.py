@@ -61,7 +61,7 @@ vf = interpolate.interp2d(xv, yv[::-1], v_upper[::-1, ::])
 
 
 ## Functions to search for flowlines
-def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff_v = 1, dw=20):
+def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 1.0, dw=20, output_sidecoords=False):
     """Finds glacier width by searching velocity of points normal to direction of flow and comparing to a cutoff value. 
     x: x-coordinate of current point along flowline
     y: y-coordinate of current point along flowline
@@ -84,24 +84,30 @@ def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff_v = 1, dw=20):
     v_rightside = vm
     v_leftside = vm
     
-    while v_rightside > side_cutoff_v:
+    while v_rightside > side_cutoff:
         x_r = float(x + Cr*dw*nr[0])
         y_r = float(y + Cr*dw*nr[1])
         v_rightside = V(x_r, y_r)
         Cr += 1
-    while v_leftside > side_cutoff_v:
+    while v_leftside > side_cutoff:
         x_l = float(x + Cl*dw*nl[0])
         y_l = float(y + Cl*dw*nl[1])
         v_leftside = V(x_l, y_l)
         Cl += 1
     
-    #print Cr, Cl
-    #print v_leftside, v_rightside
-    width = (Cr+Cl-2)*dw
+    print Cr, Cl
+    print v_leftside, v_rightside
     
-    return width
+    width = (Cr+Cl-2)*dw
+    rightcoords = (x_r, y_r)
+    leftcoords = (x_l, y_l)
+    
+    if output_sidecoords:
+        return width, rightcoords, leftcoords
+    else:
+        return width
 
-def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx = vf_x, Vy = vf_y, V = vf, dx=150, side_cutoff_v=1, dw=20):
+def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx = vf_x, Vy = vf_y, V = vf, dx=150, side_cutoff = 1.0, dw=20, output_sidecoords=False):
     """Traces flowlines down from a tributary head or up from terminus.  Stores evenly spaced coordinates and width at each point.
     startcoord_x: x-coordinate of the starting point
     startcoord_y: y-coordinate of the starting point
@@ -114,8 +120,13 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
     dx: spatial step size, in meters, for stepping algorithm.  Default is 150 m.
     side_cutoff_v: the minimum velocity, in units of V field, for ice to be included in branch.  Default is 1m/d.
     dw: spatial step size, in meters, for checking width.  Default is 20 m.
+    output_sidecoords: 
     """
     outarr = []
+    if output_sidecoords:
+        rightside = []
+        leftside = []
+    
     
     currentpt = (startcoord_x, startcoord_y)
     nstep = 0
@@ -131,7 +142,10 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
             print 'Speed exceeds maximum recognised.  Exiting step routine.'
             break
         else:
-            w = check_sides(currentpt[0], currentpt[1], Vx, Vy, V)
+            if output_sidecoords:
+                w, r, l = check_sides(currentpt[0], currentpt[1], Vx, Vy, V, side_cutoff = side_cutoff, output_sidecoords = output_sidecoords)
+            else:
+                w = check_sides(currentpt[0], currentpt[1], Vx, Vy, V, side_cutoff = side_cutoff, output_sidecoords = output_sidecoords)
             if trace_up: #if we are going upstream from terminus
                 x_n = float(currentpt[0] - (vx/vm)*dx)
                 y_n = float(currentpt[1] - (vy/vm)*dx)
@@ -142,12 +156,18 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
             print nextpt, w
             
             currentpt = nextpt
-            outarr.append((currentpt[0], currentpt[1], w))  
+            outarr.append((currentpt[0], currentpt[1], w)) 
+            rightside.append((r))
+            leftside.append((l)) 
             nstep += 1
         
     outarr = np.asarray(outarr)
-
-    return outarr
+    rightside = np.asarray(rightside)
+    leftside = np.asarray(leftside)
+    if output_sidecoords:
+        return outarr, rightside, leftside
+    else:
+        return outarr
 
 
 def WriteNetwork(startcoords, trace_up=False, output_name='glacier-network-lines.csv'):
