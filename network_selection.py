@@ -56,20 +56,19 @@ print 'Now interpolating to same grid'
 vf_x = interpolate.interp2d(xv, yv[::-1], vx_upper[::-1,::])
 vf_y = interpolate.interp2d(xv, yv[::-1], vy_upper[::-1,::])
 vf = interpolate.interp2d(xv, yv[::-1], v_upper[::-1, ::])
-#Vl = np.ma.masked_less(vv, 1.5)
-#Vm = np.ma.masked_greater(Vl, 10000)
+
 
 
 ## Functions to search for flowlines
-def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 1.0, dw=20, output_sidecoords=False):
-    """Finds glacier width by searching velocity of points normal to direction of flow and comparing to a cutoff value. 
+def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 0.25, dw=20):
+    """Reports coordinates of glacier 'sides' by searching velocity of points normal to direction of flow and comparing to a cutoff value. 
     x: x-coordinate of current point along flowline
     y: y-coordinate of current point along flowline
     Vx: 2D interpolated function of the x-velocity field
     Vy: 2D interpolated function of the y-velocity field
     V: 2d interpolated function of magnitude of surface velocity
     side_cutoff_v: the minimum velocity, in units of V field, for ice to be included in branch.  Default is 1 m/d.
-    dw: spatial step size, in meters, for checking width.  Default is 20 m.
+    dw: spatial step size, in meters, for checking across flow.  Default is 20 m.
     """
     vx = Vx(x, y)
     vy = Vy(x, y)
@@ -98,16 +97,14 @@ def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 1.0, dw=20, outp
     print Cr, Cl
     print v_leftside, v_rightside
     
-    width = (Cr+Cl-2)*dw
+    #width = (Cr+Cl-2)*dw
     rightcoords = (x_r, y_r)
     leftcoords = (x_l, y_l)
     
-    if output_sidecoords:
-        return width, rightcoords, leftcoords
-    else:
-        return width
+    return rightcoords, leftcoords
 
-def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx = vf_x, Vy = vf_y, V = vf, dx=150, side_cutoff = 1.0, dw=20, output_sidecoords=False):
+
+def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx = vf_x, Vy = vf_y, V = vf, dx=150, side_cutoff = 0.25, dw=20, output_sidecoords=False):
     """Traces flowlines down from a tributary head or up from terminus.  Stores evenly spaced coordinates and width at each point.
     startcoord_x: x-coordinate of the starting point
     startcoord_y: y-coordinate of the starting point
@@ -123,12 +120,15 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
     output_sidecoords: 
     """
     outarr = []
-    if output_sidecoords:
-        rightside = []
-        leftside = []
+    rightside = []
+    leftside = []
+    
+    side_tolerance = 3*dx
     
     
     currentpt = (startcoord_x, startcoord_y)
+    current_r = np.asarray(check_sides(startcoord_x, startcoord_y, Vx, Vy, V, side_cutoff=side_cutoff)[0])
+    current_l = np.asarray(check_sides(startcoord_x, startcoord_y, Vx, Vy, V, side_cutoff=side_cutoff)[1])
     nstep = 0
     
     while nstep<1000:
@@ -142,23 +142,40 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
             print 'Speed exceeds maximum recognised.  Exiting step routine.'
             break
         else:
-            if output_sidecoords:
-                w, r, l = check_sides(currentpt[0], currentpt[1], Vx, Vy, V, side_cutoff = side_cutoff, output_sidecoords = output_sidecoords)
-            else:
-                w = check_sides(currentpt[0], currentpt[1], Vx, Vy, V, side_cutoff = side_cutoff, output_sidecoords = output_sidecoords)
+            r, l = check_sides(currentpt[0], currentpt[1], Vx, Vy, V, side_cutoff = side_cutoff)
+            r = np.asarray(r)
+            l = np.asarray(l)
             if trace_up: #if we are going upstream from terminus
                 x_n = float(currentpt[0] - (vx/vm)*dx)
                 y_n = float(currentpt[1] - (vy/vm)*dx)
+                if np.linalg.norm(r-current_r)>side_tolerance: #check if the width is going to be something wacky, and replace with parallel projection if so
+                    #DO SOMETHING ABOUT REPLACEMENT VALUE
+                    x_r = float(current_r[0] - (vx/vm)*dx)
+                    y_r = float(current_r[1] - (vy/vm)*dx)
+                    r = np.array((x_r, y_r))
+                if np.linalg.norm(l-current_l)>side_tolerance:
+                    x_l = float(current_l[0] - (vx/vm)*dx)
+                    y_l = float(current_l[1]-(vy/vm)*dx)
+                    l = np.array((x_l, y_l))
             else:
                 x_n = float(currentpt[0] + (vx/vm)*dx)
                 y_n = float(currentpt[1] + (vy/vm)*dx)
+                if np.linalg.norm(r-current_r)>side_tolerance:#check if the width is going to be something wacky, and replace with parallel projection if so
+                    x_r = float(current_r[0] + (vx/vm)*dx)
+                    y_r = float(current_r[1] + (vy/vm)*dx)
+                    r = np.array((x_r, y_r))
+                if np.linalg.norm(l-current_l)>side_tolerance:
+                    x_l = float(current_l[0] + (vx/vm)*dx)
+                    y_l = float(current_l[1] + (vy/vm)*dx)
+                    l = np.array((x_l, y_l))
             nextpt = (x_n, y_n)
-            print nextpt, w
-            
+            w = np.linalg.norm(r-l)
+                     
             currentpt = nextpt
+            current_r, current_l = r, l
             outarr.append((currentpt[0], currentpt[1], w)) 
-            rightside.append((r))
-            leftside.append((l)) 
+            rightside.append((current_r))
+            leftside.append((current_l)) 
             nstep += 1
         
     outarr = np.asarray(outarr)
