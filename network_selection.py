@@ -150,23 +150,23 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
                 y_n = float(currentpt[1] - (vy/vm)*dx)
                 if np.linalg.norm(r-current_r)>side_tolerance: #check if the width is going to be something wacky, and replace with parallel projection if so
                     #DO SOMETHING ABOUT REPLACEMENT VALUE
-                    x_r = float(current_r[0] - (vx/vm)*dx)
-                    y_r = float(current_r[1] - (vy/vm)*dx)
+                    x_r = float(current_r[0] - (Vx(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
+                    y_r = float(current_r[1] - (Vy(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
                     r = np.array((x_r, y_r))
                 if np.linalg.norm(l-current_l)>side_tolerance:
-                    x_l = float(current_l[0] - (vx/vm)*dx)
-                    y_l = float(current_l[1]-(vy/vm)*dx)
+                    x_l = float(current_l[0] - (Vx(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
+                    y_l = float(current_l[1]-(Vy(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
                     l = np.array((x_l, y_l))
             else:
                 x_n = float(currentpt[0] + (vx/vm)*dx)
                 y_n = float(currentpt[1] + (vy/vm)*dx)
                 if np.linalg.norm(r-current_r)>side_tolerance:#check if the width is going to be something wacky, and replace with parallel projection if so
-                    x_r = float(current_r[0] + (vx/vm)*dx)
-                    y_r = float(current_r[1] + (vy/vm)*dx)
+                    x_r = float(current_r[0] + (Vx(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
+                    y_r = float(current_r[1] + (Vy(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
                     r = np.array((x_r, y_r))
                 if np.linalg.norm(l-current_l)>side_tolerance:
-                    x_l = float(current_l[0] + (vx/vm)*dx)
-                    y_l = float(current_l[1] + (vy/vm)*dx)
+                    x_l = float(current_l[0] + (Vx(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
+                    y_l = float(current_l[1] + (Vy(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
                     l = np.array((x_l, y_l))
             nextpt = (x_n, y_n)
             w = np.linalg.norm(r-l)
