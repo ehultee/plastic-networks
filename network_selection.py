@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import csv
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
+from scipy.signal import savgol_filter
 
 ## Reading in BedMachine map
 print 'Reading in surface topography'
@@ -60,19 +61,20 @@ vf = interpolate.interp2d(xv, yv[::-1], v_upper[::-1, ::])
 
 
 ## Functions to search for flowlines
-def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 0.25, dw=20):
+def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 1.0, dw=20):
     """Reports coordinates of glacier 'sides' by searching velocity of points normal to direction of flow and comparing to a cutoff value. 
     x: x-coordinate of current point along flowline
     y: y-coordinate of current point along flowline
     Vx: 2D interpolated function of the x-velocity field
     Vy: 2D interpolated function of the y-velocity field
     V: 2d interpolated function of magnitude of surface velocity
-    side_cutoff_v: the minimum velocity, in units of V field, for ice to be included in branch.  Default is 1 m/d.
+    side_cutoff: the minimum velocity, in units of V field, for ice to be included in branch.  Default is 1 m/d.
     dw: spatial step size, in meters, for checking across flow.  Default is 20 m.
     """
     vx = Vx(x, y)
     vy = Vy(x, y)
     vm = V(x, y)
+    vc = (vx, vy) #centerline velocity vector for testing direction of flow
     
     nr = 1/vm*np.array([-vy, vx]) #right normal
     nl = 1/vm*np.array([vy, -vx]) #left normal
@@ -80,31 +82,40 @@ def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 0.25, dw=20):
     
     Cr = 1 # counter for width increments on right
     Cl = 1 # counter for width increments on left
-    v_rightside = vm
-    v_leftside = vm
+    speed_rightside = vm #initial value of side speed
+    speed_leftside = vm #initial value of side speed
+    vr = (Vx(x,y), Vy(x,y)) #initial vr = vc
+    vl = (Vx(x,y), Vy(x,y)) #initial vl = vc
     
-    while v_rightside > side_cutoff:
+
+    while np.vdot(vr, vc)/(speed_rightside*vm) > 0.5 and speed_rightside > side_cutoff:
         x_r = float(x + Cr*dw*nr[0])
         y_r = float(y + Cr*dw*nr[1])
-        v_rightside = V(x_r, y_r)
+        vr = (Vx(x_r, y_r), Vy(x_r, y_r))
+        #speed_rightside = V(x_r, y_r)
+        speed_rightside = np.linalg.norm(vr)
+        #print Cr
         Cr += 1
-    while v_leftside > side_cutoff:
+        
+    while np.vdot(vl, vc)/(speed_leftside*vm) > 0.5 and speed_leftside > side_cutoff:
         x_l = float(x + Cl*dw*nl[0])
         y_l = float(y + Cl*dw*nl[1])
-        v_leftside = V(x_l, y_l)
+        vl = (Vx(x_l, y_l), Vy(x_l, y_l))
+        #speed_leftside = V(x_l, y_l)
+        speed_leftside = np.linalg.norm(vl)
+        #print Cl
         Cl += 1
-    
-    print Cr, Cl
-    print v_leftside, v_rightside
-    
-    #width = (Cr+Cl-2)*dw
+        
+    #print 'Right side: step coefficient {}, speed {}, parallel velocity {}'.format(Cr, speed_rightside, np.vdot(vr, vc)/np.linalg.norm(vc))
+    #print 'Left side: step coefficient {}, speed {}, parallel velocity {}'.format(Cl, speed_leftside, np.vdot(vl, vc)/np.linalg.norm(vc))
+
     rightcoords = (x_r, y_r)
     leftcoords = (x_l, y_l)
     
     return rightcoords, leftcoords
 
 
-def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx = vf_x, Vy = vf_y, V = vf, dx=150, side_cutoff = 0.25, dw=20, output_sidecoords=False):
+def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx = vf_x, Vy = vf_y, V = vf, dx=150, side_cutoff = 0.5, dw=20, output_sidecoords=False, smooth_width=True):
     """Traces flowlines down from a tributary head or up from terminus.  Stores evenly spaced coordinates and width at each point.
     startcoord_x: x-coordinate of the starting point
     startcoord_y: y-coordinate of the starting point
@@ -117,13 +128,14 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
     dx: spatial step size, in meters, for stepping algorithm.  Default is 150 m.
     side_cutoff_v: the minimum velocity, in units of V field, for ice to be included in branch.  Default is 1m/d.
     dw: spatial step size, in meters, for checking width.  Default is 20 m.
-    output_sidecoords: 
+    output_sidecoords: determines whether to return raw coordinates of left and right side of glacier
     """
     outarr = []
     rightside = []
     leftside = []
+    raw_width = []
     
-    side_tolerance = 3*dx
+    #side_tolerance = 3*dx
     
     
     currentpt = (startcoord_x, startcoord_y)
@@ -144,47 +156,57 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
         else:
             r, l = check_sides(currentpt[0], currentpt[1], Vx, Vy, V, side_cutoff = side_cutoff)
             r = np.asarray(r)
-            l = np.asarray(l)
+            l = np.asarray(l)            
             if trace_up: #if we are going upstream from terminus
                 x_n = float(currentpt[0] - (vx/vm)*dx)
                 y_n = float(currentpt[1] - (vy/vm)*dx)
-                if np.linalg.norm(r-current_r)>side_tolerance: #check if the width is going to be something wacky, and replace with parallel projection if so
-                    #DO SOMETHING ABOUT REPLACEMENT VALUE
-                    x_r = float(current_r[0] - (Vx(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
-                    y_r = float(current_r[1] - (Vy(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
-                    r = np.array((x_r, y_r))
-                if np.linalg.norm(l-current_l)>side_tolerance:
-                    x_l = float(current_l[0] - (Vx(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
-                    y_l = float(current_l[1]-(Vy(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
-                    l = np.array((x_l, y_l))
+                #if np.linalg.norm(r-current_r)>side_tolerance: #check if the width is going to be something wacky, and ignore it if so
+                #    #DO SOMETHING ABOUT REPLACEMENT VALUE
+                #    #x_r = float(current_r[0] - (Vx(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
+                #    #y_r = float(current_r[1] - (Vy(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
+                #    #r = np.array((x_r, y_r))
+                #    r = np.array((np.nan, np.nan))
+                #if np.linalg.norm(l-current_l)>side_tolerance:
+                #    #x_l = float(current_l[0] - (Vx(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
+                #    #y_l = float(current_l[1]-(Vy(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
+                #    #l = np.array((x_l, y_l))
+                #    l = np.array((np.nan, np.nan))
             else:
                 x_n = float(currentpt[0] + (vx/vm)*dx)
                 y_n = float(currentpt[1] + (vy/vm)*dx)
-                if np.linalg.norm(r-current_r)>side_tolerance:#check if the width is going to be something wacky, and replace with parallel projection if so
-                    x_r = float(current_r[0] + (Vx(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
-                    y_r = float(current_r[1] + (Vy(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
-                    r = np.array((x_r, y_r))
-                if np.linalg.norm(l-current_l)>side_tolerance:
-                    x_l = float(current_l[0] + (Vx(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
-                    y_l = float(current_l[1] + (Vy(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
-                    l = np.array((x_l, y_l))
+                #if np.linalg.norm(r-current_r)>side_tolerance:#check if the width is going to be something wacky, and replace with parallel projection if so
+                #    x_r = float(current_r[0] + (Vx(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
+                #    y_r = float(current_r[1] + (Vy(r[0], r[1])/V(r[0], r[1]))*side_tolerance)
+                #    r = np.array((x_r, y_r))
+                #if np.linalg.norm(l-current_l)>side_tolerance:
+                #    x_l = float(current_l[0] + (Vx(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
+                #    y_l = float(current_l[1] + (Vy(l[0], l[1])/V(l[0], l[1]))*side_tolerance)
+                #    l = np.array((x_l, y_l))
             nextpt = (x_n, y_n)
             w = np.linalg.norm(r-l)
                      
             currentpt = nextpt
             current_r, current_l = r, l
-            outarr.append((currentpt[0], currentpt[1], w)) 
+            outarr.append((currentpt[0], currentpt[1])) 
             rightside.append((current_r))
-            leftside.append((current_l)) 
+            leftside.append((current_l))
+            raw_width.append((w)) 
             nstep += 1
         
     outarr = np.asarray(outarr)
     rightside = np.asarray(rightside)
     leftside = np.asarray(leftside)
-    if output_sidecoords:
-        return outarr, rightside, leftside
+    raw_width = np.asarray(raw_width)
+    
+    if smooth_width:
+        width = savgol_filter(raw_width, 21, 4, mode='mirror')
     else:
-        return outarr
+        width = raw_width
+        
+    if output_sidecoords:
+        return outarr, width, rightside, leftside
+    else:
+        return outarr, width
 
 
 def WriteNetwork(startcoords, trace_up=False, output_name='glacier-network-lines.csv'):
