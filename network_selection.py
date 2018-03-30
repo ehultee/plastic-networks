@@ -208,29 +208,55 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
     else:
         return outarr, width
 
-def FilterMainTributaries(lines):
+def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
     """Given a dictionary of flowline-like objects, oriented from terminus to head, finds where they should be joined into mainline-tributary network.
     Expects input in the form of {'linenumber': ((x1, y1, w1), (x2, y2, w2))} - coordinates with width
     """
     branches = {}
     for ln in range(len(lines)):
-        print ln
+        #print ln
         if ln==0: #mainline keeps its full length and becomes reference
             branches[ln] = lines[ln] 
         else:
             mainline = branches[0] #should be an array of (x,y, w) coords describing flowline
             full_line = lines[ln]
             comparison_length = min(len(mainline), len(full_line))
-            diff = [np.linalg.norm(np.asarray(full_line[j][0:2])-np.asarray(mainline[j][0:2])) for j in range(comparison_length)] #array of pointwise distances.  Needs [0:2] so that width is not included in norm
-            width = [mainline[j][2] for j in range(comparison_length)]
-            if diff < width: #check whether lines always within main branch width of each other - if so probably same branch
-                print 'Line {} may parallel main line for full length.'.format(ln)
-                branches[ln] = lines[ln]
-            else:
-                trunc_index = np.argwhere(diff > 0.5*np.array(width))[0]
-                print trunc_index
+            
+            #Check directionality of velocity
+            Vmain = [(Vx(mainline[j][0], mainline[j][1]), Vy(mainline[j][0], mainline[j][1])) for j in range(comparison_length)]
+            Vbranch = [(Vx(full_line[j][0], full_line[j][1]), Vy(full_line[j][0], full_line[j][1])) for j in range(comparison_length)]
+            
+            for j in range(comparison_length):
+                dotprod = np.vdot(Vmain[j], Vbranch[j])
+                #print dotprod
+                mag = np.linalg.norm(Vmain[j])*np.linalg.norm(Vbranch[j])
+                #print mag
+                cos_between = dotprod/mag
+                if cos_between < 0.95: #if angle between velocity vectors exceeds ~18 degrees
+                    trunc_index = j
+                    print 'Truncation index of line {} is {}.  Exiting.'.format(ln, trunc_index)
+                    break
+                else:
+                    continue
+            try:
                 truncated_line = full_line[trunc_index::]
-                branches[ln] = truncated_line
+            except NameError:
+                trunc_index = 0
+                print 'Line {} may parallel main line for full length. Removing from set.'.format(ln)
+                truncated_line = None
+            branches[ln] = truncated_line
+                
+            #diff = [np.linalg.norm(np.asarray(full_line[j][0:2])-np.asarray(mainline[j][0:2])) for j in range(comparison_length)] #array of pointwise distances.  Needs [0:2] so that width is not included in norm
+            #width = [mainline[j][2] for j in range(comparison_length)]
+            #comparison_width = 0.5*np.array(width)
+            #if np.all(diff < comparison_width): #check whether lines always within main branch width of each other - if so probably same branch
+            #    print 'Line {} may parallel main line for full length.'.format(ln)
+            #    branches[ln] = lines[ln]
+            #else:
+            #    trunc_index = np.argwhere(diff > comparison_width)[0]
+            #    print trunc_index
+            #    truncated_line = full_line[trunc_index::]
+            #    branches[ln] = truncated_line
         
     return branches
             
