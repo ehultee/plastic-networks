@@ -86,7 +86,7 @@ def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 1.0, dw=20):
     speed_leftside = vm #initial value of side speed
     vr = (Vx(x,y), Vy(x,y)) #initial vr = vc
     vl = (Vx(x,y), Vy(x,y)) #initial vl = vc
-    
+        
 
     while np.vdot(vr, vc)/(speed_rightside*vm) > 0.5 and speed_rightside > side_cutoff:
         x_r = float(x + Cr*dw*nr[0])
@@ -108,9 +108,15 @@ def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 1.0, dw=20):
         
     #print 'Right side: step coefficient {}, speed {}, parallel velocity {}'.format(Cr, speed_rightside, np.vdot(vr, vc)/np.linalg.norm(vc))
     #print 'Left side: step coefficient {}, speed {}, parallel velocity {}'.format(Cl, speed_leftside, np.vdot(vl, vc)/np.linalg.norm(vc))
-
-    rightcoords = (x_r, y_r)
-    leftcoords = (x_l, y_l)
+    try:
+        rightcoords = (x_r, y_r)
+    except UnboundLocalError: #will raise this error if first step to right side hit cutoff and x_r, y_r not assigned
+        rightcoords = (x, y)
+   
+    try:
+        leftcoords = (x_l, y_l)
+    except UnboundLocalError: #will raise this error if first step to left side hit cutoff and x_l, y_l not assigned
+        leftcoords = (x, y)
     
     return rightcoords, leftcoords
 
@@ -240,7 +246,7 @@ def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
                     continue
             try:
                 truncated_line = full_line[trunc_index::]
-            except NameError:
+            except NameError: #no truncation index found
                 trunc_index = 0
                 print 'Line {} may parallel main line for full length. Removing from set.'.format(ln)
                 truncated_line = None
@@ -271,8 +277,11 @@ def WriteNetwork(startcoords, trace_up=False, output_name='glacier-network-lines
         line_coords, width = Trace_wWidth(k[0], k[1], trace_up=trace_up)
         xyw = [(line_coords[n][0], line_coords[n][1], width[n]) for n in range(len(line_coords))]
         lines[j] = (xyw)
-        
-    outdict = FilterMainTributaries(lines)
+   
+    if len(lines) > 1:    
+        outdict = FilterMainTributaries(lines)
+    else:
+        outdict = lines
         
     with open(output_name, 'wb') as csvfile:
         linewriter = csv.writer(csvfile, delimiter=',')
