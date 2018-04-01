@@ -37,17 +37,19 @@ class Branch(Ice):
             2-> a branch that flows into a 1st-order branch, etc.
         flows_to: name of Branch or Flowline instance that receives this branch, if applicable
         intersect: point of intersection, if known
+        width: array of glacier widths, if 
     """
-    def __init__(self, coords, index=None, order=0, flows_to=None, intersect=None):
+    def __init__(self, coords, index=None, order=0, flows_to=None, intersect=None, has_width=True):
         Ice.__init__(self)
-        self.coords = np.asarray(coords) 
+        self.coords = np.asarray(coords)[:,0:2] # (x,y) coordinates of triples (x,y,width) read in by Flowline_CSV
         self.order = order
         self.flows_to = flows_to
         self.intersect = intersect 
-    
-    #def make_full_line(self):
-         #TRANSFERRED THIS FUNCTIONALITY TO PLASTICNETWORK BECAUSE THAT'S THE CONTEXT WHERE IT WILL BE USED
- 
+        if has_width:
+            self.width = np.asarray(coords)[:,2]
+        else:
+            self.width = None
+     
                      
 
 class Flowline(Ice):
@@ -265,6 +267,7 @@ class PlasticNetwork(Ice):
     
     def make_full_lines(self):
         """Runs spatial KDTree search to connect flowlines at nearest points. Creates Flowline objects that reach from each branch head to the terminus.
+        
         """
         #KDTree search just connects at closest points...may still be wonky
         #project somehow with Shapely?
