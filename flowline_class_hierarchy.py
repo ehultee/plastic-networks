@@ -279,10 +279,17 @@ class PlasticNetwork(Ice):
         
 
         while j<len(self.branches): #making full length flowline for each branch
-            br = self.branches[j].coords 
-            pt = br[0]
-            dist, idx = maintree.query(pt, distance_upper_bound=5000)
+            branch = self.branches[j]
+            br = branch.coords 
+            
+            if branch.intersect is not None: #allowing shortcut if intersection point already output by FilterMainTributaries
+                idx = branch.intersect
+                #add flows_to shortcut functionality here for branches that flow to a branch other than main 
+            else: #conduct KDTree search if we have to
+                pt = br[0]
+                dist, idx = maintree.query(pt, distance_upper_bound=5000)
             #print dist, idx
+            
             if idx==len(mainline): #if branch does not intersect with the main line
                 print 'Branch {} does not intersect main line.  Searching nearest trib.'.format(j)
                 tribtree = spatial.KDTree(full_lines[j-1]) #line of nearest trib
