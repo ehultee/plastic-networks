@@ -62,7 +62,7 @@ def Continuous_DownVStep(startcoord_x, startcoord_y, surface, xarr, yarr, Vx, Vy
 ##-------------------------------
 
 ## Read in line from CSV
-def Flowline_CSV(filename, nlines):
+def Flowline_CSV(filename, nlines, has_width=False):
     """Function to read in flowlines in CSV format, similar to those sent by C. Kienholz for Alaska.
     Input: filename; nlines=number of flowlines
     Output: list of flowlines
@@ -95,7 +95,7 @@ def Flowline_CSV(filename, nlines):
         
         x_coord = float(parts[1])
         y_coord = float(parts[2])
-    
+        
         if parts[0] not in data['Length_ID'].keys(): #finding out where lines separate 
             temp = []
             data['Length_ID'][parts[0]] = 1
@@ -105,7 +105,12 @@ def Flowline_CSV(filename, nlines):
         #if xbounds[0]<x_coord<xbounds[1]: #taking out values outside of map area
         #    if ybounds[0]<y_coord<ybounds[1]:   
         
-        temp.append((x_coord, y_coord))
+        if has_width:
+            width = float(parts[3])
+            temp.append((x_coord, y_coord, width))
+        else:
+            temp.append((x_coord, y_coord))
+            
         data['Lineslist'][j-1] = np.array(temp) 
 
         #data['Lineslist'][j] = np.array(temp) 
