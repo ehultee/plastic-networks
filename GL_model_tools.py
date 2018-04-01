@@ -62,9 +62,11 @@ def Continuous_DownVStep(startcoord_x, startcoord_y, surface, xarr, yarr, Vx, Vy
 ##-------------------------------
 
 ## Read in line from CSV
-def Flowline_CSV(filename, nlines, has_width=False):
+def Flowline_CSV(filename, nlines, has_width=False, flip_order=True):
     """Function to read in flowlines in CSV format, similar to those sent by C. Kienholz for Alaska.
     Input: filename; nlines=number of flowlines
+        has_width: default False for older files that have only (x,y) rather than (x,y,width) saved
+        flip_order: default False for lines that already run from terminus to peak
     Output: list of flowlines
     """
     
@@ -115,8 +117,11 @@ def Flowline_CSV(filename, nlines, has_width=False):
 
         #data['Lineslist'][j] = np.array(temp) 
 
-              
-    centrelines_list = [np.array(data['Lineslist'][j])[::-1] for j in range(nlines)] #making arrays, reversed to start at terminus rather than peak
+    if flip_order:          
+        centrelines_list = [np.array(data['Lineslist'][j])[::-1] for j in range(nlines)] #making arrays, reversed to start at terminus rather than peak
+    else:
+        centrelines_list = [np.array(data['Lineslist'][j]) for j in range(nlines)] # arrays already start at terminus
+
     
     return centrelines_list
 
