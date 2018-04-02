@@ -83,7 +83,7 @@ class Flowline(Ice):
         else:
             self.name = name
         if has_width:
-            self.width = np.asarray(coords[:,2])
+            self.width = np.asarray(coords)[:,2]
         else:
             self.width = None
         #if flows_to is not None:
