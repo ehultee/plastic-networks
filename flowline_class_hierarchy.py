@@ -70,7 +70,7 @@ class Flowline(Ice):
         Value and type of best-fit yield strength
     """
     
-    def __init__(self, coords, index=None, name=None, initial_terminus=(0,0), intersections=None):
+    def __init__(self, coords, index=None, name=None, initial_terminus=(0,0), intersections=None, has_width=True):
         Ice.__init__(self)
         self.coords = np.asarray(coords)
         self.length = ArcArray(self.coords)[-1]
@@ -82,6 +82,10 @@ class Flowline(Ice):
             self.name = 'Glacier'
         else:
             self.name = name
+        if has_width:
+            self.width = np.asarray(coords[:,2])
+        else:
+            self.width = None
         #if flows_to is not None:
         #    self.flows_to = flows_to
             
@@ -97,6 +101,9 @@ class Flowline(Ice):
     def process_thickness(self, H_field):
         """Make callable ice thickness function along this flowline.  H_field should be 2d-interpolated."""
         self.thickness_function = FlowProcess(self.coords, H_field)
+    
+    def process_width(self):
+        self.width_function = interpolate.interp1d(ArcArray(self.coords), self.width)
     
     def optimize_yield_strength(self, testrange=np.arange(50e3, 500e3, 5e3), arcmax=None):
         """Run optimization and set the result to be the optimal value for the flowline instance.  
