@@ -329,6 +329,7 @@ class PlasticNetwork(Ice):
             line.process_bed(bed_field)
             line.process_surface(surface_field)
             line.process_thickness(thickness_field)
+            line.process_width()
             
             if line.thickness_function(0) < FlotationThick(line.bed_function(0)): #uses FlotationThick from plastic_utilities_v2
                 warnings.warn('{} line {} may have a floating terminus.  Run remove_floating and re-initialise.'.format(self.name, line.index))
