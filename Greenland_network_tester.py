@@ -57,10 +57,13 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], B.T[::, ::-1])
 #jak_0 = Flowline(coords=jakcoords_0, index=0, name='Jak mainline')
 #jak_1 = Flowline(coords=jakcoords_1, index=1, name='Jak line 1')
 #jak_2 = Flowline(coords=jakcoords_2, index=2, name='Jak line 2')
-#Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main]', init_type='Flowline', branches=(jak_0), main_terminus=jakcoords_0[0])
 #Jakobshavn_1 = PlasticNetwork(name='Jakobshavn Isbrae 1', init_type='Flowline', branches=(jak_1), main_terminus=jakcoords_1[0])
 #Jakobshavn_2 = PlasticNetwork(name='Jakobshavn Isbrae 2', init_type='Flowline', branches=(jak_2), main_terminus=jakcoords_2[0])
 #
+jakcoords_main = Flowline_CSV('Documents/GitHub/plastic-networks/jakobshavn-mainline-w_width.csv', 1, has_width=True, flip_order=False)[0]
+jak_0 = Flowline(coords=jakcoords_main, index=0, name='Jak mainline', has_width=True)
+Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main]', init_type='Flowline', branches=(jak_0), main_terminus=jakcoords_0[0])
+
 #kbcoords = Flowline_CSV('Documents/1. Research/2. Flowline networks/Model/Greenland_tests/Flowline_sets/koge_bugt-thead_lines.csv', 1)[0]
 #kb_line = Flowline(coords=kbcoords, index=0, name='Koge Bugt mainline')
 #KogeBugt = PlasticNetwork(name='Koge Bugt', init_type='Flowline', branches=kb_line, main_terminus=kbcoords[0])
@@ -76,101 +79,29 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], B.T[::, ::-1])
 #Helheim.make_full_lines()
 #
 #
-#kangercoords_0, kangercoords_1, kangercoords_2, kangercoords_3, kangercoords_4, kangercoords_5 = Flowline_CSV('Documents/1. Research/2. Flowline networks/Model/Greenland_tests/Flowline_sets/kangerlussuaq-branch_lines.csv', 6)
+
+#kangercoords_0, kangercoords_1, kangercoords_2, kangercoords_3, kangercoords_4 = Flowline_CSV('kangerlussuaq-network-w_width.csv', 5, has_width=True, flip_order=False)
 #kanger_0 = Branch(coords=kangercoords_0, index=0, order=0)
-#kanger_1 = Branch(coords=kangercoords_1, index=1, order=1, flows_to=0)
-##kanger_2 = Branch(coords=kangercoords_2, index=2, order=2, flows_to=1) #branch 2 did not connect under previous methodology.  Keep low expectations here
-#kanger_3 = Branch(coords=kangercoords_3, index=3, order=1, flows_to=0)
-#kanger_4 = Branch(coords=kangercoords_4, index=4, order=1, flows_to=0)
+#kanger_1 = Branch(coords=kangercoords_1, index=1, order=1, flows_to=0, intersect=174)
+#kanger_2 = Branch(coords=kangercoords_2, index=2, order=1, flows_to=0, intersect=191) #DIFFERENT FROM PREVIOUS BRANCH 2.  NEW FLOWLINE SET AS OF 31 MAR 2018
+#kanger_3 = Branch(coords=kangercoords_3, index=3, order=1, flows_to=0, intersect=146)
+#kanger_4 = Branch(coords=kangercoords_4, index=4, order=1, flows_to=0, intersect=61)
 #kanger_branches = (kanger_0, kanger_1, kanger_3, kanger_4)
 #Kanger = PlasticNetwork(name='Kangerlussuaq', init_type='Branch', branches=kanger_branches, main_terminus=kangercoords_0[0])
 #Kanger.make_full_lines()
-#
-##separate network for kanger_5, which has separate terminus
-#kanger_secondary = Flowline(coords=kangercoords_5, index=0)
-#Kanger_s = PlasticNetwork(name='Kangerlussuaq [secondary]', init_type='Flowline', branches=kanger_secondary, main_terminus=kangercoords_5[0])
-
-kangercoords_0, kangercoords_1, kangercoords_2, kangercoords_3, kangercoords_4 = Flowline_CSV('kangerlussuaq-network-w_width.csv', 5, has_width=True, flip_order=False)
-kanger_0 = Branch(coords=kangercoords_0, index=0, order=0)
-kanger_1 = Branch(coords=kangercoords_1, index=1, order=1, flows_to=0, intersect=174)
-kanger_2 = Branch(coords=kangercoords_2, index=2, order=1, flows_to=0, intersect=191) #DIFFERENT FROM PREVIOUS BRANCH 2.  NEW FLOWLINE SET AS OF 31 MAR 2018
-kanger_3 = Branch(coords=kangercoords_3, index=3, order=1, flows_to=0, intersect=146)
-kanger_4 = Branch(coords=kangercoords_4, index=4, order=1, flows_to=0, intersect=61)
-kanger_branches = (kanger_0, kanger_1, kanger_3, kanger_4)
-Kanger = PlasticNetwork(name='Kangerlussuaq', init_type='Branch', branches=kanger_branches, main_terminus=kangercoords_0[0])
-#Kanger.make_full_lines()
 
 
 ##-------------------
-### PROCESSING LINE FUNCTIONS
+### PROCESSING LINE FUNCTIONS + OPTIMIZING YIELD
 ##-------------------
-#for gl in (Jakobshavn_main, Jakobshavn_1, Jakobshavn_2, KogeBugt, Helheim, Kanger, Kanger_s):
+#for gl in (Jakobshavn_main, Jakobshavn_1, Jakobshavn_2, KogeBugt, Helheim, Kanger):
 #    gl.process_full_lines(B_interp, S_interp, H_interp)
-#    if gl in (Kanger, Kanger_s): # Add more sophisticated code to catch warnings?
+#    if gl in (Kanger): # Add more sophisticated code to catch warnings?
 #        gl.remove_floating()
 #        gl.make_full_lines()
 #        gl.process_full_lines(B_interp, S_interp, H_interp)
-##    gl.optimize_network_yield(check_all=True)
+##    gl.optimize_network_yield(check_all=False)
 
-
-##debugging Kangerlussuaq
-#for gl in (Kanger, Kanger_s):
-#    gl.process_full_lines(B_interp, S_interp, H_interp)
-#    gl.remove_floating()
-#    gl.make_full_lines()
-#    gl.process_full_lines(B_interp, S_interp, H_interp)
-#    gl.optimize_network_yield(check_all=False)
-
-#fltest = []
-#kanger_arcmain = ArcArray(Kanger.flowlines[0].coords)
-#for pt in kanger_arcmain:
-#    gimpthick = Kanger.flowlines[0].thickness_function(pt)
-#    bmbed = Kanger.flowlines[0].bed_function(pt)
-#    flthick = FlotationThick(bmbed)
-#    fltest.append(gimpthick-flthick)
-#nonfloating = argwhere(sign(fltest)>0) #tops flotation after pt 18--hard-coding for now (Dec 13 2017)
-
-
-
-##-------------------
-### TY OPTIMIZATION
-##-------------------
-
-
-
-###-------------------
-#### OPTIMAL TY - HARD CODED FROM SEPARATE OPTIMIZATION FOR NOW
-###-------------------
-#bestfit_jak = [(325000.0, 265000.0), (255000.0, 220000.0), (415000.0, 390000.0)]
-#bestfit_kb = [(340e3, 295e3)]
-#bestfit_hel = [(330000.0, 270000.0), (150000.0, 65000.0), (265000.0, 205000.0)]
-##bestfit_kanger = [(315000.0, 260000.0),
-## (245000.0, 195000.0),
-## (220000.0, 135000.0), #Starts at intersection rather than terminus--use with caution
-## (235000.0, 180000.0),
-## (210000.0, 170000.0),
-## (50000.0, 50000.0)] #buggy - thins below flotation even though GIMP thickness exceeds flotation thickness
-#bestfit_kanger_limited =  [(315000.0, 260000.0),
-# (245000.0, 195000.0),
-# (235000.0, 180000.0),
-# (210000.0, 170000.0)]
-#
-#all_tyfits = [bestfit_jak, bestfit_kb, bestfit_hel, bestfit_kanger_limited]
-#
-#
-###-------------------
-#### PROCESSING GLACIERS
-###-------------------
-#keylist = ('bed', 'surface', 'thickness')
-#fieldlist = (B_interp, S_interp, H_interp)
-#
-#all_glaciers = [jak_master, kb_master, hel_master, kanger_limited] #ADD IV IF TIME
-#processed_glaciers = []
-#for i, g in enumerate(all_glaciers):
-#    bf_taus = all_tyfits[i]
-#    processed = ProcessDicts(g, keylist, fieldlist, bf_taus)
-#    processed_glaciers.append(processed)
-#
 ###-------------------
 #### FORWARD PROJECTION
 ###-------------------
