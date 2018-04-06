@@ -473,5 +473,49 @@ class PlasticNetwork(Ice):
                     out_dict[yr] = branchmodel
 
         self.model_output = model_output_dicts
-                
+    
+    def icediff(self, profile1, profile2, interpolated_func1=None, interpolated_func2=None, shape='frustum'):
+        """Calculate net ice loss due to calving between two plastic profiles (interpret as successive timesteps)
+        Inputs:
+            profile1: an output from Flowline.plastic_profile
+            profile2: an output from Flowline.plastic_profile (at a later time step)
+            interpolated_func1: an interpolated surface elevation function describing profile1 in terms of arc length
+            interpolated_func2: an interpolated surface elevation function describing profile2 in terms of arc length
+            shape: 'frustum' ##Add others later e.g. parabolic bed
+        Output:
+            dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2
+        """
+        if interpolated_func1 is None:
+            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True) #Creating interpolated surface elevation profile
+        if interpolated_func2 is None:
+            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True) #Creating interpolated profile if needed
+        
+        ## Limits of integration
+        x1 = min(profile1[0]) #initial terminus position, in nondimensional units
+        x2 = min(profile2[0]) #new terminus position
+        dX = (x2-x1)*self.L0 #in physical units of m
+        
+        w1 = self.flowlines[0].width_function(x1)
+        w2 = self.flowlines[0].width_function(x2) ## ADD BRANCH SEPARATION
+        #dW = abs(w2-w1) #in physical units of m
+        
+        b1 = self.flowlines[0].bed_function(x1) ## ADD BRANCH SEPARATION
+        b2 = self.flowlines[0].bed_function(x2) #physical units of m
+        thickness1 = self.H0*(interpolated_func1(x1))-b1 
+        thickness2 = self.H0*(interpolated_func1(x2))-b2 #determine if this comes from profile1 or profile2
+        #dH = abs(thickness2-thickness1)
+        
+        dV_frustum = dX*((w2*thickness2) + (w2+w1)*(h2+h1) + (w1*thickness1))/6 #volume change, approximated as frustum of a pyramid
+        
+        dM = dV_frustum * self.rho_ice #mass change
+        
+        return dM #will be negative in cases of ice loss
+        
+        ## Initial state - define lower limit of integration
+        
+        
+        ## Next state - upper limit of integration
+        
+        ## Calculate flux in a trapezoidal prism
+        
             
