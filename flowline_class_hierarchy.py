@@ -20,10 +20,10 @@ class Ice(object):
         self.H0 = H0 #characteristic height for nondimensionalisation 
         self.L0 = L0
         self.g = g
-        self.rho_ice = 920.0
-        self.rho_sea = 1020.0
-        self.default_Ty = 150e3
-        self.default_T0 = 130e3
+        self.rho_ice = rho_ice #kg/m^3
+        self.rho_sea = rho_sea #kg/m^3
+        self.default_Ty = default_Ty #Pa
+        self.default_T0 = default_T0 #Pa
 
 class Branch(Ice):
     """A glacier branch that doesn't necessarily reach all the way to the terminus.  Essentially a container for coordinates.
@@ -216,7 +216,8 @@ class Flowline(Ice):
                 if modelthick<BalanceThick(bed,B):
                     print 'Thinned below water balance at x=' + str(10*x)+'km'
                     break
-            if modelthick<FlotationThick(bed):
+            if modelthick<FlotationThick(bed) and dx<0: #should only break for flotation when running downstream in simulations 
+                ##CONFIRM THAT THERE ARE OTHER WAYS TO CATCH FLOATING TERMINI 
                 print 'Thinned below flotation at x=' + str(10*x)+'km'
                 break
             if modelthick<4*B*H0/L0:
@@ -394,7 +395,50 @@ class PlasticNetwork(Ice):
                 pass #use the optimal values found in optimization procedure.  Might crash if didn't look for optimal values on each line when doing optimisation
                 #could also insert code here to use spatially variable tau_y
             line.set_ref_profile()
-    
+ 
+    def icediff(self, profile1, profile2, interpolated_func1=None, interpolated_func2=None, shape='frustum'):
+        """Calculate net ice loss due to calving between two plastic profiles (interpret as successive timesteps)
+        Inputs:
+            profile1: an output from Flowline.plastic_profile
+            profile2: an output from Flowline.plastic_profile (at a later time step)
+            interpolated_func1: an interpolated surface elevation function describing profile1 in terms of arc length
+            interpolated_func2: an interpolated surface elevation function describing profile2 in terms of arc length
+            shape: 'frustum' ##Add others later e.g. parabolic bed
+        Output:
+            dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2
+        """
+        if interpolated_func1 is None:
+            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True) #Creating interpolated surface elevation profile
+        if interpolated_func2 is None:
+            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True) #Creating interpolated profile if needed
+        
+        ## Limits of integration
+        x1 = min(profile1[0]) #initial terminus position, in nondimensional units
+        x2 = min(profile2[0]) #new terminus position
+        dX = (x2-x1)*self.L0 #in physical units of m
+        print 'dX={} m'.format(dX)
+        
+        w1 = self.flowlines[0].width_function(x1)
+        w2 = self.flowlines[0].width_function(x2) ## ADD BRANCH SEPARATION
+        #dW = abs(w2-w1) #in physical units of m
+        print 'dW={} m'.format(w2-w1)
+        
+        b1 = self.flowlines[0].bed_function(x1) ## ADD BRANCH SEPARATION
+        b2 = self.flowlines[0].bed_function(x2) #physical units of m
+        print 'Bed change = {}-{} m'.format(b2, b1)
+        thickness1 = self.H0*(interpolated_func1(x1))-b1 
+        thickness2 = self.H0*(interpolated_func1(x2))-b2 #determine if this comes from profile1 or profile2
+        #dH = abs(thickness2-thickness1)
+        print 'Thickness change = {} m'.format(thickness2-thickness1)
+        
+        dV_frustum = dX*((w2*thickness2) + (w2+w1)*(thickness2+thickness1) + (w1*thickness1))/6 #volume change, approximated as frustum of a pyramid
+        print dV_frustum
+        
+        dM = dV_frustum * self.rho_ice #mass change
+        
+        return dM #will be negative in cases of ice loss
+               
+
     def network_time_evolve(self, testyears=arange(100), ref_branch_index=0, upgl_ref=15000/L0, thinrate=10/H0, thinvalues=None, upstream_limits=None, use_mainline_tau=True):
         """Time evolution on a network of Flowlines.  Lines should be already optimised and include reference profiles from network_ref_profiles 
         Arguments:
@@ -424,11 +468,11 @@ class PlasticNetwork(Ice):
         
         model_output_dicts = [{'Termini': [0],
         'Terminus_heights': [fl.surface_function(0)],
-        'Termrates': []
+        'Termrates': [],
+        'Terminus_flux': []
         } for fl in self.flowlines]
         
         #Setting up reference branch (default = mainline)
-        refdict = model_output_dicts[ref_branch_index]
         ref_line = self.flowlines[ref_branch_index]
         ref_amax = upstream_limits[ref_branch_index]
         ref_surface = ref_line.surface_function
@@ -439,6 +483,9 @@ class PlasticNetwork(Ice):
             ref_line.yield_type = self.network_yield_type
         else:
             pass
+        refdict = model_output_dicts[ref_branch_index]
+        refdict[0] = ref_line.ref_profile #initial condition for time evolution - needed to calculate calving flux at first timestep
+        
         
         #Create plastic profiles on all branches of network, following methodology described in Ultee & Bassis (2017), for each time step
         for k, yr in enumerate(testyears):
@@ -449,13 +496,18 @@ class PlasticNetwork(Ice):
             modelterm_pos = self.L0*min(fwdmodel[0]) #in m
             modelterm_height = self.H0*(fwdmodel[1][-1]) #in m - need to confirm this is the right value in output
             full_line_model = ref_line.plastic_profile(startpoint=modelterm_pos/self.L0, hinit=modelterm_height/self.H0, endpoint=ref_amax, surf=ref_surface)
-
             
             dL = modelterm_pos - refdict['Termini'][-1]
+            if yr > dt:
+                termflux = self.icediff(profile1=refdict[yr-dt], profile2=fwdmodel)
+                refdict['Terminus_flux'].append(termflux)
+            else:
+                pass
             refdict[yr] = full_line_model #saving full modelled profile. need to change this output type
             refdict['Termini'].append(modelterm_pos)
             refdict['Terminus_heights'].append(modelterm_height) 
             refdict['Termrates'].append(dL/dt)
+
             
             #Run from terminus upstream for non-ref branches
             for j, fl in enumerate(self.flowlines):
@@ -474,48 +526,3 @@ class PlasticNetwork(Ice):
 
         self.model_output = model_output_dicts
     
-    def icediff(self, profile1, profile2, interpolated_func1=None, interpolated_func2=None, shape='frustum'):
-        """Calculate net ice loss due to calving between two plastic profiles (interpret as successive timesteps)
-        Inputs:
-            profile1: an output from Flowline.plastic_profile
-            profile2: an output from Flowline.plastic_profile (at a later time step)
-            interpolated_func1: an interpolated surface elevation function describing profile1 in terms of arc length
-            interpolated_func2: an interpolated surface elevation function describing profile2 in terms of arc length
-            shape: 'frustum' ##Add others later e.g. parabolic bed
-        Output:
-            dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2
-        """
-        if interpolated_func1 is None:
-            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True) #Creating interpolated surface elevation profile
-        if interpolated_func2 is None:
-            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True) #Creating interpolated profile if needed
-        
-        ## Limits of integration
-        x1 = min(profile1[0]) #initial terminus position, in nondimensional units
-        x2 = min(profile2[0]) #new terminus position
-        dX = (x2-x1)*self.L0 #in physical units of m
-        
-        w1 = self.flowlines[0].width_function(x1)
-        w2 = self.flowlines[0].width_function(x2) ## ADD BRANCH SEPARATION
-        #dW = abs(w2-w1) #in physical units of m
-        
-        b1 = self.flowlines[0].bed_function(x1) ## ADD BRANCH SEPARATION
-        b2 = self.flowlines[0].bed_function(x2) #physical units of m
-        thickness1 = self.H0*(interpolated_func1(x1))-b1 
-        thickness2 = self.H0*(interpolated_func1(x2))-b2 #determine if this comes from profile1 or profile2
-        #dH = abs(thickness2-thickness1)
-        
-        dV_frustum = dX*((w2*thickness2) + (w2+w1)*(h2+h1) + (w1*thickness1))/6 #volume change, approximated as frustum of a pyramid
-        
-        dM = dV_frustum * self.rho_ice #mass change
-        
-        return dM #will be negative in cases of ice loss
-        
-        ## Initial state - define lower limit of integration
-        
-        
-        ## Next state - upper limit of integration
-        
-        ## Calculate flux in a trapezoidal prism
-        
-            

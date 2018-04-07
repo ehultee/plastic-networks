@@ -62,7 +62,7 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], B.T[::, ::-1])
 #
 jakcoords_main = Flowline_CSV('Documents/GitHub/plastic-networks/jakobshavn-mainline-w_width.csv', 1, has_width=True, flip_order=False)[0]
 jak_0 = Flowline(coords=jakcoords_main, index=0, name='Jak mainline', has_width=True)
-Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main]', init_type='Flowline', branches=(jak_0), main_terminus=jakcoords_0[0])
+Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main]', init_type='Flowline', branches=(jak_0), main_terminus=jakcoords_main[0])
 
 #kbcoords = Flowline_CSV('Documents/1. Research/2. Flowline networks/Model/Greenland_tests/Flowline_sets/koge_bugt-thead_lines.csv', 1)[0]
 #kb_line = Flowline(coords=kbcoords, index=0, name='Koge Bugt mainline')
@@ -94,13 +94,22 @@ Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main]', init_type='Flo
 ##-------------------
 ### PROCESSING LINE FUNCTIONS + OPTIMIZING YIELD
 ##-------------------
-#for gl in (Jakobshavn_main, Jakobshavn_1, Jakobshavn_2, KogeBugt, Helheim, Kanger):
+
+#glaciers = (Jakobshavn_main,) #list which glaciers we're handling
+#
+#for gl in (glaciers):
 #    gl.process_full_lines(B_interp, S_interp, H_interp)
-#    if gl in (Kanger): # Add more sophisticated code to catch warnings?
-#        gl.remove_floating()
-#        gl.make_full_lines()
-#        gl.process_full_lines(B_interp, S_interp, H_interp)
-##    gl.optimize_network_yield(check_all=False)
+#    #if gl in (Kanger): # Add more sophisticated code to catch warnings?
+#    #    gl.remove_floating()
+#    #    gl.make_full_lines()
+#    #    gl.process_full_lines(B_interp, S_interp, H_interp)
+#    gl.optimize_network_yield(check_all=False)
+#    gl.network_ref_profiles()
+
+Jakobshavn_main.process_full_lines(B_interp, S_interp, H_interp)
+Jakobshavn_main.network_tau = 210000.0
+Jakobshavn_main.network_yield_type = 'constant'
+Jakobshavn_main.network_ref_profiles()
 
 ###-------------------
 #### FORWARD PROJECTION
