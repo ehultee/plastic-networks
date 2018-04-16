@@ -164,10 +164,8 @@ class Flowline(Ice):
         """Defining the correct Bingham number function for plastic profile along flowline
         elev: nondimensional bed elevation
         thick: nondimensional ice thickness"""
-        if self.yield_type is 'constant':
-            return self.optimal_tau/(rho_ice*g*H0**2/L0) #B_const from plastic_utilities
             
-        elif self.yield_type is 'variable':
+        if self.yield_type is 'variable':
             #B_var from plastic_utilities, accounts for water pressure
             if elev<0:
                 D = -elev #Water depth D the nondim bed topography value when Z<0
@@ -177,6 +175,9 @@ class Flowline(Ice):
             mu = 0.01 #coefficient between 0 and 1, scales influence of water pressure
             tau_y = self.optimal_tau/ + mu*N
             return tau_y/(rho_ice*g*H0**2/L0)
+        
+        else: #do this for constant and as default
+            return self.optimal_tau/(rho_ice*g*H0**2/L0) #B_const from plastic_utilities
             
     def plastic_profile(self, bedf=None, startpoint=0, hinit=None, endpoint=None, Npoints=25000, surf=None):
         """
@@ -356,9 +357,12 @@ class PlasticNetwork(Ice):
         cleanfrom = nonfloating[0] #first point where thickness exceeds flotation
         
         cleaned_coords = mainline.coords[cleanfrom::]
+        trimmed_width = mainline.width[cleanfrom::]
         
         self.flowlines[0].coords = cleaned_coords
+        self.flowlines[0].width = trimmed_width
         self.branches[0].coords = cleaned_coords
+        self.branches[0].width = trimmed_width
         self.flowlines[0].length = ArcArray(cleaned_coords)[-1]
         
         print 'Coordinates with ice thickness less than flotation removed.  Please re-run make_full_lines and process_full_lines for network {}.'.format(self.name)
@@ -536,8 +540,11 @@ class PlasticNetwork(Ice):
     def save_network_instance(self, filename=None):
         if filename is None:
             fn = str(self.name)
-            fn.replace(" ", "")
-            filename='{}.pickle'.format(fn)
+            fn1 = fn.replace(" ", "")
+            fn2 = fn1.replace("[", "-")
+            fn3 = fn2.replace("/", "_")
+            fn4 = fn3.replace("]", "")
+            filename='{}.pickle'.format(fn4)
         
         N_Flowlines = len(self.flowlines)
         
@@ -557,5 +564,5 @@ class PlasticNetwork(Ice):
         
         print loaded_dict['network_name']
         
-        self.network_tau = loaded_dict[network_tau]
-        self.network_yield_type = loaded_dict[network_yield_type]
+        self.network_tau = loaded_dict['network_tau']
+        self.network_yield_type = loaded_dict['network_yield_type']
