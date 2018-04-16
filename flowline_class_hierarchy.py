@@ -562,7 +562,7 @@ class PlasticNetwork(Ice):
         'network_name': self.name,
         'N_Flowlines': N_Flowlines,
         'network_tau': self.network_tau,
-        'network_yield_type': self.network_yield_type
+        'network_yield_type': self.network_yield_type,
         'mainline_model_output': self.model_output[0]
         }
         
