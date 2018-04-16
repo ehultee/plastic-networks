@@ -2,6 +2,7 @@
 ## 29 Jan 2017  EHU
 
 import warnings
+import pickle
 from plastic_utilities_v2 import *
 from GL_model_tools import *
 
@@ -41,6 +42,7 @@ class Branch(Ice):
     """
     def __init__(self, coords, index=None, order=0, flows_to=None, intersect=None, has_width=True):
         Ice.__init__(self)
+        self.full_coords = np.asarray(coords) #keeping width with other coords so it can be used in make_full_lines
         self.coords = np.asarray(coords)[:,0:2] # (x,y) coordinates of triples (x,y,width) read in by Flowline_CSV
         self.order = order
         self.flows_to = flows_to
@@ -70,9 +72,10 @@ class Flowline(Ice):
         Value and type of best-fit yield strength
     """
     
-    def __init__(self, coords, index=None, name=None, initial_terminus=(0,0), intersections=None, has_width=True):
+    def __init__(self, coords, index=None, name=None, initial_terminus=(0,0), intersections=None, has_width=True, width_array=None):
         Ice.__init__(self)
-        self.coords = np.asarray(coords)
+        self.full_coords = np.asarray(coords)
+        self.coords = np.asarray(coords)[:,0:2]
         self.length = ArcArray(self.coords)[-1]
         if index is None:
             self.index = np.nan
@@ -83,7 +86,10 @@ class Flowline(Ice):
         else:
             self.name = name
         if has_width:
-            self.width = np.asarray(coords)[:,2]
+            try:
+                self.width = np.asarray(coords)[:,2]
+            except IndexError:
+                self.width = width_array
         else:
             self.width = None
         #if flows_to is not None:
@@ -279,8 +285,8 @@ class PlasticNetwork(Ice):
         """
         #KDTree search just connects at closest points...may still be wonky
         #project somehow with Shapely?
-        mainline = self.branches[0].coords
-        maintree = spatial.KDTree(mainline)
+        mainline = self.branches[0].full_coords
+        maintree = spatial.KDTree(mainline[:,0:2])
         
         full_lines = {}
         j = 0
@@ -288,19 +294,19 @@ class PlasticNetwork(Ice):
 
         while j<len(self.branches): #making full length flowline for each branch
             branch = self.branches[j]
-            br = branch.coords 
+            br = branch.full_coords 
             
             if branch.intersect is not None: #allowing shortcut if intersection point already output by FilterMainTributaries
                 idx = branch.intersect
                 #add flows_to shortcut functionality here for branches that flow to a branch other than main 
             else: #conduct KDTree search if we have to
-                pt = br[0]
+                pt = br[0, 0:2] #xy coordinates of an (x,y,width) triple
                 dist, idx = maintree.query(pt, distance_upper_bound=5000)
             #print dist, idx
             
             if idx==len(mainline): #if branch does not intersect with the main line
                 print 'Branch {} does not intersect main line.  Searching nearest trib.'.format(j)
-                tribtree = spatial.KDTree(full_lines[j-1]) #line of nearest trib
+                tribtree = spatial.KDTree(full_lines[j-1][:,0:2]) #line of nearest trib
                 dist_t, idx_t = tribtree.query(pt, distance_upper_bound=1000)
                 if idx==len(full_lines[j-1]):
                     print 'Branch {} also does not intersect tributary {}.  Appending raw line.  Use with caution.'.format(j, j-1)
@@ -525,4 +531,31 @@ class PlasticNetwork(Ice):
                     out_dict[yr] = branchmodel
 
         self.model_output = model_output_dicts
+        
     
+    def save_network_instance(self, filename=None):
+        if filename is None:
+            fn = str(self.name)
+            fn.replace(" ", "")
+            filename='{}.pickle'.format(fn)
+        
+        N_Flowlines = len(self.flowlines)
+        
+        output_dict = {
+        'network_name': self.name,
+        'N_Flowlines': N_Flowlines,
+        'network_tau': self.network_tau,
+        'network_yield_type': self.network_yield_type
+        }
+        
+        with open(filename, 'wb') as handle:
+            pickle.dump(output_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    def load_network_instance(self, filename):
+        with open(filename, 'rb') as handle:
+            loaded_dict = pickle.load(handle)
+        
+        print loaded_dict['network_name']
+        
+        self.network_tau = loaded_dict[network_tau]
+        self.network_yield_type = loaded_dict[network_yield_type]
