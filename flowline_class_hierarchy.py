@@ -2,7 +2,7 @@
 ## 29 Jan 2017  EHU
 
 import warnings
-import pickle
+import cPickle as pickle
 from plastic_utilities_v2 import *
 from GL_model_tools import *
 
@@ -537,7 +537,17 @@ class PlasticNetwork(Ice):
         self.model_output = model_output_dicts
         
     
-    def save_network_instance(self, filename=None):
+    def save_network(self, filename=None):
+        """Write essential information about a PlasticNetwork instance to a pickle.
+        filename: defaults to self.name
+        
+        Output:
+            'network_name': name as initialized
+            'N_Flowlines': how many flowlines the network has
+            'network_tau': optimal value of tau_y
+            'network_yield_type': constant or variable yield strength
+            'mainline_model_output': full profiles for each year, plus Termini, Termrates, Terminus_heights, and Terminus_flux
+        """
         if filename is None:
             fn = str(self.name)
             fn1 = fn.replace(" ", "")
@@ -553,16 +563,25 @@ class PlasticNetwork(Ice):
         'N_Flowlines': N_Flowlines,
         'network_tau': self.network_tau,
         'network_yield_type': self.network_yield_type
+        'mainline_model_output': self.model_output[0]
         }
         
         with open(filename, 'wb') as handle:
             pickle.dump(output_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
-    def load_network_instance(self, filename):
+    def load_network(self, filename, load_mainline_output=True):
+        """Loads in pickled information about a network previously run.  You will still have to run process_full_lines and network_ref_profiles if you want to do new model runs.
+        load_model_output: default True loads in saved model output from saved run.  Useful for analysis without re-running.
+        """
         with open(filename, 'rb') as handle:
             loaded_dict = pickle.load(handle)
-        
         print loaded_dict['network_name']
+        
+        if loaded_dict['network_name'] != self.name:
+            warnings.warn('Name of loaded network does not match name of this network instance.  Check that you have loaded the correct pickle.')
+        
         
         self.network_tau = loaded_dict['network_tau']
         self.network_yield_type = loaded_dict['network_yield_type']
+        if load_model_output:
+            self.model_output[0] = loaded_dict['mainline_model_output']
