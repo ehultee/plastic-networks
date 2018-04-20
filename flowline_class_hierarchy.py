@@ -418,9 +418,15 @@ class PlasticNetwork(Ice):
             dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2
         """
         if interpolated_func1 is None:
-            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True) #Creating interpolated surface elevation profile
+            try:
+                interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True) #Creating interpolated surface elevation profile
+            except ValueError: #this happens when terminus retreats past upstream forcing point
+                interpolated_func1 = lambda x: np.nan
         if interpolated_func2 is None:
-            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True) #Creating interpolated profile if needed
+            try:
+                interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True) #Creating interpolated profile if needed
+            except ValueError: #this happens when terminus retreats past upstream forcing point
+                interpolated_func2 = lambda x: np.nan #return NaN once no longer calculating meaningful changes
         
         ## Limits of integration
         x1 = min(profile1[0]) #initial terminus position, in nondimensional units
@@ -583,5 +589,5 @@ class PlasticNetwork(Ice):
         
         self.network_tau = loaded_dict['network_tau']
         self.network_yield_type = loaded_dict['network_yield_type']
-        if load_model_output:
+        if load_mainline_output:
             self.model_output[0] = loaded_dict['mainline_model_output']
