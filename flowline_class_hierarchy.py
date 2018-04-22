@@ -3,6 +3,7 @@
 
 import warnings
 import cPickle as pickle
+from scipy.integrate import quad
 from plastic_utilities_v2 import *
 from GL_model_tools import *
 
@@ -406,31 +407,36 @@ class PlasticNetwork(Ice):
                 #could also insert code here to use spatially variable tau_y
             line.set_ref_profile()
  
-    def icediff(self, profile1, profile2, interpolated_func1=None, interpolated_func2=None, shape='frustum'):
+    def icediff(self, profile1, profile2, upstream_lim=None, shape='frustum'):
         """Calculate net ice loss due to calving between two plastic profiles (interpret as successive timesteps)
         Inputs:
             profile1: an output from Flowline.plastic_profile
             profile2: an output from Flowline.plastic_profile (at a later time step)
-            interpolated_func1: an interpolated surface elevation function describing profile1 in terms of arc length
-            interpolated_func2: an interpolated surface elevation function describing profile2 in terms of arc length
             shape: 'frustum' ##Add others later e.g. parabolic bed
         Output:
             dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2
         """
-        if interpolated_func1 is None:
-            try:
-                interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True) #Creating interpolated surface elevation profile
-            except ValueError: #this happens when terminus retreats past upstream forcing point
-                interpolated_func1 = lambda x: np.nan
-        if interpolated_func2 is None:
-            try:
-                interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True) #Creating interpolated profile if needed
-            except ValueError: #this happens when terminus retreats past upstream forcing point
-                interpolated_func2 = lambda x: np.nan #return NaN once no longer calculating meaningful changes
-        
+        try:
+            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True) #Creating interpolated surface elevation profile
+            bed_function1 = interpolate.interp1d(profile1[0], profile1[2]) #useful to calculate full-thickness volume change from retreat/advance
+        except ValueError: #this happens when terminus retreats past upstream forcing point
+            interpolated_func1 = lambda x: np.nan
+            bed_function1 = lambda x: np.nan
+        try:
+            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True) #Creating interpolated profile if needed
+        except ValueError: #this happens when terminus retreats past upstream forcing point
+            interpolated_func2 = lambda x: np.nan #return NaN once no longer calculating meaningful changes
+    
+        if upstream_lim is None:
+            upstream_lim = 1.5
+            arcmax = self.flowlines[0].length
+            upstream_limit = min(upstream_lim, arcmax)
+    
         ## Limits of integration
         x1 = min(profile1[0]) #initial terminus position, in nondimensional units
         x2 = min(profile2[0]) #new terminus position
+        xmax = max(profile1[0])
+        
         dX = (x2-x1)*self.L0 #in physical units of m
         print 'dX={} m'.format(dX)
         
@@ -439,20 +445,32 @@ class PlasticNetwork(Ice):
         #dW = abs(w2-w1) #in physical units of m
         print 'dW={} m'.format(w2-w1)
         
-        b1 = self.flowlines[0].bed_function(x1) ## ADD BRANCH SEPARATION
-        b2 = self.flowlines[0].bed_function(x2) #physical units of m
-        print 'Bed change = {}-{} m'.format(b2, b1)
-        thickness1 = self.H0*(interpolated_func1(x1))-b1 
-        thickness2 = self.H0*(interpolated_func1(x2))-b2 #determine if this comes from profile1 or profile2
-        #dH = abs(thickness2-thickness1)
-        print 'Thickness change = {} m'.format(thickness2-thickness1)
+        #b1 = self.flowlines[0].bed_function(x1) ## ADD BRANCH SEPARATION
+        #b2 = self.flowlines[0].bed_function(x2) #physical units of m
+        #print 'Bed change = {}-{} m'.format(b2, b1)
+        #thickness1 = self.H0*(interpolated_func1(x1))-b1 
+        #thickness2 = self.H0*(interpolated_func1(x2))-b2 #determine if this comes from profile1 or profile2
+        ##dH = abs(thickness2-thickness1)
+        #print 'Thickness change = {} m'.format(thickness2-thickness1)
+        #
+        #dV_frustum = dX*((w2*thickness2) + (w2+w1)*(thickness2+thickness1) + (w1*thickness1))/6 #volume change, approximated as frustum of a pyramid
+        #print dV_frustum
+        #
+        #dM = dV_frustum * self.rho_ice #mass change
         
-        dV_frustum = dX*((w2*thickness2) + (w2+w1)*(thickness2+thickness1) + (w1*thickness1))/6 #volume change, approximated as frustum of a pyramid
-        print dV_frustum
+        full_thickness = lambda x: self.H0*interpolated_func1(x) - self.H0*bed_function1(x)
+        frontal_dH = quad(full_thickness, x1, x2)[0]
+        frontal_dV = frontal_dH * self.L0 * 0.5*(w1+w2)
+        frontal_dM = frontal_dV * self.rho_ice
         
-        dM = dV_frustum * self.rho_ice #mass change
+        upstream_dH = lambda x: self.H0*(interpolated_func1(x) - interpolated_func2(x))*self.flowlines[0].width_function(x)
+        upstream_dV_raw = quad(upstream_dH, x2, upstream_limit)[0]
+        upstream_dV = upstream_dV_raw * self.L0
+        upstream_dM = upstream_dV * self.rho_ice
         
-        return dM #will be negative in cases of ice loss
+        dM = frontal_dM + upstream_dM
+        
+        return dM #in kg
                
 
     def network_time_evolve(self, testyears=arange(100), ref_branch_index=0, upgl_ref=15000/L0, thinrate=10/H0, thinvalues=None, upstream_limits=None, use_mainline_tau=True):
