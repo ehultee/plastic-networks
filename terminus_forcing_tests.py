@@ -162,6 +162,30 @@ def find_dHdL(flowline, profile, dL=None):
 #    return dUdx_invannum
 #    
 
+def balance_adot(network, V_field):
+    """Function to compute spatially-averaged accumulation rate that balances observed terminus velocity
+    Input:
+        V_field: 2d-interpolated function to report magnitude of velocity (i.e. ice flow speed in m/a) given (x,y) coordinates
+    """
+    terminus = network.flowlines[0].coords[0][0:2] #All lines of a network should share a terminus at initial state
+    terminus_speed = V_field(terminus) #dimensional in m/a
+    terminus_width = network.flowlines[0].width_function(0) #dimensional in m
+    terminus_thickness = network.H0*network.flowlines[0].ref_profile(0) - network.flowlines[0].bed_function(0) #dimensional in m
+    termflux = terminus_speed * terminus_width * terminus_thickness
+    
+    sa = []
+    for fl in network.flowlines:
+        L = fl.length
+        surface_area_nondim = quad(fl.width_function, 0, L)[0]
+        surface_area = network.L0 * surface_area_nondim
+        sa.append(surface_area)
+    catchment_area = sum(sa)
+    
+    balance_a = termflux/catchment_area
+    
+
+    
+
 def dLdt(flowline, profile, a_dot, rate_factor=3.5E-25, dL=None):
     """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
     Input:
@@ -215,6 +239,111 @@ def dLdt(flowline, profile, a_dot, rate_factor=3.5E-25, dL=None):
     result = numerator/denom
     
     return result
+
+def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_dot, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True):
+    """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
+    Arguments:
+        testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
+        ref_branch_index: which branch to use for forcing.  Default is main branch ("0") but can be changed
+        a_dot: spatially averaged accumulation rate (forcing)
+    Optional args:   
+        a_dot_variable: array of the same length as testyears with a different a_dot forcing to use in each year
+        Offers the option to define thinning as persistence of obs or other nonlinear function.
+        upstream_limits: array determining where to cut off modelling on each flowline, ordered by index.  Default is full length of lines.
+        use_mainline_tau=False will force use of each line's own yield strength & type
     
+        returns model output as dictionary for each flowline 
+    """
+
+    #Fixing default values
+    if upstream_limits is None:
+        upstream_limits=[fl.length for fl in network.flowlines]
     
+    if a_dot_variable is None:  
+        a_dot_vals = np.full(len(testyears), a_dot)
+    else:
+        a_dot_vals = a_dot_variable
     
+    dt = mean(diff(testyears)) #size of time step
+    
+    model_output_dicts = [{'Termini': [0],
+    'Terminus_heights': [fl.surface_function(0)],
+    'Termrates': [],
+    'Terminus_flux': []
+    } for fl in network.flowlines]
+    
+    #Mainline reference
+    ref_line = network.flowlines[ref_branch_index]
+    ref_amax = upstream_limits[ref_branch_index]
+    ref_surface = ref_line.surface_function
+    #refpt = min(ref_amax, upgl_ref) #apply forcing at top of branch if shorter than reference distance.  In general would expect forcing farther downstream to give weaker response
+    #refht = ref_line.ref_profile(refpt)
+    if use_mainline_tau:
+        ref_line.optimal_tau = network.network_tau
+        ref_line.yield_type = network.network_yield_type
+    else:
+        pass
+    refdict = model_output_dicts[ref_branch_index]
+    refdict[0] = ref_line.ref_profile #initial condition for time evolution - needed to calculate calving flux at first timestep
+
+    
+    #Assume same terminus
+    for k, yr in enumerate(testyears):
+        a_dot_k = a_dot_vals[k]
+        
+        dLdt_annum = dLdt(flowline=ref_line, profile=refdict[k-1], a_dot=a_dot_k)
+        #Ref branch
+        new_termpos = network.L0*(refdict['Termini'][-1]+(dLdt_annum*dt)) #Multiply by dt in case dt!=1 annum
+        new_term_bed = ref_line.bed_function(new_termpos/network.L0)
+        previous_bed = ref_line.bed_function(refdict['Termini'][-1]/network.L0)
+        previous_thickness = (refdict['Terminus_heights'][-1] - previous_bed)/network.H0 #nondimensional thickness for use in Bingham number
+        new_termheight = BalanceThick(new_term_bed/network.H0, ref_line.Bingham_num(previous_bed/network.H0, previous_thickness)) + (new_term_bed/network.H0)
+        new_profile = ref_line.plastic_profile(startpoint=new_termpos/network.L0, hinit=new_termheight, endpoint=ref_amax, surf=ref_surface)
+        if yr>dt:
+            termflux = ref_line.icediff(profile1=refdict[yr-dt], profile2=new_profile)
+        else:
+            termflux = np.nan
+            
+        refdict[yr] = new_profile
+        refdict['Terminus_flux'].append(termflux)
+        refdict['Termini'].append(new_termpos)
+        refdict['Terminus_heights'].append(new_termheight)
+        refdict['Termrates'].append(dLdt_annum*dt)
+        
+        #Other branches, incl. branch splitting
+        for j, fl in enumerate(network.flowlines):
+            out_dict = model_output_dicts[j]
+            fl_amax = upstream_limits[j]
+            separation_distance = ArcArray(fl.coords)[fl.intersections[1]] #where line separates from mainline
+            if j==ref_branch_index:
+                continue
+            else:
+                if use_mainline_tau:
+                    fl.optimal_tau = network.network_tau
+                    fl.yield_type = network.network_yield_type #this is probably too powerful, but unclear how else to exploit Bingham_number functionality
+                else:
+                    pass
+                
+                if out_dict['Termini'][-1]/network.L0 <= separation_distance : ## Below is only applicable while branches share single terminus 
+                    dLdt_branch = dLdt_annum
+                    branch_terminus = new_termpos
+                    branch_termheight = new_termheight
+                else: ##if branches have split, find new terminus quantities
+                    dLdt_branch = dLdt(flowline=fl, profile=out_dict[k-1], a_dot=a_dot_k)
+                    branch_terminus = network.L0*(out_dict['Termini'][-1] +(dLdt_branch*dt))
+                    branch_term_bed = fl.bed_function(branch_terminus/network.L0)
+                    previous_branch_bed = fl.bed_function(out_dict['Termini'][-1]/network.L0)
+                    previous_branch_thickness = (out_dict['Terminus_heights'][-1] - previous_branch_bed)/network.H0
+                    branch_termheight = BalanceThick(branch_term_bed/network.H0, fl.Bingham_num(previous_branch_bed/network.H0, previous_branch_thickness)) + (branch_term_bed/network.H0)
+                    
+                branchmodel = fl.plastic_profile(startpoint=branch_terminus/network.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function)
+                out_dict[yr] = branchmodel
+                out_dict['Termini'].append(branch_terminus)
+                out_dict['Terminus_heights'].append(branch_termheight)
+                out_dict['Termrates'].append(dLdt_branch*dt)
+                if yr > dt:
+                    out_dict['Terminus_flux'].append(termflux)
+                else:
+                    out_dict['Terminus_flux'].append(np.nan)
+    
+    network.model_output = model_output_dicts

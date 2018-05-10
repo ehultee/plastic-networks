@@ -175,7 +175,7 @@ class Flowline(Ice):
                 D = 0
             N = rho_ice*g*thick*H0 - rho_sea*g*D*H0
             mu = 0.01 #coefficient between 0 and 1, scales influence of water pressure
-            tau_y = self.optimal_tau/ + mu*N
+            tau_y = self.optimal_tau + mu*N
             return tau_y/(rho_ice*g*H0**2/L0)
         
         else: #do this for constant and as default
@@ -315,6 +315,99 @@ class Flowline(Ice):
         
         return dM #in kg
     
+    def find_dHdL(self, profile, dL=None):
+        """Function to compute successive profiles of length L-dL, L, L+dL to calculate dHdL over glacier flowline.
+        Input: 
+            profile: a plastic profile output from Flowline.plasticprofile of length L
+            dL: spatial step to use in calculating dHdL.  Default 5 meters
+        """
+        if dL is None:
+            dL = 5/self.L0 #nondimensional
+        
+        xmin = min(profile[0])
+        xmax = max(profile[0])
+        #L_init = xmax-xmin
+        
+        #Terminus quantities
+        SE_terminus = profile[1][0]
+        Bed_terminus = profile[2][0]
+        H_terminus = SE_terminus - Bed_terminus 
+        print H_terminus
+        Bghm_terminus = self.Bingham_num(Bed_terminus, H_terminus)
+        
+        #Profile advanced by dL - note coord system means xmin-dL is more advanced, as x=0 is at initial terminus position
+        bed_mindL = (self.bed_function(xmin-dL))/self.H0
+        s_mindL = BalanceThick(bed_mindL, Bghm_terminus) + bed_mindL
+        profile_mindL = self.plastic_profile(startpoint=xmin-dL, hinit = s_mindL, endpoint = xmax, surf = self.surface_function)
+        H_mindL = np.array(profile_mindL[1]) - np.array(profile_mindL[2]) #array of ice thickness from profile
+        Hx_mindL = interpolate.interp1d(profile_mindL[0], H_mindL, bounds_error=False, fill_value=0)
+        print Hx_mindL(xmin)
+        
+        #Profile retreated by dL
+        bed_plusdL = (self.bed_function(xmin+dL))/self.H0
+        s_plusdL = BalanceThick(bed_plusdL, Bghm_terminus) + bed_plusdL
+        profile_plusdL = self.plastic_profile(startpoint = xmin+dL, hinit = s_plusdL, endpoint = xmax, surf=self.surface_function)
+        H_plusdL = np.array(profile_plusdL[1]) - np.array(profile_plusdL[2]) #array of ice thickness
+        Hx_plusdL = interpolate.interp1d(profile_plusdL[0], H_plusdL, bounds_error=False, fill_value=0)
+        print Hx_plusdL(xmin)
+        
+        dHdLx = lambda x: (Hx_mindL(x) - Hx_plusdL(x))/(2*dL)
+        
+        return dHdLx
+    
+    def dLdt(self, profile, a_dot, rate_factor=3.5E-25, dL=None):
+        """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
+        Input:
+            profile: a plastic profile output from Flowline.plasticprofile of the current time step
+            a_dot: net rate of ice accumulation/loss (in m/a)--spatially averaged over whole catchment for now
+            rate_factor: flow rate factor A, assumed 3.5x10^(-25) Pa^-3 s^-1 for T=-10C based on Cuffey & Paterson
+        """      
+        xmin = min(profile[0])
+        xmax = max(profile[0])
+        L = xmax-xmin #length of the current profile, nondimensional
+        print L
+        
+        if dL is None:
+            dL=5/self.L0
+        
+        dHdL = find_dHdL(self, profile, dL)
+        
+        #Terminus quantities
+        SE_terminus = profile[1][0] #terminus at [0], not [-1]--may return errors if running from head downstream, but this is for terminus forcing anyway
+        #print 'SE_terminus={}'.format(SE_terminus)
+        Bed_terminus = profile[2][0]
+        #print 'Bed_terminus={}'.format(Bed_terminus)
+        H_terminus = SE_terminus - Bed_terminus 
+        Bghm_terminus = self.Bingham_num(Bed_terminus, H_terminus)
+        Hy_terminus = BalanceThick(Bed_terminus, Bghm_terminus)
+        #print 'Hy_terminus={}'.format(Hy_terminus)
+    
+        #Quantities at adjacent grid point
+        SE_adj = profile[1][1]
+        Bed_adj = profile[2][1]
+        H_adj = SE_adj - Bed_adj
+        Bghm_adj = self.Bingham_num(Bed_adj, H_adj)
+        Hy_adj = BalanceThick(Bed_adj, Bghm_adj)
+        
+        #Diffs
+        dx_term = abs(profile[0][1] - profile[0][0]) #should be ~2m in physical units
+        #print 'dx_term={}'.format(dx_term)
+        dHdx = (H_adj-H_terminus)/dx_term
+        dHydx = (Hy_adj-Hy_terminus)/dx_term
+        s_per_annum = 31557600 #unit conversion to make calculation agree with accumulation
+        tau = self.Bingham_num(Bed_terminus, H_terminus) * (self.rho_ice * self.g * self.H0**2 / self.L0) #using Bingham_num handles whether tau_y constant or variable for selected flowline
+        dUdx_terminus = s_per_annum * rate_factor * tau**3 
+    
+        Area_int = quad(dHdL, xmin, xmax)[0]
+        print 'Area_int={}'.format(Area_int)
+        #print 'dH/dL at terminus = {}'.format(dHdL(xmin))
+        
+        denom = dHydx - dHdx - (H_terminus**(-1))*dHdx*Area_int
+        numerator = a_dot - dUdx_terminus*H_terminus - (a_dot*L*dHdx/H_terminus)
+        
+        result = numerator/denom
+        
+        return result
   
               
 class PlasticNetwork(Ice):
@@ -570,7 +663,40 @@ class PlasticNetwork(Ice):
                         pass
 
         self.model_output = model_output_dicts
+     
+    def balance_adot(self, V_field, use_width=False, L_limit=6.0):
+        """Function to compute spatially-averaged accumulation rate that balances observed terminus velocity
+        Input:
+            V_field: 2d-interpolated function to report magnitude of velocity (i.e. ice flow speed in m/a) given (x,y) coordinates
+            use_width: whether to consider upstream width when calculating balance accumulation.  Default is no.
+            L_limit: nondimensional upstream distance that indicates how far we trust our model.  Default is 6.0 (60 km in dimensional units).
+        """
+        terminus = self.flowlines[0].coords[0][0:2] #All lines of a network should share a terminus at initial state
+        terminus_speed = V_field(terminus[0], terminus[1]) #dimensional in m/a
+        terminus_width = self.flowlines[0].width_function(0) #dimensional in m
+        terminus_thickness = self.H0*self.flowlines[0].ref_profile(0) - self.flowlines[0].bed_function(0) #dimensional in m
+        balance_thickness = self.H0*BalanceThick(self.flowlines[0].bed_function(0)/self.H0, self.flowlines[0].Bingham_num(self.flowlines[0].bed_function(0)/self.H0, terminus_thickness))
+        termflux = terminus_speed * terminus_width * balance_thickness
         
+    
+        sa = []
+        total_L = []
+        for fl in self.flowlines:
+            L = min(fl.length, L_limit)
+            surface_area_nondim = quad(fl.width_function, 0, L)[0]
+            surface_area = self.L0 * surface_area_nondim
+            sa.append(surface_area)
+            total_L.append(self.L0 * L)
+        catchment_area = sum(sa)
+        total_ice_length = sum(total_L)
+        
+        if use_width:
+            balance_a = termflux/catchment_area
+        else:
+            balance_a = terminus_speed*balance_thickness/total_ice_length
+        
+        return balance_a     
+    
     
     def save_network(self, filename=None):
         """Write essential information about a PlasticNetwork instance to a pickle.
@@ -604,7 +730,7 @@ class PlasticNetwork(Ice):
         with open(filename, 'wb') as handle:
             pickle.dump(output_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
-    def load_network(self, filename, load_mainline_output=True):
+    def load_network(self, filename, load_mainline_output=False):
         """Loads in pickled information about a network previously run.  You will still have to run process_full_lines and network_ref_profiles if you want to do new model runs.
         load_model_output: default True loads in saved model output from saved run.  Useful for analysis without re-running.
         """
@@ -619,4 +745,5 @@ class PlasticNetwork(Ice):
         self.network_tau = loaded_dict['network_tau']
         self.network_yield_type = loaded_dict['network_yield_type']
         if load_mainline_output:
+            self.model_output = {} #needs to be initialized
             self.model_output[0] = loaded_dict['mainline_model_output']
