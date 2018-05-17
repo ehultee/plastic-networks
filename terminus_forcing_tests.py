@@ -119,6 +119,14 @@ def find_dHdL(flowline, profile, dL=None):
     xmax = max(profile[0])
     L_init = xmax-xmin
     
+    if xmin-dL > 0:
+        x_fwd = xmin-dL #note coord system has x=0 at the terminus, so xmin-dL is a more advanced position
+        x_bk = xmin+dL
+    else:
+        x_fwd = xmin
+        x_bk = xmin + 2*dL
+    
+    
     #Terminus quantities
     SE_terminus = profile[1][0] #NEED TO CONFIRM that terminus is at [0] and not [-1]
     Bed_terminus = profile[2][0]
@@ -127,17 +135,17 @@ def find_dHdL(flowline, profile, dL=None):
     Bghm_terminus = flowline.Bingham_num(Bed_terminus, H_terminus)
     
     #Profile advanced by dL - note coord system means xmin-dL is more advanced, as x=0 is at initial terminus position
-    bed_mindL = (flowline.bed_function(xmin-dL))/flowline.H0
+    bed_mindL = (flowline.bed_function(x_fwd))/flowline.H0
     s_mindL = BalanceThick(bed_mindL, Bghm_terminus) + bed_mindL
-    profile_mindL = flowline.plastic_profile(startpoint=xmin-dL, hinit = s_mindL, endpoint = xmax, surf = flowline.surface_function)
+    profile_mindL = flowline.plastic_profile(startpoint=x_fwd, hinit = s_mindL, endpoint = xmax, surf = flowline.surface_function)
     H_mindL = np.array(profile_mindL[1]) - np.array(profile_mindL[2]) #array of ice thickness from profile
     Hx_mindL = interpolate.interp1d(profile_mindL[0], H_mindL, bounds_error=False, fill_value=0)
     print Hx_mindL(xmin)
     
     #Profile retreated by dL
-    bed_plusdL = (flowline.bed_function(xmin+dL))/flowline.H0
+    bed_plusdL = (flowline.bed_function(x_bk))/flowline.H0
     s_plusdL = BalanceThick(bed_plusdL, Bghm_terminus) + bed_plusdL
-    profile_plusdL = flowline.plastic_profile(startpoint = xmin+dL, hinit = s_plusdL, endpoint = xmax, surf=flowline.surface_function)
+    profile_plusdL = flowline.plastic_profile(startpoint = x_bk, hinit = s_plusdL, endpoint = xmax, surf=flowline.surface_function)
     H_plusdL = np.array(profile_plusdL[1]) - np.array(profile_plusdL[2]) #array of ice thickness
     Hx_plusdL = interpolate.interp1d(profile_plusdL[0], H_plusdL, bounds_error=False, fill_value=0)
     print Hx_plusdL(xmin)
@@ -162,26 +170,38 @@ def find_dHdL(flowline, profile, dL=None):
 #    return dUdx_invannum
 #    
 
-def balance_adot(network, V_field):
+def balance_adot(network, V_field, use_width=False, L_limit=6.0):
     """Function to compute spatially-averaged accumulation rate that balances observed terminus velocity
     Input:
         V_field: 2d-interpolated function to report magnitude of velocity (i.e. ice flow speed in m/a) given (x,y) coordinates
+        use_width: whether to consider upstream width when calculating balance accumulation.  Default is no.
+        L_limit: nondimensional upstream distance that indicates how far we trust our model.  Default is 6.0 (60 km in dimensional units).
     """
     terminus = network.flowlines[0].coords[0][0:2] #All lines of a network should share a terminus at initial state
-    terminus_speed = V_field(terminus) #dimensional in m/a
+    terminus_speed = V_field(terminus[0], terminus[1]) #dimensional in m/a
     terminus_width = network.flowlines[0].width_function(0) #dimensional in m
     terminus_thickness = network.H0*network.flowlines[0].ref_profile(0) - network.flowlines[0].bed_function(0) #dimensional in m
-    termflux = terminus_speed * terminus_width * terminus_thickness
+    balance_thickness = network.H0*BalanceThick(network.flowlines[0].bed_function(0)/network.H0, network.flowlines[0].Bingham_num(network.flowlines[0].bed_function(0)/network.H0, terminus_thickness))
+    termflux = terminus_speed * terminus_width * balance_thickness
     
+
     sa = []
+    total_L = []
     for fl in network.flowlines:
-        L = fl.length
+        L = min(fl.length, L_limit)
         surface_area_nondim = quad(fl.width_function, 0, L)[0]
         surface_area = network.L0 * surface_area_nondim
         sa.append(surface_area)
+        total_L.append(network.L0 * L)
     catchment_area = sum(sa)
+    total_ice_length = sum(total_L)
     
-    balance_a = termflux/catchment_area
+    if use_width:
+        balance_a = termflux/catchment_area
+    else:
+        balance_a = terminus_speed*balance_thickness/total_ice_length
+    
+    return balance_a
     
 
     
@@ -240,7 +260,7 @@ def dLdt(flowline, profile, a_dot, rate_factor=3.5E-25, dL=None):
     
     return result
 
-def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_dot, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True):
+def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_dot=None, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True):
     """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
     Arguments:
         testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
@@ -259,6 +279,9 @@ def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_d
     if upstream_limits is None:
         upstream_limits=[fl.length for fl in network.flowlines]
     
+    if a_dot is None:
+        a_dot = 0.2/network.H0
+    
     if a_dot_variable is None:  
         a_dot_vals = np.full(len(testyears), a_dot)
     else:
@@ -275,7 +298,7 @@ def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_d
     #Mainline reference
     ref_line = network.flowlines[ref_branch_index]
     ref_amax = upstream_limits[ref_branch_index]
-    ref_surface = ref_line.surface_function
+    ref_surface = ref_line.ref_profile
     #refpt = min(ref_amax, upgl_ref) #apply forcing at top of branch if shorter than reference distance.  In general would expect forcing farther downstream to give weaker response
     #refht = ref_line.ref_profile(refpt)
     if use_mainline_tau:
@@ -284,16 +307,22 @@ def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_d
     else:
         pass
     refdict = model_output_dicts[ref_branch_index]
-    refdict[0] = ref_line.ref_profile #initial condition for time evolution - needed to calculate calving flux at first timestep
+    refdict[0] = ref_line.plastic_profile(startpoint=0, hinit=ref_surface(0), endpoint=ref_amax, surf=ref_surface) #initial condition for time evolution - needed to calculate calving flux at first timestep
 
     
     #Assume same terminus
     for k, yr in enumerate(testyears):
         a_dot_k = a_dot_vals[k]
         
-        dLdt_annum = dLdt(flowline=ref_line, profile=refdict[k-1], a_dot=a_dot_k)
+        if k<1:
+            dLdt_annum = dLdt(flowline=ref_line, profile=refdict[0], a_dot=a_dot_k) * network.L0
+        else:
+            dLdt_annum = dLdt(flowline=ref_line, profile=refdict[k-1], a_dot=a_dot_k) * network.L0
         #Ref branch
-        new_termpos = network.L0*(refdict['Termini'][-1]+(dLdt_annum*dt)) #Multiply by dt in case dt!=1 annum
+        print 'dLdt_annum = {}'.format(dLdt_annum)
+        new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum
+        new_termpos = max(0, new_termpos_raw)
+        print 'New terminus position = {}'.format(new_termpos)
         new_term_bed = ref_line.bed_function(new_termpos/network.L0)
         previous_bed = ref_line.bed_function(refdict['Termini'][-1]/network.L0)
         previous_thickness = (refdict['Terminus_heights'][-1] - previous_bed)/network.H0 #nondimensional thickness for use in Bingham number
@@ -307,17 +336,17 @@ def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_d
         refdict[yr] = new_profile
         refdict['Terminus_flux'].append(termflux)
         refdict['Termini'].append(new_termpos)
-        refdict['Terminus_heights'].append(new_termheight)
+        refdict['Terminus_heights'].append(new_termheight*network.H0)
         refdict['Termrates'].append(dLdt_annum*dt)
         
         #Other branches, incl. branch splitting
         for j, fl in enumerate(network.flowlines):
             out_dict = model_output_dicts[j]
             fl_amax = upstream_limits[j]
-            separation_distance = ArcArray(fl.coords)[fl.intersections[1]] #where line separates from mainline
             if j==ref_branch_index:
                 continue
             else:
+                separation_distance = ArcArray(fl.coords)[fl.intersections[1]] #where line separates from mainline
                 if use_mainline_tau:
                     fl.optimal_tau = network.network_tau
                     fl.yield_type = network.network_yield_type #this is probably too powerful, but unclear how else to exploit Bingham_number functionality
@@ -329,20 +358,25 @@ def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_d
                     branch_terminus = new_termpos
                     branch_termheight = new_termheight
                 else: ##if branches have split, find new terminus quantities
-                    dLdt_branch = dLdt(flowline=fl, profile=out_dict[k-1], a_dot=a_dot_k)
-                    branch_terminus = network.L0*(out_dict['Termini'][-1] +(dLdt_branch*dt))
+                    dLdt_branch = dLdt(flowline=fl, profile=out_dict[k-1], a_dot=a_dot_k) * network.L0
+                    branch_terminus = out_dict['Termini'][-1] -(dLdt_branch*dt)
                     branch_term_bed = fl.bed_function(branch_terminus/network.L0)
                     previous_branch_bed = fl.bed_function(out_dict['Termini'][-1]/network.L0)
                     previous_branch_thickness = (out_dict['Terminus_heights'][-1] - previous_branch_bed)/network.H0
                     branch_termheight = BalanceThick(branch_term_bed/network.H0, fl.Bingham_num(previous_branch_bed/network.H0, previous_branch_thickness)) + (branch_term_bed/network.H0)
                     
                 branchmodel = fl.plastic_profile(startpoint=branch_terminus/network.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function)
+                if yr>dt:
+                    branch_termflux = fl.icediff(profile1=out_dict[yr-dt], profile2=branchmodel)
+                else:
+                    branch_termflux = np.nan
+                    
                 out_dict[yr] = branchmodel
                 out_dict['Termini'].append(branch_terminus)
-                out_dict['Terminus_heights'].append(branch_termheight)
+                out_dict['Terminus_heights'].append(branch_termheight*network.H0)
                 out_dict['Termrates'].append(dLdt_branch*dt)
                 if yr > dt:
-                    out_dict['Terminus_flux'].append(termflux)
+                    out_dict['Terminus_flux'].append(branch_termflux)
                 else:
                     out_dict['Terminus_flux'].append(np.nan)
     

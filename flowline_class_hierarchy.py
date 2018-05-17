@@ -183,7 +183,8 @@ class Flowline(Ice):
             
     def plastic_profile(self, bedf=None, startpoint=0, hinit=None, endpoint=None, Npoints=25000, surf=None):
         """
-        This snippet translates functionality of plastic_utilities_v2.PlasticProfile"""
+        This snippet translates functionality of plastic_utilities_v2.PlasticProfile
+        """
         
         H0 = self.H0
         L0 = self.L0
@@ -221,16 +222,12 @@ class Flowline(Ice):
             modelthick = thickarr[-1]
             B = self.Bingham_num(bed, modelthick, None, None)
             #Break statements for thinning below yield, water balance, or flotation
-            if dx<0:
-                if modelthick<BalanceThick(bed,B):
-                    print 'Thinned below water balance at x=' + str(10*x)+'km'
-                    break
+            if modelthick<BalanceThick(bed,B) and dx<0:
+                print 'Thinned below water balance at x=' + str(10*x)+'km'
+                break
             if modelthick<FlotationThick(bed) and dx<0: #should only break for flotation when running downstream in simulations 
                 ##CONFIRM THAT THERE ARE OTHER WAYS TO CATCH FLOATING TERMINI 
                 print 'Thinned below flotation at x=' + str(10*x)+'km'
-                break
-            if modelthick<4*B*H0/L0:
-                print 'Thinned below yield at x=' +str(10*x)+'km'
                 break
             else:
                 basearr.append(bed)
@@ -256,7 +253,7 @@ class Flowline(Ice):
             profile2: an output from Flowline.plastic_profile (at a later time step)
             shape: 'trapezoid' ##Add others later e.g. parabolic bed
         Output:
-            dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2
+            dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2, in kg
         """
         try:
             interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True) #Creating interpolated surface elevation profile
