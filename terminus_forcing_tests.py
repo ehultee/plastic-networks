@@ -21,6 +21,11 @@ from flowline_class_hierarchy import *
 ### COMMENT OUT IF DATA IS ALREADY READ IN TO YOUR SESSION
 ##-------------------
 
+##Nondimensional time scaling
+T_0 = 1 #annum, taken as the characteristic time scale
+s_per_annum = 31557600 #seconds per annum, to convert time unit where necessary
+
+
 print 'Reading in surface topography'
 gl_bed_path ='Documents/1. Research/2. Flowline networks/Model/Data/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
 fh = Dataset(gl_bed_path, mode='r')
@@ -49,6 +54,28 @@ S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S.T[::, ::-1])
 H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
 B_interp = interpolate.RectBivariateSpline(X, Y[::-1], B.T[::, ::-1])
 
+## Reading in SENTINEL velocity map
+print 'Now reading in (vector) velocity map'
+v_path = 'Documents/1. Research/2. Flowline networks/Model/Data/ESA-Greenland/greenland_iv_500m_s1_20161223_20170227_v1_0.nc'
+fh2 = Dataset(v_path, mode='r')
+xv = fh2.variables['x'][:].copy()
+yv = fh2.variables['y'][:].copy()
+#yv = yv_flipped[::-1]
+v_raw = fh2.variables['land_ice_surface_velocity_magnitude'][:].copy() #this is v(y, x)
+vx_raw = fh2.variables['land_ice_surface_easting_velocity'][:].copy()
+vy_raw =fh2.variables['land_ice_surface_northing_velocity'][:].copy()
+v_upper = np.ma.masked_greater(v_raw, 10000)
+vx_upper = np.ma.masked_greater(vx_raw, 10000)
+vy_upper = np.ma.masked_greater(vy_raw, 10000)
+fh2.close()
+
+## Interpolate SENTINEL and sample at BedMachine points
+print 'Now interpolating to same grid'
+vf_x = interpolate.interp2d(xv, yv[::-1], vx_upper[::-1,::])
+vf_y = interpolate.interp2d(xv, yv[::-1], vy_upper[::-1,::])
+vf = interpolate.interp2d(xv, yv[::-1], v_upper[::-1, ::])
+
+
 ##-------------------
 ### INITIALIZING JAKOBSHAVN
 ##-------------------
@@ -56,7 +83,7 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], B.T[::, ::-1])
 jakcoords_main = Flowline_CSV('Documents/GitHub/plastic-networks/jakobshavn-mainline-w_width.csv', 1, has_width=True, flip_order=False)[0]
 jak_0 = Flowline(coords=jakcoords_main, index=0, name='Jak mainline', has_width=True)
 Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main/south]', init_type='Flowline', branches=(jak_0), main_terminus=jakcoords_main[0])
-Jakobshavn_main.load_network(filename='Jakobshavn_main-w_35yr_model_output.pickle', load_mainline_output=True)
+Jakobshavn_main.load_network(filename='Jakobshavn_main-w_35yr_model_output.pickle', load_mainline_output=False)
 
 #jakcoords_sec = Flowline_CSV('Jakobshavn_secondary-flowline-w_width.csv', 1, has_width=True, flip_order=False)[0]
 #jak_1 = Flowline(coords=jakcoords_sec, index=1, name='Jak secondary branch', has_width=True)
@@ -106,7 +133,7 @@ def check_upstream(network, which_years):
     return yieldtest
         
 
-def find_dHdL(flowline, profile, dL=None):
+def find_dHdL(flowline, profile, dL=None, debug_mode=False):
     """Function to compute successive profiles of length L-dL, L, L+dL to calculate dHdL over glacier flowline.
     Input: 
         profile: a plastic profile output from Flowline.plasticprofile of length L
@@ -128,10 +155,9 @@ def find_dHdL(flowline, profile, dL=None):
     
     
     #Terminus quantities
-    SE_terminus = profile[1][0] #NEED TO CONFIRM that terminus is at [0] and not [-1]
+    SE_terminus = profile[1][0] #CONFIRM that terminus is at [0] and not [-1]
     Bed_terminus = profile[2][0]
     H_terminus = SE_terminus - Bed_terminus 
-    print H_terminus
     Bghm_terminus = flowline.Bingham_num(Bed_terminus, H_terminus)
     
     #Profile advanced by dL - note coord system means xmin-dL is more advanced, as x=0 is at initial terminus position
@@ -140,7 +166,6 @@ def find_dHdL(flowline, profile, dL=None):
     profile_mindL = flowline.plastic_profile(startpoint=x_fwd, hinit = s_mindL, endpoint = xmax, surf = flowline.surface_function)
     H_mindL = np.array(profile_mindL[1]) - np.array(profile_mindL[2]) #array of ice thickness from profile
     Hx_mindL = interpolate.interp1d(profile_mindL[0], H_mindL, bounds_error=False, fill_value=0)
-    print Hx_mindL(xmin)
     
     #Profile retreated by dL
     bed_plusdL = (flowline.bed_function(x_bk))/flowline.H0
@@ -148,9 +173,16 @@ def find_dHdL(flowline, profile, dL=None):
     profile_plusdL = flowline.plastic_profile(startpoint = x_bk, hinit = s_plusdL, endpoint = xmax, surf=flowline.surface_function)
     H_plusdL = np.array(profile_plusdL[1]) - np.array(profile_plusdL[2]) #array of ice thickness
     Hx_plusdL = interpolate.interp1d(profile_plusdL[0], H_plusdL, bounds_error=False, fill_value=0)
-    print Hx_plusdL(xmin)
     
     dHdLx = lambda x: (Hx_plusdL(x) - Hx_mindL(x))/(2*dL)
+    
+    if debug_mode:
+        print 'Debugging dHdL.  Inspect:'
+        print 'H_terminus={}'.format(H_terminus)
+        print 'Hx_mindL={}'.format(Hx_mindL(xmin))
+        print 'Hx_plusdL={}'.format(Hx_plusdL(xmin))
+    else:
+        pass
     
     return dHdLx
 
@@ -206,32 +238,34 @@ def balance_adot(network, V_field, use_width=False, L_limit=6.0):
 
     
 
-def dLdt(flowline, profile, a_dot, rate_factor=3.5E-25, dL=None):
+def dLdt(flowline, profile, a_dot, rate_factor=3.5E-25, dL=None, debug_mode=False):
     """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
     Input:
         profile: a plastic profile output from Flowline.plasticprofile of the current time step
-        a_dot: net rate of ice accumulation/loss (in m/a)--spatially averaged over whole catchment for now
+        a_dot: net rate of ice accumulation/loss.  Should be expressed in m/a /H0. Spatially averaged over whole catchment for now
         rate_factor: flow rate factor A, assumed 3.5x10^(-25) Pa^-3 s^-1 for T=-10C based on Cuffey & Paterson
+    Returns dLdt in nondimensional units.  Multiply by L0 to get units of m/a (while T0=1a).
     """      
     xmin = min(profile[0])
     xmax = max(profile[0])
     L = xmax-xmin #length of the current profile, nondimensional
-    print L
     
     if dL is None:
-        dL=5/flowline.L0
+        dL=5/flowline.L0 #step over which to test dHdL profiles
     
     dHdL = find_dHdL(flowline, profile, dL)
     
+    #Nondimensionalising rate factor
+    inverse_units_of_A = T_0 * (flowline.rho_ice **3)*(flowline.g **3) * (flowline.H0 **6) / (flowline.L0 **3)
+    #units_of_A = (flowline.L0 **3)/ (T_0*(flowline.rho_ice **3)*(flowline.g **3) *(flowline.H0 **6))
+    #nondim_A = rate_factor * inverse_units_of_A
+    
     #Terminus quantities
     SE_terminus = profile[1][0] #terminus at [0], not [-1]--may return errors if running from head downstream, but this is for terminus forcing anyway
-    print 'SE_terminus={}'.format(SE_terminus)
     Bed_terminus = profile[2][0]
-    print 'Bed_terminus={}'.format(Bed_terminus)
     H_terminus = SE_terminus - Bed_terminus 
     Bghm_terminus = flowline.Bingham_num(Bed_terminus, H_terminus)
     Hy_terminus = BalanceThick(Bed_terminus, Bghm_terminus)
-    print 'Hy_terminus={}'.format(Hy_terminus)
 
     #Quantities at adjacent grid point
     SE_adj = profile[1][1]
@@ -242,25 +276,37 @@ def dLdt(flowline, profile, a_dot, rate_factor=3.5E-25, dL=None):
     
     #Diffs
     dx_term = abs(profile[0][1] - profile[0][0]) #should be ~2m in physical units
-    print 'dx_term={}'.format(dx_term)
     dHdx = (H_adj-H_terminus)/dx_term
     dHydx = (Hy_adj-Hy_terminus)/dx_term
-    s_per_annum = 31557600 #unit conversion to make calculation agree with accumulation
     tau = flowline.Bingham_num(Bed_terminus, H_terminus) * (flowline.rho_ice * flowline.g * flowline.H0**2 / flowline.L0) #using Bingham_num handles whether tau_y constant or variable for selected flowline
-    dUdx_terminus = s_per_annum * rate_factor * tau**3 
+    dUdx_terminus = -1 * rate_factor * tau**3 #-1 due to sign convention with x increasing upstream from terminus
+    nondim_dUdx_terminus = dUdx_terminus * inverse_units_of_A / (flowline.rho_ice * flowline.g * flowline.H0**2 / flowline.L0) #divide out units to get nondimensional quantity
 
     Area_int = quad(dHdL, xmin, xmax)[0]
-    print 'Area_int={}'.format(Area_int)
     #print 'dH/dL at terminus = {}'.format(dHdL(xmin))
     
-    denom = dHydx - dHdx - (H_terminus**(-1))*dHdx*Area_int
-    numerator = a_dot - dUdx_terminus*H_terminus - (a_dot*L*dHdx/H_terminus)
+    
+    denom = dHydx - dHdx* (1 + (Area_int/H_terminus))
+    numerator = a_dot - nondim_dUdx_terminus*H_terminus + (a_dot*L*dHdx/H_terminus)
     
     result = numerator/denom
     
+    if debug_mode:
+        print 'For inspection on debugging:'
+        print 'L={}'.format(L)
+        print 'SE_terminus={}'.format(SE_terminus)
+        print 'Bed_terminus={}'.format(Bed_terminus)
+        print 'Hy_terminus={}'.format(Hy_terminus)
+        print 'dx_term={}'.format(dx_term)
+        print 'Area_int={}'.format(Area_int)
+        print 'Checking dLdt: a_dot = {}. \n H dUdx = {}. \n Ub dHdx = {}.'.format(a_dot, nondim_dUdx_terminus*H_terminus, a_dot*L*dHdx/H_terminus) 
+        print 'Denom = {}'.format(denom)
+    else:
+        pass
+
     return result
 
-def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_dot=None, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True):
+def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_dot=None, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False):
     """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
     Arguments:
         testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
@@ -319,10 +365,14 @@ def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_d
         else:
             dLdt_annum = dLdt(flowline=ref_line, profile=refdict[k-1], a_dot=a_dot_k) * network.L0
         #Ref branch
-        print 'dLdt_annum = {}'.format(dLdt_annum)
+
         new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum
         new_termpos = max(0, new_termpos_raw)
-        print 'New terminus position = {}'.format(new_termpos)
+        if debug_mode:
+            print 'dLdt_annum = {}'.format(dLdt_annum)
+            print 'New terminus position = {}'.format(new_termpos)
+        else:
+            pass
         new_term_bed = ref_line.bed_function(new_termpos/network.L0)
         previous_bed = ref_line.bed_function(refdict['Termini'][-1]/network.L0)
         previous_thickness = (refdict['Terminus_heights'][-1] - previous_bed)/network.H0 #nondimensional thickness for use in Bingham number
