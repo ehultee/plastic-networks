@@ -290,14 +290,17 @@ class Flowline(Ice):
         #dW = abs(w2-w1) #in physical units of m
         print 'dW={} m'.format(w2-w1)
         
-        full_thickness = lambda x: self.H0*interpolated_func1(x) - self.H0*bed_function1(x)
+        if dX < 0: #second profile is more advanced than first
+            full_thickness = lambda x: self.H0*interpolated_func2(x) - self.H0*bed_function2(x)
+        else:
+            full_thickness = lambda x: self.H0*interpolated_func1(x) - self.H0*bed_function1(x)
         if x1 < downstream_limit:
             if x2 <= downstream_limit:
                 frontal_dH = 0
             if x2 > downstream_limit:
                 frontal_dH = quad(full_thickness, downstream_limit, x2)[0]
         else:    
-            frontal_dH = quad(full_thickness, x1, x2)[0]
+            frontal_dH = quad(full_thickness, x1, x2)[0] #should handle signs correctly 
         frontal_dV = frontal_dH * self.L0 * 0.5*(w1+w2)
         frontal_dM = frontal_dV * self.rho_ice
         
@@ -720,7 +723,7 @@ class PlasticNetwork(Ice):
         else:
             balance_a = terminus_speed*balance_thickness/total_ice_length
         
-        self.balance_forcing = balance_a #save to this network instance
+        self.balance_forcing = float(balance_a) #save to this network instance
         return balance_a     
     
     def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, a_dot=None, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False):
