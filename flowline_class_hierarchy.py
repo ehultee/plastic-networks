@@ -18,9 +18,10 @@ class Ice(object):
         default_Ty = 150e3, reasonable yield strength of ice based on lab range, Greenland obs, and Alaska optimisation (Pa)
         default_T0 = 130e3, reasonable strength of ice for Mohr-Coulomb failure criterion, based on Alaska optimisation (Pa)
     """
-    def __init__(self, H0=1e3, L0=10e3, g=9.8, rho_ice=920.0, rho_sea=1020.0, default_Ty=150e3, default_T0=130e3):
+    def __init__(self, H0=1e3, L0=10e3, T_0=1, g=9.8, rho_ice=920.0, rho_sea=1020.0, default_Ty=150e3, default_T0=130e3):
         self.H0 = H0 #characteristic height for nondimensionalisation 
         self.L0 = L0
+        self.T_0 = T_0 #1 annum, default characteristic time.  Not to be confused with default_T0, a default Mohr-Coulumb stress
         self.g = g
         self.rho_ice = rho_ice #kg/m^3
         self.rho_sea = rho_sea #kg/m^3
@@ -380,10 +381,10 @@ class Flowline(Ice):
         if dL is None:
             dL=5/self.L0 #step over which to test dHdL profiles
         
-        dHdL = find_dHdL(flowline=self, profile, dL)
+        dHdL = self.find_dHdL(profile, dL)
         
         #Nondimensionalising rate factor
-        inverse_units_of_A = T_0 * (self.rho_ice **3)*(self.g **3) * (self.H0 **6) / (self.L0 **3)
+        inverse_units_of_A = self.T_0 * (self.rho_ice **3)*(self.g **3) * (self.H0 **6) / (self.L0 **3)
         #units_of_A = (self.L0 **3)/ (T_0*(self.rho_ice **3)*(self.g **3) *(self.H0 **6))
         #nondim_A = rate_factor * inverse_units_of_A
         
@@ -407,7 +408,7 @@ class Flowline(Ice):
         dHydx = (Hy_adj-Hy_terminus)/dx_term
         tau = self.Bingham_num(Bed_terminus, H_terminus) * (self.rho_ice * self.g * self.H0**2 / self.L0) #using Bingham_num handles whether tau_y constant or variable for selected flowline
         dUdx_terminus = -1 * rate_factor * tau**3 #-1 due to sign convention with x increasing upstream from terminus
-        nondim_dUdx_terminus = dUdx_terminus * inverse_units_of_A / (self.rho_ice * self.g * self.H0**2 / self.L0) #divide out units to get nondimensional quantity
+        nondim_dUdx_terminus = dUdx_terminus * inverse_units_of_A / ((self.rho_ice * self.g * self.H0**2 / self.L0)**3) #divide out units to get nondimensional quantity
     
         Area_int = quad(dHdL, xmin, xmax)[0]
         #print 'dH/dL at terminus = {}'.format(dHdL(xmin))
@@ -776,9 +777,9 @@ class PlasticNetwork(Ice):
             a_dot_k = a_dot_vals[k]
             
             if k<1:
-                dLdt_annum = dLdt(flowline=ref_line, profile=refdict[0], a_dot=a_dot_k) * self.L0
+                dLdt_annum = ref_line.dLdt(profile=refdict[0], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
             else:
-                dLdt_annum = dLdt(flowline=ref_line, profile=refdict[k-1], a_dot=a_dot_k) * self.L0
+                dLdt_annum = ref_line.dLdt(profile=refdict[k-1], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
             #Ref branch
     
             new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum
@@ -823,7 +824,7 @@ class PlasticNetwork(Ice):
                         branch_terminus = new_termpos
                         branch_termheight = new_termheight
                     else: ##if branches have split, find new terminus quantities
-                        dLdt_branch = dLdt(flowline=fl, profile=out_dict[k-1], a_dot=a_dot_k) * self.L0
+                        dLdt_branch = fl.dLdt(profile=out_dict[k-1], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
                         branch_terminus = out_dict['Termini'][-1] -(dLdt_branch*dt)
                         branch_term_bed = fl.bed_function(branch_terminus/self.L0)
                         previous_branch_bed = fl.bed_function(out_dict['Termini'][-1]/self.L0)
