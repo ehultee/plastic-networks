@@ -48,6 +48,28 @@ S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S.T[::, ::-1])
 H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
 B_interp = interpolate.RectBivariateSpline(X, Y[::-1], B.T[::, ::-1])
 
+## Reading in SENTINEL velocity map
+print 'Now reading in (vector) velocity map'
+v_path = 'Documents/1. Research/2. Flowline networks/Model/Data/ESA-Greenland/greenland_iv_500m_s1_20161223_20170227_v1_0.nc'
+fh2 = Dataset(v_path, mode='r')
+xv = fh2.variables['x'][:].copy()
+yv = fh2.variables['y'][:].copy()
+#yv = yv_flipped[::-1]
+v_raw = fh2.variables['land_ice_surface_velocity_magnitude'][:].copy() #this is v(y, x)
+vx_raw = fh2.variables['land_ice_surface_easting_velocity'][:].copy()
+vy_raw =fh2.variables['land_ice_surface_northing_velocity'][:].copy()
+v_upper = np.ma.masked_greater(v_raw, 10000)
+vx_upper = np.ma.masked_greater(vx_raw, 10000)
+vy_upper = np.ma.masked_greater(vy_raw, 10000)
+fh2.close()
+
+## Interpolate SENTINEL and sample at BedMachine points
+print 'Now interpolating to same grid'
+vf_x = interpolate.interp2d(xv, yv[::-1], vx_upper[::-1,::])
+vf_y = interpolate.interp2d(xv, yv[::-1], vy_upper[::-1,::])
+vf = interpolate.interp2d(xv, yv[::-1], v_upper[::-1, ::])
+
+
 ##-------------------
 ### FINDING GLACIERS
 ##-------------------
@@ -119,27 +141,45 @@ for gl in glacier_networks:
 
 
 ###-------------------
-#### FORWARD PROJECTION
+#### FORWARD PROJECTION--FORCING FROM UPSTREAM
 ###-------------------
 
-testyears = arange(20)
+#testyears = arange(20)
+#
+#jak_rate = 10/H0 #m/a, mid/low end from Csatho 2008
+#kb_rate = 2/H0
+#hel_rate = 5/H0
+#kanger_rate = 5/H0
+#thinrates = [jak_rate, kb_rate, hel_rate, kanger_rate]
+#
+#Jakobshavn_main.network_time_evolve(testyears=testyears, thinrate=jak_rate)
+#
+#KogeBugt.network_time_evolve(testyears=testyears, thinrate=kb_rate)
+#
+#Helheim.network_time_evolve(testyears=testyears, thinrate=hel_rate)
+#
+#Kanger.network_time_evolve(testyears=testyears, thinrate=kanger_rate)
 
-jak_rate = 10/H0 #m/a, mid/low end from Csatho 2008
-kb_rate = 2/H0
-hel_rate = 5/H0
-kanger_rate = 5/H0
-thinrates = [jak_rate, kb_rate, hel_rate, kanger_rate]
+###-------------------
+#### FORWARD PROJECTION--FORCING FROM TERMINUS
+###-------------------
 
-Jakobshavn_main.network_time_evolve(testyears=testyears, thinrate=jak_rate)
+# Finding balance rate as basis for future accumulation
+jak_balance = Jakobshavn_main.balance_adot(vf)
+kb_balance = KogeBugt.balance_adot(vf)
+hel_balance = Helheim.balance_adot(vf)
+kanger_balance = Kanger.balance_adot(vf)
 
-KogeBugt.network_time_evolve(testyears=testyears, thinrate=kb_rate)
+forcingrates = [-2*r for r in (jak_balance, kb_balance, hel_balance, kanger_balance)]
 
-Helheim.network_time_evolve(testyears=testyears, thinrate=hel_rate)
+testyears = arange(50)
 
-Kanger.network_time_evolve(testyears=testyears, thinrate=kanger_rate)
-
-
-   
+Jakobshavn_main.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[0]/Jakobshavn_main.H0, debug_mode=True)
+#KogeBugt.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[1]/KogeBugt.H0)
+#Helheim.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[2]/Helheim.H0)
+#Kanger.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[3]/Kanger.H0)
+#  
+    
 ###-------------------
 #### REALISTIC FORCING
 ###-------------------
