@@ -257,13 +257,13 @@ class Flowline(Ice):
             dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2, in kg
         """
         try:
-            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True) #Creating interpolated surface elevation profile
+            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True, bounds_error=False, fill_value=0) #Creating interpolated surface elevation profile
             bed_function1 = interpolate.interp1d(profile1[0], profile1[2]) #useful to calculate full-thickness volume change from retreat/advance
         except ValueError: #this happens when terminus retreats past upstream forcing point
             interpolated_func1 = lambda x: np.nan
             bed_function1 = lambda x: np.nan
         try:
-            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True) #Creating interpolated profile if needed
+            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True, bounds_error=False, fill_value=0) #Creating interpolated profile if needed
         except ValueError: #this happens when terminus retreats past upstream forcing point
             interpolated_func2 = lambda x: np.nan #return NaN once no longer calculating meaningful changes
     
@@ -291,9 +291,11 @@ class Flowline(Ice):
         print 'dW={} m'.format(w2-w1)
         
         if dX < 0: #second profile is more advanced than first
+            bed_function2 = interpolate.interp1d(profile2[0], profile2[2]) #bed function that extends to more advanced terminus
             full_thickness = lambda x: self.H0*interpolated_func2(x) - self.H0*bed_function2(x)
         else:
             full_thickness = lambda x: self.H0*interpolated_func1(x) - self.H0*bed_function1(x)
+        
         if x1 < downstream_limit:
             if x2 <= downstream_limit:
                 frontal_dH = 0
