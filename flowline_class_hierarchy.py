@@ -720,6 +720,7 @@ class PlasticNetwork(Ice):
         else:
             balance_a = terminus_speed*balance_thickness/total_ice_length
         
+        self.balance_forcing = balance_a #save to this network instance
         return balance_a     
     
     def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, a_dot=None, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False):
@@ -870,11 +871,17 @@ class PlasticNetwork(Ice):
         
         N_Flowlines = len(self.flowlines)
         
+        try:
+            balance_forcing = self.balance_forcing
+        except AttributeError: #likely will not have attribute if only saving runs forced from upstream
+            balance_forcing = None
+        
         output_dict = {
         'network_name': self.name,
         'N_Flowlines': N_Flowlines,
         'network_tau': self.network_tau,
         'network_yield_type': self.network_yield_type,
+        'balance_forcing': balance_forcing,
         'mainline_model_output': self.model_output[0]
         }
         
