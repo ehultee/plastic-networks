@@ -785,7 +785,7 @@ class PlasticNetwork(Ice):
             if k<1:
                 dLdt_annum = ref_line.dLdt(profile=refdict[0], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
             else:
-                dLdt_annum = ref_line.dLdt(profile=refdict[k-1], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
+                dLdt_annum = ref_line.dLdt(profile=refdict[yr-dt], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
             #Ref branch
     
             new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum
@@ -830,7 +830,7 @@ class PlasticNetwork(Ice):
                         branch_terminus = new_termpos
                         branch_termheight = new_termheight
                     else: ##if branches have split, find new terminus quantities
-                        dLdt_branch = fl.dLdt(profile=out_dict[k-1], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
+                        dLdt_branch = fl.dLdt(profile=out_dict[k-dt], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
                         branch_terminus = out_dict['Termini'][-1] -(dLdt_branch*dt)
                         branch_term_bed = fl.bed_function(branch_terminus/self.L0)
                         previous_branch_bed = fl.bed_function(out_dict['Termini'][-1]/self.L0)
@@ -907,6 +907,10 @@ class PlasticNetwork(Ice):
         
         self.network_tau = loaded_dict['network_tau']
         self.network_yield_type = loaded_dict['network_yield_type']
+        try:
+            self.balance_forcing = loaded_dict['balance_forcing']
+        except KeyError: #if balance forcing was not saved
+            self.balance_forcing = None
         if load_mainline_output:
             self.model_output = {} #needs to be initialized
             self.model_output[0] = loaded_dict['mainline_model_output']

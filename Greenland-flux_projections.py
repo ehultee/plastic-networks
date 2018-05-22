@@ -174,51 +174,65 @@ forcingrates = [-2*r for r in (jak_balance, kb_balance, hel_balance, kanger_bala
 
 testyears = arange(50)
 
-Jakobshavn_main.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[0]/Jakobshavn_main.H0, debug_mode=True)
-#KogeBugt.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[1]/KogeBugt.H0)
-#Helheim.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[2]/Helheim.H0)
-#Kanger.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[3]/Kanger.H0)
-#  
+db = True
+Jakobshavn_main.terminus_time_evolve(testyears=arange(0, 10, 0.10), a_dot=forcingrates[0]/Jakobshavn_main.H0, debug_mode=db)
+##KogeBugt.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[1]/KogeBugt.H0, debug_mode=db)
+##Helheim.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[2]/Helheim.H0, debug_mode=db)
+##Kanger.terminus_time_evolve(testyears=testyears, a_dot=forcingrates[3]/Kanger.H0, debug_mode=db)
+##  
     
-###-------------------
-#### REALISTIC FORCING
-###-------------------
-
-#
-#obs_ish_projections = []
-#for j, procglac in enumerate(processed_glaciers):
-#    fwdmodel_dicts = PlasticEvol(procglac, testyears, thinrate = thinrates[j])
-#    obs_ish_projections.append(fwdmodel_dicts)
-#
-#linear_increase_thinning = [np.linspace(tr, 2*tr, num=100) for tr in thinrates]
-#lin_inc_projections = []
-#for j, procglac in enumerate(processed_glaciers):
-#    fwdmodel_dicts = PlasticEvol(procglac, arange(100), thinvalues=linear_increase_thinning[j])
-#    lin_inc_projections.append(fwdmodel_dicts)
-#
-#   
 ###-------------------
 #### SUMMARY PLOTTING
 ###-------------------
 #
+#projections = [Jakobshavn_main.model_output, KogeBugt.model_output, Helheim.model_output, Kanger.model_output]
 #names = ['Jakobshavn', 'Koge Bugt', 'Helheim', 'Kangerlussuaq']
-##rates = ['10 m/a', '2 m/a', '5 m/a', '5 m/a'] #for constant 'obs-ish' projections
-#rates = ['10-20 m/a', '2-4 m/a', '5-10 m/a', '5-10 m/a']
-##styles = [':', '-.', '--', '-']
+#rates = ['{} m/a'.format(r) for r in forcingrates]
+#fluxes = [Jakobshavn_main.model_output[0]['Terminus_flux'], KogeBugt.model_output[0]['Terminus_flux'], Helheim.model_output[0]['Terminus_flux'], Kanger.model_output[0]['Terminus_flux']]
+###styles = [':', '-.', '--', '-']
 #markers = ['o', '^', 'd', '*']
 #cmap = matplotlib.cm.get_cmap('winter')
 #colors = cmap([0.3, 0.5, 0.7, 0.9])
 #
+##terminus
 #plt.figure()
-##for j,pr in enumerate(lowend_projection_storage):
-###for j,pr in enumerate(obs_ish_projections):
-#for j,pr in enumerate(lin_inc_projections):
-#    plt.plot(arange(100), -0.001*np.array(pr[0]['Termini'][1:]), linewidth=4, color=colors[j], label='{}, {}'.format(names[j], rates[j]))
-#    plt.plot(arange(100)[::5], -0.001*np.array(pr[0]['Termini'][1:])[::5], linewidth=0, marker=markers[j], ms=10, color=colors[j])
+#for j, pr in enumerate(projections):
+#    plt.plot(arange(50), -0.001*np.array(pr[0]['Termini'][1:]), linewidth=4, color=colors[j], label='{}, {}'.format(names[j], rates[j]))
+#    plt.plot(arange(50)[::5], -0.001*np.array(pr[0]['Termini'][1:])[::5], linewidth=0, marker=markers[j], ms=10, color=colors[j])
 #plt.legend(loc='lower left')
 #plt.axes().set_xlabel('Year of simulation', size=30)
 #plt.axes().set_ylabel('Terminus change [km]', size=30)
 #plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 #plt.axes().set_ylim(-16, 1)
 #plt.axes().set_yticks([-15, -10, -5, 0])
+#plt.title('Glacier terminus retreat under 50 a $-5 \dot{a}_{bal}$ forcing', fontsize=30)
+#plt.show()
+#
+##HELHEIM ONLY - checking branches
+#plt.figure('Helheim terminus change')
+##for k, mo in enumerate(Helheim.model_output): #for each branch j
+#mo = Helheim.model_output[0]
+#plt.plot(arange(len(mo['Termini'])), -0.001*np.array(mo['Termini']), linewidth=4, label='Helheim mainline')
+#plt.plot(arange(len(mo['Termini']))[::5], -0.001*np.array(mo['Termini'])[::5], linewidth=0, marker='.', ms=10)
+#plt.legend(loc='lower left')
+#plt.axes().set_xlabel('Year of simulation', size=30)
+#plt.axes().set_ylabel('Terminus change [km]', size=30)
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+##plt.axes().set_ylim(-16, 1)
+##plt.axes().set_yticks([-15, -10, -5, 0])
+#plt.show()
+#
+#
+##Flux
+#plt.figure()
+#for j in range(len(names)):
+#    plt.plot(testyears, 1E-12*np.array(fluxes[j]), linewidth=4, color=colors[j], label=names[j])
+#    plt.plot(testyears[5::5], 1E-12*np.array(fluxes[j][5::5]), linewidth=0, marker=markers[j], ms=10, color=colors[j])
+#    plt.fill_between(testyears, y1=1E-12*np.array(fluxes[j]), y2=0, color=colors[j], alpha=0.5)    
+#plt.legend(loc='upper right')
+#plt.axes().set_xlabel('Year of simulation', size=30)
+#plt.axes().set_ylabel('Terminus ice flux [Gt/a]', size=30)
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+##plt.axes().set_ylim(-16, 1)
+##plt.axes().set_yticks([-15, -10, -5, 0])
 #plt.show()
