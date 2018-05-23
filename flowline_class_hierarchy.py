@@ -359,7 +359,7 @@ class Flowline(Ice):
         H_plusdL = np.array(profile_plusdL[1]) - np.array(profile_plusdL[2]) #array of ice thickness
         Hx_plusdL = interpolate.interp1d(profile_plusdL[0], H_plusdL, bounds_error=False, fill_value=0)
         
-        dHdLx = lambda x: (Hx_plusdL(x) - Hx_mindL(x))/(2*dL)
+        dHdLx = lambda x: (Hx_mindL(x) - Hx_plusdL(x))/(2*dL)
         
         if debug_mode:
             print 'Debugging dHdL.  Inspect:'
@@ -417,9 +417,9 @@ class Flowline(Ice):
     
         Area_int = quad(dHdL, xmin, xmax)[0]
         #print 'dH/dL at terminus = {}'.format(dHdL(xmin))
+        multiplier = 1 - (Area_int/H_terminus)
         
-        
-        denom = dHydx - dHdx* (1 + (Area_int/H_terminus))
+        denom = dHydx - dHdx* (1 - (Area_int/H_terminus))
         numerator = a_dot - nondim_dUdx_terminus*H_terminus + (a_dot*L*dHdx/H_terminus)
         
         result = numerator/denom
@@ -433,7 +433,7 @@ class Flowline(Ice):
             print 'dx_term={}'.format(dx_term)
             print 'Area_int={}'.format(Area_int)
             print 'Checking dLdt: a_dot = {}. \n H dUdx = {}. \n Ub dHdx = {}.'.format(a_dot, nondim_dUdx_terminus*H_terminus, a_dot*L*dHdx/H_terminus) 
-            print 'Denom = {}'.format(denom)
+            print 'Denom: dHydx = {} \n dHdx = {} \n (1-Area_int/H_terminus) = {}'.format(dHydx, dHdx, multiplier)
         else:
             pass
     
@@ -728,7 +728,7 @@ class PlasticNetwork(Ice):
         self.balance_forcing = float(balance_a) #save to this network instance
         return balance_a     
     
-    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, a_dot=None, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False):
+    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, a_dot=None, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=3):
         """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
         Arguments:
             testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
@@ -739,6 +739,8 @@ class PlasticNetwork(Ice):
             Offers the option to define thinning as persistence of obs or other nonlinear function.
             upstream_limits: array determining where to cut off modelling on each flowline, ordered by index.  Default is full length of lines.
             use_mainline_tau=False will force use of each line's own yield strength & type
+            debug_mode=True will turn on interim output for inspection
+            dt_rounding: determines how many digits of dt to keep--default 3.  If your time step is less than 1 annum, you may find numerical error.  dt_rounding takes care of it. 
         
             returns model output as dictionary for each flowline 
         """
@@ -755,7 +757,7 @@ class PlasticNetwork(Ice):
         else:
             a_dot_vals = a_dot_variable
         
-        dt = mean(diff(testyears)) #size of time step
+        dt = round(mean(diff(testyears)), dt_rounding) #size of time step, rounded to number of digits specified by dt_rounding
         
         model_output_dicts = [{'Termini': [0],
         'Terminus_heights': [fl.surface_function(0)],
@@ -782,30 +784,37 @@ class PlasticNetwork(Ice):
         for k, yr in enumerate(testyears):
             a_dot_k = a_dot_vals[k]
             
+            print 'Looping. year={}.'.format(yr)
+            
             if k<1:
                 dLdt_annum = ref_line.dLdt(profile=refdict[0], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
             else:
-                dLdt_annum = ref_line.dLdt(profile=refdict[yr-dt], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
+                key = round(yr-dt, dt_rounding)
+                print 'yr-dt={}.'.format(yr-dt)
+                print 'key={}'.format(key)
+                dLdt_annum = ref_line.dLdt(profile=refdict[key], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
             #Ref branch
     
             new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum
             new_termpos = max(0, new_termpos_raw)
-            if debug_mode:
-                print 'dLdt_annum = {}'.format(dLdt_annum)
-                print 'New terminus position = {}'.format(new_termpos)
-            else:
-                pass
+            #if debug_mode:
+            #    print 'dLdt_annum = {}'.format(dLdt_annum)
+            #    print 'New terminus position = {}'.format(new_termpos)
+            #else:
+            #    pass
             new_term_bed = ref_line.bed_function(new_termpos/self.L0)
             previous_bed = ref_line.bed_function(refdict['Termini'][-1]/self.L0)
             previous_thickness = (refdict['Terminus_heights'][-1] - previous_bed)/self.H0 #nondimensional thickness for use in Bingham number
             new_termheight = BalanceThick(new_term_bed/self.H0, ref_line.Bingham_num(previous_bed/self.H0, previous_thickness)) + (new_term_bed/self.H0)
             new_profile = ref_line.plastic_profile(startpoint=new_termpos/self.L0, hinit=new_termheight, endpoint=ref_amax, surf=ref_surface)
             if yr>dt:
-                termflux = ref_line.icediff(profile1=refdict[yr-dt], profile2=new_profile)
+                key = round(yr-dt, dt_rounding)
+                termflux = ref_line.icediff(profile1=refdict[key], profile2=new_profile)
             else:
                 termflux = np.nan
-                
-            refdict[yr] = new_profile
+            
+            new_key = round(yr, dt_rounding)    
+            refdict[new_key] = new_profile
             refdict['Terminus_flux'].append(termflux)
             refdict['Termini'].append(new_termpos)
             refdict['Terminus_heights'].append(new_termheight*self.H0)
