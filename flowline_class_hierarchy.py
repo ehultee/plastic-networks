@@ -783,32 +783,31 @@ class PlasticNetwork(Ice):
         #Assume same terminus
         for k, yr in enumerate(testyears):
             a_dot_k = a_dot_vals[k]
-            
-            print 'Looping. year={}.'.format(yr)
+            key = round(yr-dt, dt_rounding) #allows dictionary referencing when dt is < 1 a
             
             if k<1:
                 dLdt_annum = ref_line.dLdt(profile=refdict[0], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
             else:
-                key = round(yr-dt, dt_rounding)
-                print 'yr-dt={}.'.format(yr-dt)
-                print 'key={}'.format(key)
                 dLdt_annum = ref_line.dLdt(profile=refdict[key], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
             #Ref branch
     
             new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum
             new_termpos = max(0, new_termpos_raw)
-            #if debug_mode:
-            #    print 'dLdt_annum = {}'.format(dLdt_annum)
-            #    print 'New terminus position = {}'.format(new_termpos)
-            #else:
-            #    pass
+            if debug_mode:
+                print 'Looping. year={}.'.format(yr)
+                print 'yr-dt={}.'.format(yr-dt)
+                print 'key={}'.format(key)
+                print 'dLdt_annum = {}'.format(dLdt_annum)
+                print 'New terminus position = {}'.format(new_termpos)
+            else:
+                pass
             new_term_bed = ref_line.bed_function(new_termpos/self.L0)
             previous_bed = ref_line.bed_function(refdict['Termini'][-1]/self.L0)
             previous_thickness = (refdict['Terminus_heights'][-1] - previous_bed)/self.H0 #nondimensional thickness for use in Bingham number
             new_termheight = BalanceThick(new_term_bed/self.H0, ref_line.Bingham_num(previous_bed/self.H0, previous_thickness)) + (new_term_bed/self.H0)
             new_profile = ref_line.plastic_profile(startpoint=new_termpos/self.L0, hinit=new_termheight, endpoint=ref_amax, surf=ref_surface)
             if yr>dt:
-                key = round(yr-dt, dt_rounding)
+                #key = round(yr-dt, dt_rounding)
                 termflux = ref_line.icediff(profile1=refdict[key], profile2=new_profile)
             else:
                 termflux = np.nan
@@ -839,7 +838,7 @@ class PlasticNetwork(Ice):
                         branch_terminus = new_termpos
                         branch_termheight = new_termheight
                     else: ##if branches have split, find new terminus quantities
-                        dLdt_branch = fl.dLdt(profile=out_dict[k-dt], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
+                        dLdt_branch = fl.dLdt(profile=out_dict[key], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
                         branch_terminus = out_dict['Termini'][-1] -(dLdt_branch*dt)
                         branch_term_bed = fl.bed_function(branch_terminus/self.L0)
                         previous_branch_bed = fl.bed_function(out_dict['Termini'][-1]/self.L0)
@@ -848,11 +847,11 @@ class PlasticNetwork(Ice):
                         
                     branchmodel = fl.plastic_profile(startpoint=branch_terminus/self.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function)
                     if yr>dt:
-                        branch_termflux = fl.icediff(profile1=out_dict[yr-dt], profile2=branchmodel)
+                        branch_termflux = fl.icediff(profile1=out_dict[key], profile2=branchmodel)
                     else:
                         branch_termflux = np.nan
                         
-                    out_dict[yr] = branchmodel
+                    out_dict[new_key] = branchmodel
                     out_dict['Termini'].append(branch_terminus)
                     out_dict['Terminus_heights'].append(branch_termheight*self.H0)
                     out_dict['Termrates'].append(dLdt_branch*dt)
