@@ -371,12 +371,17 @@ class Flowline(Ice):
         
         return dHdLx
     
-    def dLdt(self, profile, a_dot, rate_factor=3.5E-25, dL=None, debug_mode=False):
+    def dLdt(self, profile, alpha_dot, rate_factor=3.5E-25, dL=None, debug_mode=False, has_smb=False, terminus_balance=None):
         """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
         Input:
             profile: a plastic profile output from Flowline.plasticprofile of the current time step
-            a_dot: net rate of ice accumulation/loss.  Should be expressed in m/a /H0. Spatially averaged over whole catchment for now
+            alpha_dot: net rate of ice accumulation/loss.  Should be expressed in m/a /H0. Spatially averaged over whole catchment for now
             rate_factor: flow rate factor A, assumed 3.5x10^(-25) Pa^-3 s^-1 for T=-10C based on Cuffey & Paterson
+        Optional inputs:
+            dL: passed to Flowline.find_dHdL as length of step over which to test dHdL profiles.  Default 5 m.
+            debug_mode: if True, turns on output for inspection with debugging.  Default False.
+            has_smb: describes whether we have surface mass balance data for this flowline.  Default False.  If true, will run with terminus_balance input in next argument
+            terminus_balance: value of surface mass balance at terminus, if available.  For now this is constant at the initial value.
         Returns dLdt in nondimensional units.  Multiply by L0 to get units of m/a (while T0=1a).
         """      
         xmin = min(profile[0])
@@ -387,6 +392,12 @@ class Flowline(Ice):
             dL=5/self.L0 #step over which to test dHdL profiles
         
         dHdL = self.find_dHdL(profile, dL)
+        
+        if has_smb and terminus_balance is not None:
+            terminus_a_dot = terminus_balance
+        else:
+            terminus_a_dot = alpha_dot #setting value of surface mass balance at terminus = spatially averaged value.  Note this is likely to give strongly underestimated rates of advance/retreat
+            
         
         #Nondimensionalising rate factor
         inverse_units_of_A = self.T_0 * (self.rho_ice **3)*(self.g **3) * (self.H0 **6) / (self.L0 **3)
@@ -420,7 +431,7 @@ class Flowline(Ice):
         multiplier = 1 - (Area_int/H_terminus)
         
         denom = dHydx - dHdx* (1 - (Area_int/H_terminus))
-        numerator = a_dot - nondim_dUdx_terminus*H_terminus + (a_dot*L*dHdx/H_terminus)
+        numerator = terminus_a_dot - nondim_dUdx_terminus*H_terminus + (alpha_dot*L*dHdx/H_terminus)
         
         result = numerator/denom
         
@@ -432,7 +443,7 @@ class Flowline(Ice):
             print 'Hy_terminus={}'.format(Hy_terminus)
             print 'dx_term={}'.format(dx_term)
             print 'Area_int={}'.format(Area_int)
-            print 'Checking dLdt: a_dot = {}. \n H dUdx = {}. \n Ub dHdx = {}.'.format(a_dot, nondim_dUdx_terminus*H_terminus, a_dot*L*dHdx/H_terminus) 
+            print 'Checking dLdt: terminus_a_dot = {}. \n H dUdx = {}. \n Ub dHdx = {}.'.format(terminus_a_dot, nondim_dUdx_terminus*H_terminus, alpha_dot*L*dHdx/H_terminus) 
             print 'Denom: dHydx = {} \n dHdx = {} \n (1-Area_int/H_terminus) = {}'.format(dHydx, dHdx, multiplier)
         else:
             pass
@@ -728,14 +739,14 @@ class PlasticNetwork(Ice):
         self.balance_forcing = float(balance_a) #save to this network instance
         return balance_a     
     
-    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, a_dot=None, a_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=3):
+    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=3, has_smb=False, terminus_balance=None):
         """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
         Arguments:
             testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
             ref_branch_index: which branch to use for forcing.  Default is main branch ("0") but can be changed
-            a_dot: spatially averaged accumulation rate (forcing)
+            alpha_dot: spatially averaged accumulation rate (forcing)
         Optional args:   
-            a_dot_variable: array of the same length as testyears with a different a_dot forcing to use in each year
+            alpha_dot_variable: array of the same length as testyears with a different alpha_dot forcing to use in each year
             Offers the option to define thinning as persistence of obs or other nonlinear function.
             upstream_limits: array determining where to cut off modelling on each flowline, ordered by index.  Default is full length of lines.
             use_mainline_tau=False will force use of each line's own yield strength & type
@@ -749,13 +760,13 @@ class PlasticNetwork(Ice):
         if upstream_limits is None:
             upstream_limits=[fl.length for fl in self.flowlines]
         
-        if a_dot is None:
-            a_dot = 0.2/self.H0
+        if alpha_dot is None:
+            alpha_dot = 0.2/self.H0
         
-        if a_dot_variable is None:  
-            a_dot_vals = np.full(len(testyears), a_dot)
+        if alpha_dot_variable is None:  
+            alpha_dot_vals = np.full(len(testyears), alpha_dot)
         else:
-            a_dot_vals = a_dot_variable
+            alpha_dot_vals = alpha_dot_variable
         
         dt = round(mean(diff(testyears)), dt_rounding) #size of time step, rounded to number of digits specified by dt_rounding
         
@@ -782,22 +793,22 @@ class PlasticNetwork(Ice):
         
         #Assume same terminus
         for k, yr in enumerate(testyears):
-            a_dot_k = a_dot_vals[k]
+            alpha_dot_k = alpha_dot_vals[k]
             key = round(yr-dt, dt_rounding) #allows dictionary referencing when dt is < 1 a
             
             if k<1:
-                dLdt_annum = ref_line.dLdt(profile=refdict[0], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
+                dLdt_annum = ref_line.dLdt(profile=refdict[0], alpha_dot=alpha_dot_k, debug_mode=debug_mode, has_smb=has_smb, terminus_balance=terminus_balance) * self.L0
             else:
-                dLdt_annum = ref_line.dLdt(profile=refdict[key], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
+                dLdt_annum = ref_line.dLdt(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, has_smb=has_smb, terminus_balance=terminus_balance) * self.L0
             #Ref branch
     
-            new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum
+            new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum.  Multiply dLdt by L0 because its output is nondimensional
             new_termpos = max(0, new_termpos_raw)
             if debug_mode:
                 print 'Looping. year={}.'.format(yr)
                 print 'yr-dt={}.'.format(yr-dt)
                 print 'key={}'.format(key)
-                print 'dLdt_annum = {}'.format(dLdt_annum)
+                print 'dLdt_annum = {} m'.format(dLdt_annum)
                 print 'New terminus position = {}'.format(new_termpos)
             else:
                 pass
@@ -838,7 +849,7 @@ class PlasticNetwork(Ice):
                         branch_terminus = new_termpos
                         branch_termheight = new_termheight
                     else: ##if branches have split, find new terminus quantities
-                        dLdt_branch = fl.dLdt(profile=out_dict[key], a_dot=a_dot_k, debug_mode=debug_mode) * self.L0
+                        dLdt_branch = fl.dLdt(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, has_smb=has_smb, terminus_balance=terminus_balance) * self.L0
                         branch_terminus = out_dict['Termini'][-1] -(dLdt_branch*dt)
                         branch_term_bed = fl.bed_function(branch_terminus/self.L0)
                         previous_branch_bed = fl.bed_function(out_dict['Termini'][-1]/self.L0)

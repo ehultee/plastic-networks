@@ -76,7 +76,7 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 #vf = interpolate.interp2d(xv, yv[::-1], v_upper[::-1, ::])
 
 print 'Reading in surface mass balance'
-gl_smb_path ='Downloads/DMI-HIRHAM5_GL2_ERAI_1980_2014_SMB_YM.nc'
+gl_smb_path ='Documents/GitHub/plastic-networks/Data/DMI-HIRHAM5_GL2_ERAI_1980_2014_SMB_YM.nc'
 fh2 = Dataset(gl_smb_path, mode='r')
 x_lon = fh2.variables['lon'][:].copy() #x-coord (latlon)
 y_lat = fh2.variables['lat'][:].copy() #y-coord (latlon)
@@ -94,10 +94,28 @@ xs, ys = pyproj.transform(wgs84, psn_gl, x_lon, y_lat)
 #Ys = ys[:,0] #flattening; note that y-dimension is 602 according to file header
 
 smb_init = smb_raw[0][0]
+smb_latest = smb_raw[-1][0]
 #smb_init_interpolated = interpolate.interp2d(ys, xs, smb_init, kind='linear')
 Xmat, Ymat = np.meshgrid(X, Y)
-regridded_smb = interpolate.griddata((xs.ravel(), ys.ravel()), smb_init.ravel(), (Xmat, Ymat), method='nearest')
-SMB = interpolate.interp2d(X, Y, regridded_smb, kind='cubic')
+regridded_smb_init = interpolate.griddata((xs.ravel(), ys.ravel()), smb_init.ravel(), (Xmat, Ymat), method='nearest')
+regridded_smb_latest = interpolate.griddata((xs.ravel(), ys.ravel()), smb_latest.ravel(), (Xmat, Ymat), method='nearest')
+SMB_i = interpolate.interp2d(X, Y, regridded_smb_init, kind='linear')
+SMB_l = interpolate.interp2d(X, Y, regridded_smb_latest, kind='linear')
+
+
+print 'Reading in surface elevation change'
+gl_sec_path ='Documents/GitHub/plastic-networks/Data/CS2-SEC_2yr.nc'
+fh3 = Dataset(gl_sec_path, mode='r')
+x_sec = fh3.variables['x'][:].copy() #x-coord (polar stereo)
+y_sec = fh3.variables['y'][:].copy() #y-coord (polar stereo)
+t_sec = fh3.variables['t'][:].copy() #average time of slice (days since 1 JAN 2000)
+sec_raw = fh3.variables['SEC'][:].copy()
+fh3.close()
+
+sec_i_masked = np.ma.masked_greater(sec_raw[:,:,0], 9000)
+sec_i_excludemasked = np.ma.filled(sec_i_masked, fill_value=np.mean(sec_i_masked))
+#sec_i_regrid = interpolate.griddata((x_sec.ravel(), y_sec.ravel()), sec_i_masked.ravel(), (Xmat, Ymat), method='nearest')
+SEC_i = interpolate.RectBivariateSpline(x_sec, y_sec, sec_i_excludemasked)
 
 
 
@@ -105,3 +123,20 @@ jakcoords_main = Flowline_CSV('Documents/GitHub/plastic-networks/jakobshavn-main
 jak_0 = Flowline(coords=jakcoords_main, index=0, name='Jak mainline', has_width=True)
 Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main/south]', init_type='Flowline', branches=(jak_0), main_terminus=jakcoords_main[0])
 Jakobshavn_main.load_network(filename='JakobshavnIsbrae-main_south.pickle')
+
+Jakobshavn_main.process_full_lines(B_interp, S_interp, H_interp)
+for fln in Jakobshavn_main.flowlines:
+    fln.yield_type = Jakobshavn_main.network_yield_type
+    fln.optimal_tau = Jakobshavn_main.network_tau
+Jakobshavn_main.network_ref_profiles()
+
+#Jakobshavn_smb_l = [0.001*SMB_l(Jakobshavn_main.flowlines[0].coords[i,0], Jakobshavn_main.flowlines[0].coords[i,1]) for i in range(len(Jakobshavn_main.flowlines[0].coords))] #multiplied by 0.001 to convert from mm to m
+#Jak_smb_alphadot = np.mean(Jakobshavn_smb_l)
+#Jak_terminus_adot = Jakobshavn_smb_l[0]
+#
+Jak_sec_mainline = np.asarray([SEC_i(Jakobshavn_main.flowlines[0].coords[i,0], Jakobshavn_main.flowlines[0].coords[i,1]) for i in range(len(Jakobshavn_main.flowlines[0].coords))])
+away_from_edge = np.argmin(Jak_sec_mainline)
+Jak_sec_alphadot = np.mean(Jak_sec_mainline[away_from_edge::])
+Jak_terminus_sec = float(min(np.asarray(Jak_sec_mainline).flatten())) #using min because close to edge, values get disrupted by mask interpolation
+
+Jakobshavn_main.terminus_time_evolve(testyears=arange(10), alpha_dot=Jak_sec_alphadot/Jakobshavn_main.H0, has_smb=True, terminus_balance=Jak_terminus_sec/Jakobshavn_main.H0, debug_mode=True)
