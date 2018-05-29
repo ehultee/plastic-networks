@@ -371,7 +371,7 @@ class Flowline(Ice):
         
         return dHdLx
     
-    def dLdt(self, profile, alpha_dot, rate_factor=3.5E-25, dL=None, debug_mode=False, has_smb=False, terminus_balance=None):
+    def dLdt(self, profile, alpha_dot, rate_factor=3.5E-25, dL=None, debug_mode=False, has_smb=False, terminus_balance=None, submarine_melt=0):
         """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
         Input:
             profile: a plastic profile output from Flowline.plasticprofile of the current time step
@@ -381,7 +381,8 @@ class Flowline(Ice):
             dL: passed to Flowline.find_dHdL as length of step over which to test dHdL profiles.  Default 5 m.
             debug_mode: if True, turns on output for inspection with debugging.  Default False.
             has_smb: describes whether we have surface mass balance data for this flowline.  Default False.  If true, will run with terminus_balance input in next argument
-            terminus_balance: value of surface mass balance at terminus, if available.  For now this is constant at the initial value.
+            terminus_balance: value of surface mass balance (m/a /H0) at terminus, if available.  For now this is constant at the initial value.
+            submarine_melt: default 0 m/a (/L0).  If input is a value >0, dLdt applies that value annual-average submarine melt at the terminus, scaled by the portion of the terminus in contact with ocean water.
         Returns dLdt in nondimensional units.  Multiply by L0 to get units of m/a (while T0=1a).
         """      
         xmin = min(profile[0])
@@ -433,7 +434,15 @@ class Flowline(Ice):
         denom = dHydx - dHdx* (1 - (Area_int/H_terminus))
         numerator = terminus_a_dot - nondim_dUdx_terminus*H_terminus + (alpha_dot*L*dHdx/H_terminus)
         
-        result = numerator/denom
+        dLdt_viscoplastic = numerator/denom
+        
+        if Bed_terminus <0:
+            waterdepth = abs(Bed_terminus)
+        else:
+            waterdepth = 0
+        submarine_iceloss = submarine_melt * (waterdepth/H_terminus)
+        
+        result = dLdt_viscoplastic - submarine_iceloss
         
         if debug_mode:
             print 'For inspection on debugging:'
@@ -445,6 +454,8 @@ class Flowline(Ice):
             print 'Area_int={}'.format(Area_int)
             print 'Checking dLdt: terminus_a_dot = {}. \n H dUdx = {}. \n Ub dHdx = {}.'.format(terminus_a_dot, nondim_dUdx_terminus*H_terminus, alpha_dot*L*dHdx/H_terminus) 
             print 'Denom: dHydx = {} \n dHdx = {} \n (1-Area_int/H_terminus) = {}'.format(dHydx, dHdx, multiplier)
+            print 'Viscoplastic dLdt={}'.format(dLdt_viscoplastic)
+            print 'Submarine ice less = {}'.format(submarine_iceloss)
         else:
             pass
     
@@ -803,7 +814,12 @@ class PlasticNetwork(Ice):
             #Ref branch
     
             new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum.  Multiply dLdt by L0 because its output is nondimensional
-            new_termpos = max(0, new_termpos_raw)
+            new_termpos_posdef = max(0, new_termpos_raw)
+            if new_termpos_posdef > ref_amax:
+                print 'Terminus retreated past upstream limit. Resetting terminus position to = upstream limit.'
+                new_termpos = ref_amax #glacier sits at edge of domain if terminus retreats beyond upstream limit
+            else:
+                new_termpos = new_termpos_posdef
             if debug_mode:
                 print 'Looping. year={}.'.format(yr)
                 print 'yr-dt={}.'.format(yr-dt)
@@ -850,7 +866,12 @@ class PlasticNetwork(Ice):
                         branch_termheight = new_termheight
                     else: ##if branches have split, find new terminus quantities
                         dLdt_branch = fl.dLdt(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, has_smb=has_smb, terminus_balance=terminus_balance) * self.L0
-                        branch_terminus = out_dict['Termini'][-1] -(dLdt_branch*dt)
+                        branch_terminus_raw = out_dict['Termini'][-1] -(dLdt_branch*dt)
+                        if branch_terminus_raw > fl_amax:
+                            print 'Terminus retreated past upstream limit. Resetting terminus position to = upstream limit.'
+                            branch_terminus = fl_amax #catching whether terminus has retreated beyond upstream limit
+                        else:
+                            branch_terminus = branch_terminus_raw
                         branch_term_bed = fl.bed_function(branch_terminus/self.L0)
                         previous_branch_bed = fl.bed_function(out_dict['Termini'][-1]/self.L0)
                         previous_branch_thickness = (out_dict['Terminus_heights'][-1] - previous_branch_bed)/self.H0
