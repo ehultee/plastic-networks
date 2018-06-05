@@ -18,10 +18,10 @@ class Ice(object):
         default_Ty = 150e3, reasonable yield strength of ice based on lab range, Greenland obs, and Alaska optimisation (Pa)
         default_T0 = 130e3, reasonable strength of ice for Mohr-Coulomb failure criterion, based on Alaska optimisation (Pa)
     """
-    def __init__(self, H0=1e3, L0=10e3, T_0=1, g=9.8, rho_ice=920.0, rho_sea=1020.0, default_Ty=150e3, default_T0=130e3):
+    def __init__(self, H0=1e3, L0=10e3, T_0=31557600, g=9.8, rho_ice=920.0, rho_sea=1020.0, default_Ty=150e3, default_T0=130e3):
         self.H0 = H0 #characteristic height for nondimensionalisation 
         self.L0 = L0
-        self.T_0 = T_0 #1 annum, default characteristic time.  Not to be confused with default_T0, a default Mohr-Coulumb stress
+        self.T_0 = T_0 #1 annum = 31557600 s, default characteristic time.  Not to be confused with default_T0, a default Mohr-Coulumb stress
         self.g = g
         self.rho_ice = rho_ice #kg/m^3
         self.rho_sea = rho_sea #kg/m^3
@@ -371,22 +371,22 @@ class Flowline(Ice):
         
         return dHdLx
     
-    def dLdt(self, profile, alpha_dot, rate_factor=1.7E-24, dL=None, debug_mode=False, has_smb=False, terminus_balance=None, submarine_melt=0):
+    def dLdt_dimensional(self, profile, alpha_dot, rate_factor=1.7E-24, dL=None, debug_mode=False, has_smb=False, terminus_balance=None, submarine_melt=0):
         """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
         Input:
             profile: a plastic profile output from Flowline.plasticprofile of the current time step
             alpha_dot: net rate of ice accumulation/loss.  Should be expressed in m/a /H0. Spatially averaged over whole catchment for now
-            rate_factor: flow rate factor A, assumed 3.5x10^(-25) Pa^-3 s^-1 for T=-10C based on Cuffey & Paterson
+            rate_factor: flow rate factor A, assumed 3.5x10^(-25) Pa^-3 s^-1 for T=-10C, or 1.7E-24 for T=-2C, based on Cuffey & Paterson
         Optional inputs:
             dL: passed to Flowline.find_dHdL as length of step over which to test dHdL profiles.  Default 5 m.
             debug_mode: if True, turns on output for inspection with debugging.  Default False.
             has_smb: describes whether we have surface mass balance data for this flowline.  Default False.  If true, will run with terminus_balance input in next argument
-            terminus_balance: value of surface mass balance (m/a /H0) at terminus, if available.  For now this is constant at the initial value.
-            submarine_melt: default 0 m/a (/L0).  If input is a value >0, dLdt applies that value annual-average submarine melt at the terminus, scaled by the portion of the terminus in contact with ocean water.
+            terminus_balance: value of surface mass balance (m/a, dimensional) at terminus, if available.  For now this is constant at the initial value.
+            submarine_melt: default 0 m/a (dimensional).  If input is a value >0, dLdt applies that value annual-average submarine melt at the terminus, scaled by the portion of the terminus in contact with ocean water.
         Returns dLdt in nondimensional units.  Multiply by L0 to get units of m/a (while T0=1a).
         """      
-        xmin = min(profile[0])
-        xmax = max(profile[0])
+        xmin = min(profile[0])*flowline.L0
+        xmax = max(profile[0])*flowline.L0
         L = xmax-xmin #length of the current profile, nondimensional
         
         if dL is None:
@@ -400,39 +400,36 @@ class Flowline(Ice):
             terminus_a_dot = alpha_dot #setting value of surface mass balance at terminus = spatially averaged value.  Note this is likely to give strongly underestimated rates of advance/retreat
             
         
-        #Nondimensionalising rate factor
-        inverse_units_of_A = self.T_0 * (self.rho_ice **3)*(self.g **3) * (self.H0 **6) / (self.L0 **3)
-        #units_of_A = (self.L0 **3)/ (T_0*(self.rho_ice **3)*(self.g **3) *(self.H0 **6))
-        #nondim_A = rate_factor * inverse_units_of_A
+        #Converting rate factor to time scale 1 a
+        s_per_annum = 31557600 #convert to time scale T0 = 1 a
+
         
         #Terminus quantities
-        SE_terminus = profile[1][0] #terminus at [0], not [-1]--may return errors if running from head downstream, but this is for terminus forcing anyway
-        Bed_terminus = profile[2][0]
+        SE_terminus = profile[1][0] *self.H0 #terminus at [0], not [-1]--may return errors if running from head downstream, but this is for terminus forcing anyway
+        Bed_terminus = profile[2][0] * self.H0
         H_terminus = SE_terminus - Bed_terminus 
-        Bghm_terminus = self.Bingham_num(Bed_terminus, H_terminus)
-        Hy_terminus = BalanceThick(Bed_terminus, Bghm_terminus)
+        Bghm_terminus = self.Bingham_num(Bed_terminus/self.H0, H_terminus/self.H0)
+        Hy_terminus = BalanceThick(Bed_terminus/self.H0, Bghm_terminus) * self.H0
     
         #Quantities at adjacent grid point
-        SE_adj = profile[1][1]
-        Bed_adj = profile[2][1]
+        SE_adj = profile[1][1] *self.H0
+        Bed_adj = profile[2][1] *self.H0
         H_adj = SE_adj - Bed_adj
-        Bghm_adj = self.Bingham_num(Bed_adj, H_adj)
-        Hy_adj = BalanceThick(Bed_adj, Bghm_adj)
+        Bghm_adj = self.Bingham_num(Bed_adj/self.H0, H_adj/self.H0)
+        Hy_adj = BalanceThick(Bed_adj/self.H0, Bghm_adj) * self.H0
         
         #Diffs
-        dx_term = abs(profile[0][1] - profile[0][0]) #should be ~2m in physical units
+        dx_term = abs(profile[0][1] - profile[0][0]) *self.L0 #should be ~2m in physical units
         dHdx = (H_adj-H_terminus)/dx_term
         dHydx = (Hy_adj-Hy_terminus)/dx_term
-        tau = self.Bingham_num(Bed_terminus, H_terminus) * (self.rho_ice * self.g * self.H0**2 / self.L0) #using Bingham_num handles whether tau_y constant or variable for selected flowline
-        dUdx_terminus = -1 * rate_factor * tau**3 #-1 due to sign convention with x increasing upstream from terminus
-        nondim_dUdx_terminus = dUdx_terminus * inverse_units_of_A / ((self.rho_ice * self.g * self.H0**2 / self.L0)**3) #divide out units to get nondimensional quantity
+        tau = Bghm_terminus * (self.rho_ice * self.g * self.H0**2 / self.L0) #using Bingham_num handles whether tau_y constant or variable for selected flowline
+        dUdx_terminus = s_per_annum * rate_factor * tau**3 #-1 due to sign convention with x increasing upstream from terminus
     
-        Area_int = quad(dHdL, xmin, xmax)[0]
-        #print 'dH/dL at terminus = {}'.format(dHdL(xmin))
+        Area_int = quad(dHdL, xmin, xmax)[0] * self.H0 # H0/L0 for dHdL, times L0 for integrating dx
         multiplier = 1 - (Area_int/H_terminus)
         
-        denom = dHydx - dHdx* (1 - (Area_int/H_terminus))
-        numerator = terminus_a_dot - nondim_dUdx_terminus*H_terminus + (alpha_dot*L*dHdx/H_terminus)
+        denom = dHydx - (dHdx* multiplier)
+        numerator = terminus_a_dot - dUdx_terminus*H_terminus + (alpha_dot*L*dHdx/H_terminus)
         
         dLdt_viscoplastic = numerator/denom
         
@@ -445,14 +442,14 @@ class Flowline(Ice):
         result = dLdt_viscoplastic - submarine_iceloss
         
         if debug_mode:
-            print 'For inspection on debugging:'
+            print 'For inspection on debugging - all should be DIMENSIONAL (m/a):'
             print 'L={}'.format(L)
             print 'SE_terminus={}'.format(SE_terminus)
             print 'Bed_terminus={}'.format(Bed_terminus)
             print 'Hy_terminus={}'.format(Hy_terminus)
             print 'dx_term={}'.format(dx_term)
             print 'Area_int={}'.format(Area_int)
-            print 'Checking dLdt: terminus_a_dot = {}. \n H dUdx = {}. \n Ub dHdx = {}.'.format(terminus_a_dot, nondim_dUdx_terminus*H_terminus, alpha_dot*L*dHdx/H_terminus) 
+            print 'Checking dLdt: terminus_a_dot = {}. \n H dUdx = {}. \n Ub dHdx = {}.'.format(terminus_a_dot, dUdx_terminus*H_terminus, alpha_dot*L*dHdx/H_terminus) 
             print 'Denom: dHydx = {} \n dHdx = {} \n (1-Area_int/H_terminus) = {}'.format(dHydx, dHdx, multiplier)
             print 'Viscoplastic dLdt={}'.format(dLdt_viscoplastic)
             print 'Submarine ice loss = {}'.format(submarine_iceloss)
@@ -750,7 +747,7 @@ class PlasticNetwork(Ice):
         self.balance_forcing = float(balance_a) #save to this network instance
         return balance_a     
     
-    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=3, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0):
+    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0):
         """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
         Arguments:
             testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
@@ -762,7 +759,7 @@ class PlasticNetwork(Ice):
             upstream_limits: array determining where to cut off modelling on each flowline, ordered by index.  Default is full length of lines.
             use_mainline_tau=False will force use of each line's own yield strength & type
             debug_mode=True will turn on interim output for inspection
-            dt_rounding: determines how many digits of dt to keep--default 3.  If your time step is less than 1 annum, you may find numerical error.  dt_rounding takes care of it. 
+            dt_rounding: determines how many digits of dt to keep--default 5.  If your time step is less than 1 annum, you may find numerical error.  dt_rounding takes care of it. 
             dL: passed to Flowline.find_dHdL as length of step over which to test dHdL profiles.  Default 5 m.
 
             returns model output as dictionary for each flowline 
@@ -812,12 +809,12 @@ class PlasticNetwork(Ice):
             key = round(yr-dt, dt_rounding) #allows dictionary referencing when dt is < 1 a
             
             if k<1:
-                dLdt_annum = ref_line.dLdt(profile=refdict[0], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt) * self.L0
+                dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[0], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
             else:
-                dLdt_annum = ref_line.dLdt(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt) * self.L0
+                dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
             #Ref branch
     
-            new_termpos_raw = refdict['Termini'][-1]-(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum.  Multiply dLdt by L0 because its output is nondimensional
+            new_termpos_raw = refdict['Termini'][-1]+(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum.  Multiply dLdt by L0 because its output is nondimensional
             new_termpos_posdef = max(0, new_termpos_raw)
             if new_termpos_posdef > (ref_amax * self.L0):
                 print 'Terminus retreated past upstream limit. Resetting terminus position to = upstream limit.'
@@ -869,8 +866,8 @@ class PlasticNetwork(Ice):
                         branch_terminus = new_termpos
                         branch_termheight = new_termheight
                     else: ##if branches have split, find new terminus quantities
-                        dLdt_branch = fl.dLdt(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt) * self.L0
-                        branch_terminus_raw = out_dict['Termini'][-1] -(dLdt_branch*dt)
+                        dLdt_branch = fl.dLdt_dimensional(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
+                        branch_terminus_raw = out_dict['Termini'][-1] + (dLdt_branch*dt)
                         branch_terminus_posdef = max(0, branch_terminus_raw) #catching the rare case when branches have separated but one branch suddenly readvances past initial terminus
                         if branch_terminus_posdef > (fl_amax * self.L0):
                             print 'Terminus retreated past upstream limit. Resetting terminus position to = upstream limit.'

@@ -431,3 +431,321 @@ def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_d
                     out_dict['Terminus_flux'].append(np.nan)
     
     network.model_output = model_output_dicts
+
+
+#def balanceprofile(bedfunction, samplepoints, Hinit):
+#    Bghm_init = flowline.Bingham_num(bedfunction(samplepoints[0]), Hinit)
+#    Hy_init = BalanceThick(bedfunction(samplepoints[0]), Bghm_init)
+#    Hy_list = [Hy_init]
+#    
+#    for j, pt in enumerate(samplepts):
+#        Bghm = flowline.Bingham_num(bedfunction(pt), Hy_list[j]) #Hy_array initialized already at j=0
+#        Hy = BalanceThick(bedfunction(pt), Bghm)
+#        Hy_list.append(Hy)
+#    
+#    Hy_array = np.asarray(Hy_list)[1::]
+#    return Hy_array
+#    
+#
+#def solveL(flowline, profile, terminus_a_dot, Hy_profile, dxHy=None): #PICK UP HERE 1 JUNE
+#    """Hy_profile should be an array resulting from balanceprofile
+#    """
+#    
+#    xmin = min(profile[0])
+#    xmax = max(profile[0])
+#    dx = mean(diff(profile[0]))
+#    L = xmax-xmin
+#    
+#    if dxHy is None:
+#        dxHy = dx
+#    
+#    if dL is None:
+#        dL = 5/flowline.L0
+#            
+#    dHdL = flowline.find_dHdL(profile, dL)
+#    
+#    if has_smb and terminus_balance is not None:
+#        terminus_a_dot = terminus_balance
+#    else:
+#        terminus_a_dot = alpha_dot #setting value of surface mass balance at terminus = spatially averaged value.  Note this is likely to give strongly underestimated rates of advance/retreat
+#
+#    
+#    #Diffs - using built-ins
+#    dHdx_terminus = np.gradient(profile[1], varargs=dx)[0]
+#    dHydx_terminus = np.gradient(Hy_profile, varargs=dxHy)[0]
+#    
+#    scipy.integrate.solve_ivp()
+
+#
+#def analyse_dLdt(flowline, profile, alpha_dot, rate_factor=1.7E-24, dL=None, debug_mode=False, has_smb=False, terminus_balance=None, submarine_melt=0):
+#    """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
+#    Input:
+#        profile: a plastic profile output from Flowline.plasticprofile of the current time step
+#        alpha_dot: net rate of ice accumulation/loss.  Should be expressed in m/a /H0. Spatially averaged over whole catchment for now
+#        rate_factor: flow rate factor A, assumed 3.5x10^(-25) Pa^-3 s^-1 for T=-10C based on Cuffey & Paterson
+#    Optional inputs:
+#        dL: passed to Flowline.find_dHdL as length of step over which to test dHdL profiles.  Default 5 m.
+#        debug_mode: if True, turns on output for inspection with debugging.  Default False.
+#        has_smb: describes whether we have surface mass balance data for this flowline.  Default False.  If true, will run with terminus_balance input in next argument
+#        terminus_balance: value of surface mass balance (m/a /H0) at terminus, if available.  For now this is constant at the initial value.
+#        submarine_melt: default 0 m/a (/L0).  If input is a value >0, dLdt applies that value annual-average submarine melt at the terminus, scaled by the portion of the terminus in contact with ocean water.
+#    Returns dLdt in nondimensional units.  Multiply by L0 to get units of m/a (while T0=1a).
+#    """      
+#    xmin = min(profile[0])
+#    xmax = max(profile[0])
+#    L = xmax-xmin #length of the current profile, nondimensional
+#    
+#    if dL is None:
+#        dL=5/flowline.L0 #step over which to test dHdL profiles
+#    
+#    dHdL = flowline.find_dHdL(profile, dL)
+#    
+#    if has_smb and terminus_balance is not None:
+#        terminus_a_dot = terminus_balance
+#    else:
+#        terminus_a_dot = alpha_dot #setting value of surface mass balance at terminus = spatially averaged value.  Note this is likely to give strongly underestimated rates of advance/retreat
+#        
+#    
+#    #Nondimensionalising rate factor
+#    #inverse_units_of_A = flowline.T_0 * (flowline.rho_ice **3)*(flowline.g **3) * (flowline.H0 **6) / (flowline.L0 **3)
+#    #s_per_annum = 31557600 #convert to time scale T0 = 1 a
+#    #units_of_A = (flowline.L0 **3)/ (T_0*(flowline.rho_ice **3)*(flowline.g **3) *(flowline.H0 **6))
+#    #nondim_A = rate_factor * inverse_units_of_A
+#    
+#    #Terminus quantities
+#    SE_terminus = profile[1][0] #terminus at [0], not [-1]--may return errors if running from head downstream, but this is for terminus forcing anyway
+#    Bed_terminus = profile[2][0]
+#    print 'Bed_terminus={}'.format(Bed_terminus)
+#    H_terminus = SE_terminus - Bed_terminus 
+#    Bghm_terminus = flowline.Bingham_num(Bed_terminus, H_terminus)
+#    Hy_terminus = BalanceThick(Bed_terminus, Bghm_terminus)
+#
+#    #Quantities at adjacent grid point
+#    SE_adj = profile[1][1]
+#    Bed_adj = profile[2][1]
+#    H_adj = SE_adj - Bed_adj
+#    Bghm_adj = flowline.Bingham_num(Bed_adj, H_adj)
+#    Hy_adj = BalanceThick(Bed_adj, Bghm_adj)
+#    
+#    #Diffs
+#    dx_term = abs(profile[0][1] - profile[0][0]) #should be ~2m in physical units
+#    dHdx = (H_adj-H_terminus)/dx_term
+#    dHydx = (Hy_adj-Hy_terminus)/dx_term
+#    tau = flowline.Bingham_num(Bed_terminus, H_terminus) * (flowline.rho_ice * flowline.g * flowline.H0**2 / flowline.L0) #using Bingham_num handles whether tau_y constant or variable for selected flowline
+#    dUdx_terminus = rate_factor * tau**3 #+1 due to sign convention with x increasing upstream from terminus and L increasing downstream
+#    #nondim_dUdx_terminus = dUdx_terminus * inverse_units_of_A / ((flowline.rho_ice * flowline.g * flowline.H0**2 / flowline.L0)**3) #divide out units to get nondimensional quantity
+#    nondim_dUdx_terminus = flowline.T_0 * dUdx_terminus #multiply by T_0 for nondimensionalisation
+#    #nondim_dUdx_terminus = 0 #testing quasi-rigid hypothesis
+#
+#    Area_int = quad(dHdL, xmin, xmax)[0]
+#    #print 'dH/dL at terminus = {}'.format(dHdL(xmin))
+#    multiplier = 1 - (Area_int/H_terminus)
+#    
+#    denom = dHydx - dHdx* (1 - (Area_int/H_terminus))
+#    numerator = terminus_a_dot - nondim_dUdx_terminus*H_terminus + (alpha_dot*L*dHdx/H_terminus)
+#    
+#    dLdt_viscoplastic = numerator/denom
+#    
+#    if Bed_terminus <0:
+#        waterdepth = abs(Bed_terminus)
+#    else:
+#        waterdepth = 0
+#    submarine_iceloss = submarine_melt * (waterdepth/H_terminus)
+#    
+#    result = dLdt_viscoplastic - submarine_iceloss
+#    dimensional_result = (ref_line.L0 / ref_line.T_0) * result
+#    print 'Dimensional dLdt = {} m/a'.format(dimensional_result)
+#    
+#    if debug_mode:
+#        print 'For inspection on debugging:'
+#        print 'L={}'.format(L)
+#        print 'SE_terminus={}'.format(SE_terminus)
+#        print 'Bed_terminus={}'.format(Bed_terminus)
+#        print 'Hy_terminus={}'.format(Hy_terminus)
+#        print 'dx_term={}'.format(dx_term)
+#        print 'Area_int={}'.format(Area_int)
+#        print 'Checking dLdt: terminus_a_dot = {}. \n H dUdx = {}. \n Ub dHdx = {}.'.format(terminus_a_dot, nondim_dUdx_terminus*H_terminus, alpha_dot*L*dHdx/H_terminus) 
+#        print 'Denom: dHydx = {} \n dHdx = {} \n (1-Area_int/H_terminus) = {}'.format(dHydx, dHdx, multiplier)
+#        print 'Viscoplastic dLdt={}'.format(dLdt_viscoplastic)
+#        print 'Submarine ice loss = {}'.format(submarine_iceloss)
+#    else:
+#        pass
+#
+#    return result, dLdt_viscoplastic, numerator, dHydx, dHdx, multiplier, submarine_iceloss, nondim_dUdx_terminus*H_terminus
+#    
+##analyse dLdt in sample run for Jakobshavn
+#ref_line = Jakobshavn_main.flowlines[0]
+#ref_surface = ref_line.ref_profile
+#ref_amax = 0.5*ref_line.length
+#testpositions = linspace(0, ref_amax, num=20)
+#terminus_SE = [ref_surface(0)]
+#
+#total_dLdt = []
+#viscoplastic_dLdt = []
+#numerators = []
+#dHydxs = []
+#dHdxs = []
+#denomfactor = []
+#submarine_loss = []
+#dUdxH = []
+#
+#print 'Testing with absolute value of balance velocity, changed dUdx scaling, denser sampling'   
+#for j,x in enumerate(testpositions):
+#    new_term_bed = ref_line.bed_function(x/ref_line.L0)
+#    previous_bed = ref_line.bed_function(testpositions[j-1]/ref_line.L0)
+#    previous_thickness = (terminus_SE[-1] - previous_bed)/ref_line.H0 #nondimensional thickness for use in Bingham number
+#    new_termheight = BalanceThick(new_term_bed/Jakobshavn_main.H0, ref_line.Bingham_num(previous_bed/ref_line.H0, previous_thickness)) + (new_term_bed/ref_line.H0)
+#    prof = ref_line.plastic_profile(startpoint=x, hinit = new_termheight, endpoint=ref_amax, surf=ref_surface)
+#    
+#    dLdt_quantities = analyse_dLdt(flowline=ref_line, profile=prof, alpha_dot=Jakobshavn_main.sec_alphadot*ref_line.T_0/ref_line.H0, dL=1/L0, has_smb=True, terminus_balance=Jakobshavn_main.terminus_sec*ref_line.T_0/ref_line.H0, submarine_melt=100*ref_line.T_0/ref_line.L0, debug_mode=True)
+#    
+#    total_dLdt.append(dLdt_quantities[0])
+#    viscoplastic_dLdt.append(dLdt_quantities[1])
+#    numerators.append(dLdt_quantities[2])
+#    dHydxs.append(dLdt_quantities[3])
+#    dHdxs.append(dLdt_quantities[4])
+#    denomfactor.append(dLdt_quantities[5])
+#    submarine_loss.append(dLdt_quantities[6])
+#    dUdxH.append(dLdt_quantities[7])
+#    terminus_SE.append(new_termheight)
+#
+#total_dLdt_ma = (ref_line.L0 /ref_line.T_0) * np.array(total_dLdt)
+
+
+def analyse_dLdt_dimensional(flowline, profile, alpha_dot, rate_factor=1.7E-24, dL=None, debug_mode=False, has_smb=False, terminus_balance=None, submarine_melt=0):
+    """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
+    Input:
+        profile: a plastic profile output from Flowline.plasticprofile of the current time step
+        alpha_dot: net rate of ice accumulation/loss.  Should be expressed in m/a /H0. Spatially averaged over whole catchment for now
+        rate_factor: flow rate factor A, assumed 3.5x10^(-25) Pa^-3 s^-1 for T=-10C based on Cuffey & Paterson
+    Optional inputs:
+        dL: passed to Flowline.find_dHdL as length of step over which to test dHdL profiles.  Default 5 m.
+        debug_mode: if True, turns on output for inspection with debugging.  Default False.
+        has_smb: describes whether we have surface mass balance data for this flowline.  Default False.  If true, will run with terminus_balance input in next argument
+        terminus_balance: value of surface mass balance (m/a /H0) at terminus, if available.  For now this is constant at the initial value.
+        submarine_melt: default 0 m/a (/L0).  If input is a value >0, dLdt applies that value annual-average submarine melt at the terminus, scaled by the portion of the terminus in contact with ocean water.
+    Returns dLdt in nondimensional units.  Multiply by L0 to get units of m/a (while T0=1a).
+    """      
+    xmin = min(profile[0])*flowline.L0
+    xmax = max(profile[0])*flowline.L0
+    L = xmax-xmin #length of the current profile, nondimensional
+    
+    if dL is None:
+        dL=5/flowline.L0 #step over which to test dHdL profiles
+    
+    dHdL = flowline.find_dHdL(profile, dL)
+    
+    if has_smb and terminus_balance is not None:
+        terminus_a_dot = terminus_balance
+    else:
+        terminus_a_dot = alpha_dot #setting value of surface mass balance at terminus = spatially averaged value.  Note this is likely to give strongly underestimated rates of advance/retreat
+        
+    
+    #Nondimensionalising rate factor
+    #inverse_units_of_A = flowline.T_0 * (flowline.rho_ice **3)*(flowline.g **3) * (flowline.H0 **6) / (flowline.L0 **3)
+    s_per_annum = 31557600 #convert to time scale T0 = 1 a
+    #units_of_A = (flowline.L0 **3)/ (T_0*(flowline.rho_ice **3)*(flowline.g **3) *(flowline.H0 **6))
+    #nondim_A = rate_factor * inverse_units_of_A
+    
+    #Terminus quantities
+    SE_terminus = profile[1][0] *flowline.H0 #terminus at [0], not [-1]--may return errors if running from head downstream, but this is for terminus forcing anyway
+    Bed_terminus = profile[2][0] *flowline.H0
+    print 'Bed_terminus={}'.format(Bed_terminus)
+    H_terminus = SE_terminus - Bed_terminus 
+    Bghm_terminus = flowline.Bingham_num(Bed_terminus/flowline.H0, H_terminus/flowline.H0)
+    Hy_terminus = BalanceThick(Bed_terminus/flowline.H0, Bghm_terminus) *flowline.H0
+
+    #Quantities at adjacent grid point
+    SE_adj = profile[1][1] *flowline.H0
+    Bed_adj = profile[2][1] * flowline.H0
+    H_adj = SE_adj - Bed_adj
+    Bghm_adj = flowline.Bingham_num(Bed_adj/flowline.H0, H_adj/flowline.H0)
+    Hy_adj = BalanceThick(Bed_adj/flowline.H0, Bghm_adj) * flowline.H0
+    
+    #Diffs
+    dx_term = abs(profile[0][1] - profile[0][0]) *flowline.L0 #should be ~2m in physical units
+    dHdx = (H_adj-H_terminus)/dx_term
+    dHydx = (Hy_adj-Hy_terminus)/dx_term
+    tau = Bghm_terminus * (flowline.rho_ice * flowline.g * flowline.H0**2 / flowline.L0) #using Bingham_num handles whether tau_y constant or variable for selected flowline
+    dUdx_terminus = rate_factor * tau**3 # +1 due to sign convention with x increasing upstream from terminus and L increasing downstream
+    dUdx_terminus_perannum = s_per_annum * dUdx_terminus #multiply by s_per_annum for consistent units
+
+    Area_int = quad(dHdL, xmin, xmax)[0] * flowline.H0 # H0/L0 for dHdL, times L0 for integrating dx
+    #print 'dH/dL at terminus = {}'.format(dHdL(xmin))
+    multiplier = 1 - (Area_int/H_terminus)
+    
+    denom = dHydx - dHdx* (1 - (Area_int/H_terminus))
+    numerator = terminus_a_dot - dUdx_terminus_perannum*H_terminus + (alpha_dot*L*dHdx/H_terminus)
+    
+    dLdt_viscoplastic = numerator/denom
+    
+    if Bed_terminus <0:
+        waterdepth = abs(Bed_terminus)
+    else:
+        waterdepth = 0
+    submarine_iceloss = submarine_melt * (waterdepth/H_terminus)
+    
+    result = dLdt_viscoplastic - submarine_iceloss
+    nondimensional_result = result / flowline.L0
+    print 'Dimensional dLdt = {} m/a'.format(result)
+    print 'Nondimensional dLdt = {}'.format(nondimensional_result)
+    
+    if debug_mode:
+        print 'For inspection on debugging - all should be DIMENSIONAL (m/a):'
+        print 'L={}'.format(L)
+        print 'SE_terminus={}'.format(SE_terminus)
+        print 'Bed_terminus={}'.format(Bed_terminus)
+        print 'Hy_terminus={}'.format(Hy_terminus)
+        print 'dx_term={}'.format(dx_term)
+        print 'Area_int={}'.format(Area_int)
+        print 'Checking dLdt: terminus_a_dot = {}. \n H dUdx = {}. \n Ub dHdx = {}.'.format(terminus_a_dot, dUdx_terminus_perannum*H_terminus, alpha_dot*L*dHdx/H_terminus) 
+        print 'Denom: dHydx = {} \n dHdx = {} \n (1-Area_int/H_terminus) = {}'.format(dHydx, dHdx, multiplier)
+        print 'Viscoplastic dLdt={}'.format(dLdt_viscoplastic)
+        print 'Submarine ice loss = {}'.format(submarine_iceloss)
+    else:
+        pass
+
+    return result, dLdt_viscoplastic, terminus_a_dot, dUdx_terminus_perannum*H_terminus, alpha_dot*L*dHdx/H_terminus, dHydx, dHdx, multiplier, submarine_iceloss
+
+ref_line = Jakobshavn_main.flowlines[0]
+ref_surface = ref_line.ref_profile
+ref_amax = 0.5*ref_line.length
+testpositions = linspace(0, ref_amax, num=100)
+terminus_SE = [ref_surface(0)]
+
+total_dLdt = []
+viscoplastic_dLdt = []
+terminus_adots = []
+dUdxH = []
+UbdHdx = []
+dHydxs = []
+dHdxs = []
+denomfactor = []
+submarine_loss = []
+
+
+
+print 'Testing with negative balance velocity, dimensional units'   
+for j,x in enumerate(testpositions):
+    new_term_bed = ref_line.bed_function(x/ref_line.L0)
+    previous_bed = ref_line.bed_function(testpositions[j-1]/ref_line.L0)
+    previous_thickness = (terminus_SE[-1] - previous_bed)/ref_line.H0 #nondimensional thickness for use in Bingham number
+    new_termheight = BalanceThick(new_term_bed/Jakobshavn_main.H0, ref_line.Bingham_num(previous_bed/ref_line.H0, previous_thickness)) + (new_term_bed/ref_line.H0)
+    prof = ref_line.plastic_profile(startpoint=x, hinit = new_termheight, endpoint=ref_amax, surf=ref_surface)
+    
+    dLdt_quantities = analyse_dLdt_dimensional(flowline=ref_line, profile=prof, alpha_dot=Jakobshavn_main.sec_alphadot, dL=1/L0, has_smb=True, terminus_balance=Jakobshavn_main.terminus_sec, submarine_melt=100, debug_mode=True)
+    
+    total_dLdt.append(dLdt_quantities[0])
+    viscoplastic_dLdt.append(dLdt_quantities[1])
+    terminus_adots.append(dLdt_quantities[2])
+    dUdxH.append(dLdt_quantities[3])
+    UbdHdx.append(dLdt_quantities[4])
+    dHydxs.append(dLdt_quantities[5])
+    dHdxs.append(dLdt_quantities[6])
+    denomfactor.append(dLdt_quantities[7])
+    submarine_loss.append(dLdt_quantities[8])
+    terminus_SE.append(new_termheight)
+#
+#total_dLdt_ma = (ref_line.L0 /ref_line.T_0) * np.array(total_dLdt)
+
+
