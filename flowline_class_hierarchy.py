@@ -337,6 +337,9 @@ class Flowline(Ice):
         else:
             x_fwd = xmin
             x_bk = xmin + 2*dL
+        if xmin+dL > xmax:
+            x_fwd = xmin - 2*dL
+            x_bk = xmin
         
         
         #Terminus quantities
@@ -385,8 +388,8 @@ class Flowline(Ice):
             submarine_melt: default 0 m/a (dimensional).  If input is a value >0, dLdt applies that value annual-average submarine melt at the terminus, scaled by the portion of the terminus in contact with ocean water.
         Returns dLdt in nondimensional units.  Multiply by L0 to get units of m/a (while T0=1a).
         """      
-        xmin = min(profile[0])*flowline.L0
-        xmax = max(profile[0])*flowline.L0
+        xmin = min(profile[0])*self.L0
+        xmax = max(profile[0])*self.L0
         L = xmax-xmin #length of the current profile, nondimensional
         
         if dL is None:
@@ -770,7 +773,7 @@ class PlasticNetwork(Ice):
             upstream_limits=[fl.length for fl in self.flowlines]
         
         if alpha_dot is None:
-            alpha_dot = 0.2/self.H0
+            alpha_dot = 0.2 #m/a, dimensional
         
         if alpha_dot_variable is None:  
             alpha_dot_vals = np.full(len(testyears), alpha_dot)
