@@ -815,6 +815,10 @@ class PlasticNetwork(Ice):
                 dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[0], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
             else:
                 dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
+            if np.isnan(dLdt_annum): #happens if retreat hits edge of domain unexpectedly
+                dLdt_annum = ref_dict['Termrates'][-1] / dt #replace with last non-nan value
+            else:
+                pass
             #Ref branch
     
             new_termpos_raw = refdict['Termini'][-1]+(dLdt_annum*dt) #Multiply by dt in case dt!=1 annum.  Multiply dLdt by L0 because its output is nondimensional
@@ -870,6 +874,10 @@ class PlasticNetwork(Ice):
                         branch_termheight = new_termheight
                     else: ##if branches have split, find new terminus quantities
                         dLdt_branch = fl.dLdt_dimensional(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
+                        if np.isnan(dLdt_branch):
+                            dLdt_branch = out_dict['Termrates'][-1] /dt
+                        else:
+                            pass
                         branch_terminus_raw = out_dict['Termini'][-1] + (dLdt_branch*dt)
                         branch_terminus_posdef = max(0, branch_terminus_raw) #catching the rare case when branches have separated but one branch suddenly readvances past initial terminus
                         if branch_terminus_posdef > (fl_amax * self.L0):
