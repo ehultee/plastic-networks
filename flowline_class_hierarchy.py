@@ -90,9 +90,9 @@ class Flowline(Ice):
         self.intersections = intersections #should be set by make_full_lines in PlasticNetwork
         if has_width:
             try:
-                self.width = np.asarray(coords)[:,2]
+                self.width = np.absolute(np.asarray(coords)[:,2])
             except IndexError:
-                self.width = width_array
+                self.width = np.absolute(width_array)
         else:
             self.width = None
         #if flows_to is not None:
