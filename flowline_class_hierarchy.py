@@ -426,7 +426,7 @@ class Flowline(Ice):
         dHdx = (H_adj-H_terminus)/dx_term
         dHydx = (Hy_adj-Hy_terminus)/dx_term
         tau = Bghm_terminus * (self.rho_ice * self.g * self.H0**2 / self.L0) #using Bingham_num handles whether tau_y constant or variable for selected flowline
-        dUdx_terminus = s_per_annum * rate_factor * tau**3 #-1 due to sign convention with x increasing upstream from terminus
+        dUdx_terminus = s_per_annum * rate_factor * tau**3 #sign convention with x increasing upstream from terminus
     
         Area_int = quad(dHdL, xmin, xmax)[0] * self.H0 # H0/L0 for dHdL, times L0 for integrating dx
         multiplier = 1 - (Area_int/H_terminus)
@@ -442,7 +442,7 @@ class Flowline(Ice):
             waterdepth = 0
         submarine_iceloss = submarine_melt * (waterdepth/H_terminus)
         
-        result = dLdt_viscoplastic - submarine_iceloss
+        result = dLdt_viscoplastic + submarine_iceloss #should be + due to sign convention -- new terminus position will be x_{n+1} = x_n + dLdt as x increases away from terminus
         
         if debug_mode:
             print 'For inspection on debugging - all should be DIMENSIONAL (m/a):'
@@ -816,7 +816,7 @@ class PlasticNetwork(Ice):
             else:
                 dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
             if np.isnan(dLdt_annum): #happens if retreat hits edge of domain unexpectedly
-                dLdt_annum = ref_dict['Termrates'][-1] / dt #replace with last non-nan value
+                dLdt_annum = refdict['Termrates'][-1] / dt #replace with last non-nan value
             else:
                 pass
             #Ref branch
@@ -825,7 +825,8 @@ class PlasticNetwork(Ice):
             new_termpos_posdef = max(0, new_termpos_raw)
             if new_termpos_posdef > (ref_amax * self.L0):
                 print 'Terminus retreated past upstream limit. Resetting terminus position to = upstream limit.'
-                new_termpos = ref_amax *self.L0 #glacier sits at edge of domain if terminus retreats beyond upstream limit
+                new_termpos = refdict['Termini'][-1] #set to previous good position
+                #new_termpos = ref_amax *self.L0 #glacier sits at edge of domain if terminus retreats beyond upstream limit
             else:
                 new_termpos = new_termpos_posdef
             if debug_mode:
@@ -836,8 +837,11 @@ class PlasticNetwork(Ice):
                 print 'New terminus position = {}'.format(new_termpos)
             else:
                 pass
-            new_term_bed = ref_line.bed_function(new_termpos/self.L0)
             previous_bed = ref_line.bed_function(refdict['Termini'][-1]/self.L0)
+            try:
+                new_term_bed = ref_line.bed_function(new_termpos/self.L0)
+            except ValueError: #interpolated bed function sometimes complains that ref_amax * L0 is above the interpolation range.  Use last good value if this is the case.
+                new_term_bed = previous_bed
             previous_thickness = (refdict['Terminus_heights'][-1] - previous_bed)/self.H0 #nondimensional thickness for use in Bingham number
             new_termheight = BalanceThick(new_term_bed/self.H0, ref_line.Bingham_num(previous_bed/self.H0, previous_thickness)) + (new_term_bed/self.H0)
             new_profile = ref_line.plastic_profile(startpoint=new_termpos/self.L0, hinit=new_termheight, endpoint=ref_amax, surf=ref_surface)
@@ -943,10 +947,18 @@ class PlasticNetwork(Ice):
         'mainline_model_output': self.model_output[0]
         }
         
+        if N_Flowlines >1:
+            for n in range(N_Flowlines):
+                output_n = self.model_output[n]
+                key_n = 'model_output_'+str(n)
+                output_dict[key_n] = output_n
+            else:
+                pass
+        
         with open(filename, 'wb') as handle:
             pickle.dump(output_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
-    def load_network(self, filename, load_mainline_output=False):
+    def load_network(self, filename, load_mainline_output=False, load_tributary_output=False):
         """Loads in pickled information about a network previously run.  You will still have to run process_full_lines and network_ref_profiles if you want to do new model runs.
         load_model_output: default True loads in saved model output from saved run.  Useful for analysis without re-running.
         """
@@ -957,6 +969,7 @@ class PlasticNetwork(Ice):
         if loaded_dict['network_name'] != self.name:
             warnings.warn('Name of loaded network does not match name of this network instance.  Check that you have loaded the correct pickle.')
         
+        N_Flowlines = loaded_dict['N_Flowlines']
         
         self.network_tau = loaded_dict['network_tau']
         self.network_yield_type = loaded_dict['network_yield_type']
@@ -967,3 +980,11 @@ class PlasticNetwork(Ice):
         if load_mainline_output:
             self.model_output = {} #needs to be initialized
             self.model_output[0] = loaded_dict['mainline_model_output']
+        if N_Flowlines >1 and load_tributary_output:
+            for n in range(N_Flowlines)[1::]:
+                key_n = 'model_output_'+str(n)
+                load_in_output_n = loaded_dict[key_n]
+                self.model_output[n] = load_in_output_n
+        else:
+            pass
+            
