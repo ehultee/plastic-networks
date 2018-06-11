@@ -267,10 +267,11 @@ class Flowline(Ice):
         except ValueError: #this happens when terminus retreats past upstream forcing point
             interpolated_func2 = lambda x: np.nan #return NaN once no longer calculating meaningful changes
     
-        if upstream_lim is None:
-            upstream_lim = 1.5
         arcmax = self.length
-        upstream_limit = min(upstream_lim, arcmax)
+                
+        if upstream_lim is None:
+            upstream_lim = arcmax
+        upstream_limit = min(upstream_lim, arcmax) #catches if a uniform upstream limit has been applied that exceeds length of a particular flowline
         
         if self.index != 0:
             idx = self.intersections[1] #for now will only catch one intersection...can refine later for more complex networks
@@ -378,7 +379,7 @@ class Flowline(Ice):
         """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
         Input:
             profile: a plastic profile output from Flowline.plasticprofile of the current time step
-            alpha_dot: net rate of ice accumulation/loss.  Should be expressed in m/a /H0. Spatially averaged over whole catchment for now
+            alpha_dot: net rate of ice accumulation/loss.  Should be expressed in m/a. Spatially averaged over whole catchment for now
             rate_factor: flow rate factor A, assumed 3.5x10^(-25) Pa^-3 s^-1 for T=-10C, or 1.7E-24 for T=-2C, based on Cuffey & Paterson
         Optional inputs:
             dL: passed to Flowline.find_dHdL as length of step over which to test dHdL profiles.  Default 5 m.
@@ -495,9 +496,11 @@ class PlasticNetwork(Ice):
     
     def make_full_lines(self):
         """Runs spatial KDTree search to connect flowlines at nearest points. Creates Flowline objects that reach from each branch head to the terminus.
-        
+        Note: this will overwrite any flowlines already saved to the network.
         """
-        #KDTree search just connects at closest points...may still be wonky
+        self.flowlines = []
+        
+        #KDTree search connects at closest points...may still be wonky
         #project somehow with Shapely?
         mainline = self.branches[0].full_coords
         maintree = spatial.KDTree(mainline[:,0:2])
@@ -750,7 +753,7 @@ class PlasticNetwork(Ice):
         self.balance_forcing = float(balance_a) #save to this network instance
         return balance_a     
     
-    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0):
+    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0, rate_factor=1.7E-24):
         """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
         Arguments:
             testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
@@ -812,9 +815,9 @@ class PlasticNetwork(Ice):
             key = round(yr-dt, dt_rounding) #allows dictionary referencing when dt is < 1 a
             
             if k<1:
-                dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[0], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
+                dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[0], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
             else:
-                dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
+                dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
             if np.isnan(dLdt_annum): #happens if retreat hits edge of domain unexpectedly
                 dLdt_annum = refdict['Termrates'][-1] / dt #replace with last non-nan value
             else:
@@ -877,7 +880,7 @@ class PlasticNetwork(Ice):
                         branch_terminus = new_termpos
                         branch_termheight = new_termheight
                     else: ##if branches have split, find new terminus quantities
-                        dLdt_branch = fl.dLdt_dimensional(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt)
+                        dLdt_branch = fl.dLdt_dimensional(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
                         if np.isnan(dLdt_branch):
                             dLdt_branch = out_dict['Termrates'][-1] /dt
                         else:

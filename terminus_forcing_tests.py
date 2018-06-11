@@ -612,7 +612,7 @@ def terminus_time_evolve(network, testyears=arange(100), ref_branch_index=0, a_d
 #total_dLdt_ma = (ref_line.L0 /ref_line.T_0) * np.array(total_dLdt)
 
 
-def analyse_dLdt_dimensional(flowline, profile, alpha_dot, rate_factor=1.7E-24, dL=None, debug_mode=False, has_smb=False, terminus_balance=None, submarine_melt=0):
+def analyse_dLdt_dimensional(flowline, profile, alpha_dot, rate_factor=3.5E-25, dL=None, debug_mode=False, has_smb=False, terminus_balance=None, submarine_melt=0):
     """Function to compute terminus rate of advance/retreat given a mass balance forcing, a_dot.
     Input:
         profile: a plastic profile output from Flowline.plasticprofile of the current time step
@@ -710,7 +710,7 @@ def analyse_dLdt_dimensional(flowline, profile, alpha_dot, rate_factor=1.7E-24, 
 ref_line = Jakobshavn_main.flowlines[0]
 ref_surface = ref_line.ref_profile
 ref_amax = 0.5*ref_line.length
-testpositions = linspace(0, ref_amax, num=100)
+testpositions = linspace(0, ref_amax, num=50)
 terminus_SE = [ref_surface(0)]
 
 total_dLdt = []
