@@ -99,12 +99,12 @@ jak_0 = Flowline(coords=jakcoords_main, index=0, name='Jak mainline', has_width=
 Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main/south]', init_type='Flowline', branches=(jak_0), main_terminus=jakcoords_main[0])
 Jakobshavn_main.load_network(filename='JakobshavnIsbrae-main_south.pickle')
 
-jakcoords_sec = Flowline_CSV('Jakobshavn_secondary-flowline-w_width.csv', 1, has_width=True, flip_order=False)[0]
+jakcoords_sec = Flowline_CSV('Jakobshavn_secondary-flowline-w_width.csv', 1, has_width=True, flip_order=True)[0]
 jak_1 = Flowline(coords=jakcoords_sec, index=0, name='Jak secondary branch', has_width=True)
 Jakobshavn_sec = PlasticNetwork(name='Jakobshavn Isbrae [secondary/central]', init_type='Flowline', branches=(jak_1), main_terminus=jakcoords_sec[0])
 Jakobshavn_sec.load_network(filename='Jakobshavn_sec.pickle')
 
-jakcoords_tert = Flowline_CSV('Jakobshavn_tertiary-flowline-w_width.csv', 1, has_width=True, flip_order=False)[0]
+jakcoords_tert = Flowline_CSV('Jakobshavn_tertiary-flowline-w_width.csv', 1, has_width=True, flip_order=True)[0]
 jak_2 = Flowline(coords=jakcoords_tert, index=0, name='Jak tertiary branch', has_width=True)
 Jakobshavn_tert = PlasticNetwork(name='Jakobshavn Isbrae [tertiary/north]', init_type='Flowline', branches=(jak_2), main_terminus=jakcoords_tert[0])
 Jakobshavn_tert.load_network(filename='Jakobshavn_tert.pickle')
@@ -142,6 +142,7 @@ Kanger.load_network(filename='Kangerlussuaq.pickle')
 ##-------------------
 
 glacier_networks = (Jakobshavn_main, Jakobshavn_sec, Jakobshavn_tert, KogeBugt, Helheim, Kanger) #list which glaciers we're handling
+#glacier_networks=(Helheim,)
 
 for gl in glacier_networks:
     print gl.name
@@ -164,33 +165,33 @@ for gl in glacier_networks:
 ###-------------------
 #### FORWARD PROJECTION--FORCING FROM TERMINUS
 ###-------------------
-
-testyears = arange(100, step=0.25)
-db=False
-
-#testglac = (Jakobshavn_main,)
-testglac = glacier_networks #to test all
-#testglac = (Kanger,)
-
-#Finding SEC rates and making persistence projection
-for gl in testglac:
-    print gl.name
-    #gl.sec_mainline = np.asarray([SEC_i(gl.flowlines[0].coords[i,0], gl.flowlines[0].coords[i,1]) for i in range(len(gl.flowlines[0].coords))])
-    #away_from_edge = np.argmin(gl.sec_mainline)
-    #gl.sec_alphadot = np.mean(gl.sec_mainline[away_from_edge::])
-    #variable_forcing = linspace(start=gl.sec_alphadot, stop=2*gl.sec_alphadot, num=len(testyears))
-    #gl.terminus_sec = float(min(gl.sec_mainline.flatten()))#using min because values close to edge get disrupted by mask interpolation
-    gl.terminus_time_evolve(testyears=testyears, alpha_dot=0, dL=1/L0, has_smb=False, terminus_balance=0, submarine_melt = 0, debug_mode=db, rate_factor=3.7E-26) 
+#
+#testyears = arange(100, step=1.0)
+#db=False
+#
+##testglac = (Jakobshavn_main,)
+##testglac = glacier_networks #to test all
+#testglac = (Helheim,)
+#
+##Finding SEC rates and making persistence projection
+#for gl in testglac:
+#    print gl.name
+#    #gl.sec_mainline = np.asarray([SEC_i(gl.flowlines[0].coords[i,0], gl.flowlines[0].coords[i,1]) for i in range(len(gl.flowlines[0].coords))])
+#    #away_from_edge = np.argmin(gl.sec_mainline)
+#    #gl.sec_alphadot = np.mean(gl.sec_mainline[away_from_edge::])
+#    #variable_forcing = linspace(start=gl.sec_alphadot, stop=2*gl.sec_alphadot, num=len(testyears))
+#    #gl.terminus_sec = float(min(gl.sec_mainline.flatten()))#using min because values close to edge get disrupted by mask interpolation
+#    gl.terminus_time_evolve(testyears=testyears, alpha_dot=0, dL=1/L0, has_smb=False, terminus_balance=0, submarine_melt = 0, debug_mode=db, rate_factor=3.7E-26) 
     
-    print 'Saving output for {}'.format(gl.name)
-    fn = str(gl.name)
-    fn1 = fn.replace(" ", "")
-    fn2 = fn1.replace("[", "-")
-    fn3 = fn2.replace("/", "_")
-    fn4 = fn3.replace("]", "")
-    fn5 = fn4+'-11Jun18-0forcing-coldice-100a_dt025a.pickle'
-    gl.save_network(filename=fn5)
-
+#    print 'Saving output for {}'.format(gl.name)
+#    fn = str(gl.name)
+#    fn1 = fn.replace(" ", "")
+#    fn2 = fn1.replace("[", "-")
+#    fn3 = fn2.replace("/", "_")
+#    fn4 = fn3.replace("]", "")
+#    fn5 = fn4+'-11Jun18-0forcing-coldice-100a_dt025a.pickle'
+#    gl.save_network(filename=fn5)
+#
 #Kanger_multibranch_flux = [np.absolute(Kanger.model_output[j]['Terminus_flux']) for j in range(len(Kanger.flowlines))]
 #Kanger_total_flux = sum(Kanger_multibranch_flux, axis = 0) #note that Kanger_multibranch_flux is multidimensional, needs care in summing
 #Helheim_multibranch_flux = [Helheim.model_output[j]['Terminus_flux'] for j in range(len(Helheim.flowlines))]
@@ -246,9 +247,9 @@ for gl in testglac:
 #colors = cmap([0.1, 0.2, 0.3, 0.5, 0.7, 0.9])
 #alt_colors = matplotlib.cm.get_cmap('Greys')([0.3, 0.5, 0.7, 0.9])
 ##
-##
-###terminus
-#plt.figure('Terminus retreat to 2100', figsize=(12,8))
+###
+####terminus
+#plt.figure('Terminus retreat, 100 a cold baseline', figsize=(12,8))
 #for j, pr in enumerate(projections):
 #    print j
 #    plt.plot(testyears, -0.001*np.array(pr[0]['Termini'][1::]), linewidth=4, color=colors[j], linestyle=styles[j], label='{}'.format(names[j]))
@@ -257,29 +258,29 @@ for gl in testglac:
 #plt.axes().set_xlabel('Year of simulation', size=20)
 #plt.axes().set_ylabel('Terminus change [km]', size=20)
 #plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-#plt.axes().set_xlim(0, 82)
+##plt.axes().set_xlim(0, 82)
 ##plt.axes().set_xticks([7, 32, 57, 82])
 ##plt.axes().set_xticklabels(['2025', '2050', '2075', '2100']) #label projection out to calendar year 2100
-#plt.axes().set_ylim(-100, 1)
-#plt.axes().set_yticks([-100, -75, -50, -25, 0])
-#plt.title('Dynamic thinning to 2100, warm ice', fontsize=26)
+##plt.axes().set_ylim(-100, 1)
+##plt.axes().set_yticks([-100, -75, -50, -25, 0])
+#plt.title('100 yr dynamic thinning, cold ice', fontsize=26)
 #plt.show()
-##
-#####JAKOBSHAVN ONLY - checking monotonicity
-####plt.figure('Koge Bugt terminus change')
-#####for k, mo in enumerate(Helheim.model_output): #for each branch j
-####mo = KogeBugt.model_output[0]
-####plt.plot(0.1*arange(len(mo['Termini'])), -0.001*np.array(mo['Termini']), linewidth=4, color='k', label='Koge Bugt mainline')
-####plt.plot(0.1*arange(len(mo['Termini']))[::5], -0.001*np.array(mo['Termini'])[::5], linewidth=0, color='k', marker='.', ms=10)
-####plt.legend(loc='lower left')
-####plt.axes().set_xlabel('Year of simulation', size=30)
-####plt.axes().set_ylabel('Terminus change [km]', size=30)
-####plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-#####plt.axes().set_ylim(-16, 1)
-#####plt.axes().set_yticks([-15, -10, -5, 0])
-####plt.show()
 ###
-#####SINGLE NETWORK - splitting termini
+######JAKOBSHAVN ONLY - checking monotonicity
+#####plt.figure('Koge Bugt terminus change')
+######for k, mo in enumerate(Helheim.model_output): #for each branch j
+#####mo = KogeBugt.model_output[0]
+#####plt.plot(0.1*arange(len(mo['Termini'])), -0.001*np.array(mo['Termini']), linewidth=4, color='k', label='Koge Bugt mainline')
+#####plt.plot(0.1*arange(len(mo['Termini']))[::5], -0.001*np.array(mo['Termini'])[::5], linewidth=0, color='k', marker='.', ms=10)
+#####plt.legend(loc='lower left')
+#####plt.axes().set_xlabel('Year of simulation', size=30)
+#####plt.axes().set_ylabel('Terminus change [km]', size=30)
+#####plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+######plt.axes().set_ylim(-16, 1)
+######plt.axes().set_yticks([-15, -10, -5, 0])
+#####plt.show()
+####
+######SINGLE NETWORK - splitting termini
 #plt.figure('Helheim terminus change')
 #for k, mo in enumerate(Helheim.model_output): #for each branch j
 #    #colork = matplotlib.cm.get_cmap('viridis')(k/len(Helheim.model_output))
@@ -287,15 +288,18 @@ for gl in testglac:
 #    lsk = (':', '-.', '--')
 #    plt.plot(testyears[::], -0.001*np.array(mo['Termini'])[:-1:], linewidth=4, color='k', ls=lsk[k], label='Helheim line {}'.format(k))
 #    #plt.plot(testyears[::10], -0.001*np.array(mo['Termini'])[:-1:10], linewidth=0, color='k', marker=markerk, ms=10, label='Helheim line {}'.format(k))
-#plt.legend(loc='upper right')
+##plt.legend(loc='upper right')
 #plt.axes().set_xlabel('Year of simulation', size=20)
 #plt.axes().set_ylabel('Terminus change [km]', size=20)
 #plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+#plt.axes().set_xlim(0, 20)
+#plt.axes().set_xticks([0, 5, 10, 15, 20])
+#plt.axes().set_xticklabels(['0', '', '', '', '20'])
 ##plt.axes().set_ylim(-16, 1)
 ##plt.axes().set_yticks([-15, -10, -5, 0])
 #plt.show()
-###
-#######Flux
+####
+########Flux
 #plt.figure(figsize=(12,8))
 #for j in range(len(names)):
 #    plt.plot(testyears, 1E-12*np.array(fluxes_cleaned[j]), linewidth=4, linestyle=styles[j], color=colors[j], label=names[j])
@@ -310,8 +314,8 @@ for gl in testglac:
 ##plt.axes().set_ylim(0, 18)
 ##plt.axes().set_yticks([0, 5, 10, 15])
 #plt.show()
-#####
-#########Sea level equivalent
+######
+##########Sea level equivalent
 #plt.figure(figsize=(12,8))
 #for j in range(len(names)):
 #    plt.plot(1+testyears[::], total_sle[j], linewidth=4, color=colors[::][j], label=names[j])
