@@ -99,9 +99,21 @@ class Flowline(Ice):
         #    self.flows_to = flows_to
             
     
-    def process_bed(self, B_field):
-        """Make callable bed function for this flowline.  B_field should be 2d-interpolated."""
-        self.bed_function = FlowProcess(self.coords, B_field)
+    def process_bed(self, B_field, extra_smoothing=True, degree=3, flowline_spacing=10):
+        """Make callable bed function for this flowline.  B_field should be 2d-interpolated.
+        degree: degree of spline fit for Univariate_Spline bed interpolation
+        flowline_spacing: how closely to sample data along flowline before creating function.  Default 10m
+        """
+        if extra_smoothing: #turn on extra smoothing to use spline interp instead of linear.  Useful if you have tributaries joining with big differences in bed
+            
+            bettercoords = Evenspace(self.coords, spacing=50) #using plastic_utilities_v2 to get evenly spaced coords before interp
+            arc = ArcArray(bettercoords)
+            vals = [B_field(coord[0], coord[1]) for coord in bettercoords]
+            sqzd = np.squeeze(vals) #need to alter shape to get into 1d interpolation
+            funct=interpolate.UnivariateSpline(x=arc, y=sqzd, k=degree)
+            self.bed_function = funct  
+        else:
+            self.bed_function = FlowProcess(self.coords, B_field)
     
     def process_surface(self, S_field):
         """Make callable surface function for this flowline.  S_field should be 2d-interpolated."""
@@ -282,6 +294,8 @@ class Flowline(Ice):
         ## Limits of integration
         x1 = min(profile1[0]) #initial terminus position, in nondimensional units
         x2 = min(profile2[0]) #new terminus position
+        print x1,x2
+        print 'Downstream limit={}.'.format(downstream_limit)
         
         dX = (x2-x1)*self.L0 #in physical units of m
         print 'dX={} m'.format(dX)
@@ -289,6 +303,7 @@ class Flowline(Ice):
         w1 = self.width_function(x1)
         w2 = self.width_function(x2) ## BRANCH SEPARATION?
         #dW = abs(w2-w1) #in physical units of m
+        print 'Widths: {}, {}'.format(w1, w2)
         print 'dW={} m'.format(w2-w1)
         
         if dX < 0: #second profile is more advanced than first
@@ -302,21 +317,31 @@ class Flowline(Ice):
                 frontal_dH = 0
             if x2 > downstream_limit:
                 frontal_dH = quad(full_thickness, downstream_limit, x2)[0]
+                print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(downstream_limit), full_thickness(x2))
+                print 'Integrated: frontal_dH = {}'.format(frontal_dH)
         else:    
             frontal_dH = quad(full_thickness, x1, x2)[0] #should handle signs correctly 
+            print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(x1), full_thickness(x2))
+            print 'Integrated: frontal_dH = {}'.format(frontal_dH)
         frontal_dV = frontal_dH * self.L0 * 0.5*(w1+w2)
         frontal_dM = frontal_dV * self.rho_ice
         
         upstream_dH = lambda x: self.H0*(interpolated_func1(x) - interpolated_func2(x))*self.width_function(x)
-        if x2 <= downstream_limit:
+        if x2 < downstream_limit:
             upstream_dV_raw = quad(upstream_dH, downstream_limit, upstream_limit)[0]
+            print 'upstream_dH function: interpolated_func1(downstream_limit)={}, interpolated_func2(downstream_limit)={}, width_function(downstream_limit)={}'.format(interpolated_func1(downstream_limit), interpolated_func2(downstream_limit), self.width_function(downstream_limit))
+            print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(downstream_limit), upstream_dH(upstream_limit))
+            print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
         else:
             upstream_dV_raw = quad(upstream_dH, x2, upstream_limit)[0]
+            print 'upstream_dH function: interpolated_func1(x2)={}, interpolated_func2(x2)={}, width_function(x2)={}'.format(interpolated_func1(x2), interpolated_func2(x2), self.width_function(x2))
+            print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(x2), upstream_dH(upstream_limit))
+            print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
         upstream_dV = upstream_dV_raw * self.L0
         upstream_dM = upstream_dV * self.rho_ice
         
         dM = frontal_dM + upstream_dM
-        
+        print 'dM {} = frontal {} + upstream {}'.format(dM, frontal_dM, upstream_dM)
         return dM #in kg
     
     def find_dHdL(self, profile, dL=None, debug_mode=False):
@@ -554,7 +579,10 @@ class PlasticNetwork(Ice):
         """Processes bed, surface, and thickness functions for new flowlines.  Use if network initialized with Branches.
         """
         for line in self.flowlines:
-            line.process_bed(bed_field)
+            if line.index !=0:
+                line.process_bed(bed_field, extra_smoothing=True, degree=3)
+            else:
+                line.process_bed(bed_field, extra_smoothing=False)
             line.process_surface(surface_field)
             line.process_thickness(thickness_field)
             line.process_width()
@@ -753,7 +781,7 @@ class PlasticNetwork(Ice):
         self.balance_forcing = float(balance_a) #save to this network instance
         return balance_a     
     
-    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0, rate_factor=1.7E-24):
+    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0, rate_factor=1.7E-24, output_heavy=False):
         """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
         Arguments:
             testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
@@ -767,7 +795,11 @@ class PlasticNetwork(Ice):
             debug_mode=True will turn on interim output for inspection
             dt_rounding: determines how many digits of dt to keep--default 5.  If your time step is less than 1 annum, you may find numerical error.  dt_rounding takes care of it. 
             dL: passed to Flowline.find_dHdL as length of step over which to test dHdL profiles.  Default 5 m.
-
+            has_smb: passed to Flowline.dLdt_dimensional to indicate whether we have spatially varying SMB/SEC
+            terminus_balance: dimensional (m/a), passed to dLdt_dimensional to indicate thinning rate at terminus
+            submarine_melt: allows inclusion of submarine melt rate - set to 0 for now as its implementation is inconsistent (11 Jun 2018)
+            rate_fator: passed to Flowline.dLdt_dimensional. A in Glen's flow law (Pa^-3 s^-1)
+            output_heavy: determines whether to keep all profiles or just Termini, Terminus_flux summary arrays for each branch
             returns model output as dictionary for each flowline 
         """
     
@@ -791,7 +823,8 @@ class PlasticNetwork(Ice):
         model_output_dicts = [{'Termini': [0],
         'Terminus_heights': [fl.surface_function(0)],
         'Termrates': [],
-        'Terminus_flux': []
+        'Terminus_flux': [],
+        'testyears': testyears
         } for fl in self.flowlines]
         
         #Mainline reference
@@ -811,6 +844,7 @@ class PlasticNetwork(Ice):
         
         #Assume same terminus
         for k, yr in enumerate(testyears):
+            print yr
             alpha_dot_k = alpha_dot_vals[k]
             key = round(yr-dt, dt_rounding) #allows dictionary referencing when dt is < 1 a
             
@@ -880,6 +914,7 @@ class PlasticNetwork(Ice):
                         branch_terminus = new_termpos
                         branch_termheight = new_termheight
                     else: ##if branches have split, find new terminus quantities
+                        print 'Tributary {} has split from main branch at time {} a'.format(j, key+dt)
                         dLdt_branch = fl.dLdt_dimensional(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
                         if np.isnan(dLdt_branch):
                             dLdt_branch = out_dict['Termrates'][-1] /dt
@@ -912,7 +947,14 @@ class PlasticNetwork(Ice):
                     else:
                         out_dict['Terminus_flux'].append(np.nan)
         
-        self.model_output = model_output_dicts
+        light_output = [{'testyears': model_output_dicts[j]['testyears'], 'Termini': model_output_dicts[j]['Termini'], 'Terminus_flux': model_output_dicts[j]['Terminus_flux']} for j in range(len(self.flowlines))]
+        
+        if output_heavy:
+            self.model_output = model_output_dicts
+        else:
+            self.model_output = light_output
+        
+        #self.model_output = model_output_dicts
   
         
     def save_network(self, filename=None):
