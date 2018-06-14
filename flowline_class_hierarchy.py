@@ -917,16 +917,27 @@ class PlasticNetwork(Ice):
                     else:
                         pass
                     
-                    if out_dict['Termini'][-1]/self.L0 <= separation_distance : ## Below is only applicable while branches share single terminus 
+                    if out_dict['Termini'][-1]/self.L0 < ArcArray(fl.coords)[fl.intersections[1]] : ## Below is only applicable while branches share single terminus 
+                        print 'Previous terminus {} < {}'.format(out_dict['Termini'][-1]/self.L0, ArcArray(fl.coords)[fl.intersections[1]])
                         dLdt_branch = dLdt_annum
+                        ##branch terminus should be determined by whether thickness is from main branch or yield thickness
                         branch_terminus = new_termpos
                         branch_termheight = new_termheight
-                        if abs(out_dict['Termini'][-1]/self.L0 - separation_distance) <= 0.5*separation_buffer: #if branch terminus is too close to the intersection
-                            branchmodel = out_dict[key] #use last modelled profile until we have traversed the separation
+                        branchmodel_full = fl.plastic_profile(startpoint=branch_terminus/self.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function) #model profile only down to intersection
+                        cutoff_idx = (np.abs(branchmodel_full[0] - separation_distance)).argmin() #retrieve index of closest point in full profile to the tributary cutoff
+                        print 'cutoff_idx = {}. Distance ={}'.format(cutoff_idx, branchmodel_full[0][cutoff_idx])
+                        cutoff_height = branchmodel_full[1][cutoff_idx]
+                        cutoff_yieldheight = BalanceThick(branchmodel_full[2][cutoff_idx], fl.Bingham_num(0,0)) + branchmodel_full[2][cutoff_idx] #for constant yield, Bingham_num(0,0) = Bingham_num everywhere.  Might introduce bug for Mohr-Coulomb case
+                        branch_termheight = max(cutoff_height, cutoff_yieldheight) #identify wand handle if tributary has separated from main branch based on whether main surface elevation is below reasonable intersection with trib
+                        print 'Bed around cutoff point = {}, {}, {}'.format(branchmodel_full[2][cutoff_idx-1], branchmodel_full[2][cutoff_idx], branchmodel_full[2][cutoff_idx+1])
+                        print 'Cutoff_height = {}.  Cutoff_yieldheight = {}.  Branch_termheight = {}'.format(cutoff_height, cutoff_yieldheight, branch_termheight)
+                        if branch_termheight==cutoff_yieldheight: #tributary has fully separated from downstream branch
+                            print 'Tributary {} has separated due to thinning disconnection from main branch at time {} a'.format(j, key+dt)
+                            branch_terminus = separation_distance * self.L0
+                            branchmodel = fl.plastic_profile(startpoint=separation_distance, hinit=cutoff_yieldheight, endpoint=fl_amax, surf=fl.surface_function)
                         else:
-                            branchmodel_full = fl.plastic_profile(startpoint=branch_terminus/self.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function) #model profile only down to intersection
-                            initpos_idx = (np.abs(branchmodel_full[0] - separation_distance)).argmin() #retrieve index of closest point in full model profile to the cutoff
-                            branchmodel = tuple([branchmodel_full[j][initpos_idx::] for j in range(len(branchmodel_full))]) #truncate branchmodel profile to be counted only above cutoff point
+                            branchmodel = tuple([branchmodel_full[j][cutoff_idx::] for j in range(len(branchmodel_full))]) #truncate branchmodel profile to be counted only above cutoff point
+
                     else: ##if branches have split, find new terminus quantities
                         print 'Tributary {} has split from main branch at time {} a'.format(j, key+dt)
                         dLdt_branch = fl.dLdt_dimensional(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
@@ -951,7 +962,8 @@ class PlasticNetwork(Ice):
                         branch_termflux = fl.icediff(profile1=out_dict[key], profile2=branchmodel, separation_buffer=separation_buffer)
                     else:
                         branch_termflux = np.nan
-                        
+                    
+                    print 'Year {} tributary {} terminus = {}'.format(yr, fl.index, branch_terminus)
                     out_dict[new_key] = branchmodel
                     out_dict['Termini'].append(branch_terminus)
                     out_dict['Terminus_heights'].append(branch_termheight*self.H0)
