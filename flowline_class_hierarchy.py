@@ -259,23 +259,24 @@ class Flowline(Ice):
         ref_prof_interpolated = interpolate.interp1d(plasticref[0], plasticref[1], kind='linear', copy=True)
         self.ref_profile = ref_prof_interpolated
     
-    def icediff(self, profile1, profile2, upstream_lim=None, shape='trapezoid'):
+    def icediff(self, profile1, profile2, upstream_lim=None, shape='trapezoid', separation_buffer=None):
         """Calculate net ice loss due to calving between two plastic profiles (interpret as successive timesteps)
         Inputs:
             profile1: an output from Flowline.plastic_profile
             profile2: an output from Flowline.plastic_profile (at a later time step)
             shape: 'trapezoid' ##Add others later e.g. parabolic bed
+            separation_buffer: distance away from intersection point (0D) to start counting flux from tributaries.  Should be ~0.5*width of downstream branch to prevent double-counting of ice mass.  Default 5000 m/L0. Does not affect single-branch networks.
         Output:
             dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2, in kg
         """
         try:
-            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True, bounds_error=False, fill_value=0) #Creating interpolated surface elevation profile
+            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True, bounds_error=False) #Creating interpolated surface elevation profile
             bed_function1 = interpolate.interp1d(profile1[0], profile1[2]) #useful to calculate full-thickness volume change from retreat/advance
         except ValueError: #this happens when terminus retreats past upstream forcing point
             interpolated_func1 = lambda x: np.nan
             bed_function1 = lambda x: np.nan
         try:
-            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True, bounds_error=False, fill_value=0) #Creating interpolated profile if needed
+            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True, bounds_error=False) #Creating interpolated profile if needed
         except ValueError: #this happens when terminus retreats past upstream forcing point
             interpolated_func2 = lambda x: np.nan #return NaN once no longer calculating meaningful changes
     
@@ -285,9 +286,12 @@ class Flowline(Ice):
             upstream_lim = arcmax
         upstream_limit = min(upstream_lim, arcmax) #catches if a uniform upstream limit has been applied that exceeds length of a particular flowline
         
+        if separation_buffer is None:
+            separation_buffer = 5000/self.L0
+        
         if self.index != 0:
             idx = self.intersections[1] #for now will only catch one intersection...can refine later for more complex networks
-            downstream_limit = ArcArray(self.coords)[idx]
+            downstream_limit = ArcArray(self.coords)[idx] + separation_buffer
         else:
             downstream_limit = 0
     
@@ -781,7 +785,7 @@ class PlasticNetwork(Ice):
         self.balance_forcing = float(balance_a) #save to this network instance
         return balance_a     
     
-    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0, rate_factor=1.7E-24, output_heavy=False):
+    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, separation_buffer=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0, rate_factor=1.7E-24, output_heavy=False):
         """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
         Arguments:
             testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
@@ -791,6 +795,7 @@ class PlasticNetwork(Ice):
             alpha_dot_variable: array of the same length as testyears with a different alpha_dot forcing to use in each year
             Offers the option to define thinning as persistence of obs or other nonlinear function.
             upstream_limits: array determining where to cut off modelling on each flowline, ordered by index.  Default is full length of lines.
+            separation_buffer: determines how far away from point of intersection tributaries should start their own simulation.  Default 5000 m/H0 - prevents double-counting in troughs ~10km wide.
             use_mainline_tau=False will force use of each line's own yield strength & type
             debug_mode=True will turn on interim output for inspection
             dt_rounding: determines how many digits of dt to keep--default 5.  If your time step is less than 1 annum, you may find numerical error.  dt_rounding takes care of it. 
@@ -817,6 +822,9 @@ class PlasticNetwork(Ice):
         
         if dL is None:
             dL = 5/self.L0
+        
+        if separation_buffer is None:
+            separation_buffer = 5000/self.L0
         
         dt = round(mean(diff(testyears)), dt_rounding) #size of time step, rounded to number of digits specified by dt_rounding
         
@@ -902,7 +910,7 @@ class PlasticNetwork(Ice):
                 if j==ref_branch_index:
                     continue
                 else:
-                    separation_distance = ArcArray(fl.coords)[fl.intersections[1]] #where line separates from mainline
+                    separation_distance = ArcArray(fl.coords)[fl.intersections[1]] + separation_buffer #where line separates from mainline
                     if use_mainline_tau:
                         fl.optimal_tau = self.network_tau
                         fl.yield_type = self.network_yield_type #this is probably too powerful, but unclear how else to exploit Bingham_number functionality
@@ -913,6 +921,12 @@ class PlasticNetwork(Ice):
                         dLdt_branch = dLdt_annum
                         branch_terminus = new_termpos
                         branch_termheight = new_termheight
+                        if abs(out_dict['Termini'][-1]/self.L0 - separation_distance) <= 0.5*separation_buffer: #if branch terminus is too close to the intersection
+                            branchmodel = out_dict[key] #use last modelled profile until we have traversed the separation
+                        else:
+                            branchmodel_full = fl.plastic_profile(startpoint=branch_terminus/self.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function) #model profile only down to intersection
+                            initpos_idx = (np.abs(branchmodel_full[0] - separation_distance)).argmin() #retrieve index of closest point in full model profile to the cutoff
+                            branchmodel = tuple([branchmodel_full[j][initpos_idx::] for j in range(len(branchmodel_full))]) #truncate branchmodel profile to be counted only above cutoff point
                     else: ##if branches have split, find new terminus quantities
                         print 'Tributary {} has split from main branch at time {} a'.format(j, key+dt)
                         dLdt_branch = fl.dLdt_dimensional(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
@@ -924,17 +938,17 @@ class PlasticNetwork(Ice):
                         branch_terminus_posdef = max(0, branch_terminus_raw) #catching the rare case when branches have separated but one branch suddenly readvances past initial terminus
                         if branch_terminus_posdef > (fl_amax * self.L0):
                             print 'Terminus retreated past upstream limit. Resetting terminus position to = upstream limit.'
-                            branch_terminus = fl_amax * self.L0 #catching whether terminus has retreated beyond upstream limit
+                            branch_terminus = out_dict['Termini'][-1] #catching whether terminus has retreated beyond upstream limit, setting to previous good value if so
                         else:
                             branch_terminus = branch_terminus_posdef
                         branch_term_bed = fl.bed_function(branch_terminus/self.L0)
                         previous_branch_bed = fl.bed_function(out_dict['Termini'][-1]/self.L0)
                         previous_branch_thickness = (out_dict['Terminus_heights'][-1] - previous_branch_bed)/self.H0
-                        branch_termheight = BalanceThick(branch_term_bed/self.H0, fl.Bingham_num(previous_branch_bed/self.H0, previous_branch_thickness)) + (branch_term_bed/self.H0)
-                        
-                    branchmodel = fl.plastic_profile(startpoint=branch_terminus/self.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function)
+                        branch_termheight = BalanceThick(branch_term_bed/self.H0, fl.Bingham_num(previous_branch_bed/self.H0, previous_branch_thickness)) + (branch_term_bed/self.H0)    
+                        branchmodel = fl.plastic_profile(startpoint=branch_terminus/self.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function)
+                    
                     if yr>dt:
-                        branch_termflux = fl.icediff(profile1=out_dict[key], profile2=branchmodel)
+                        branch_termflux = fl.icediff(profile1=out_dict[key], profile2=branchmodel, separation_buffer=separation_buffer)
                     else:
                         branch_termflux = np.nan
                         
