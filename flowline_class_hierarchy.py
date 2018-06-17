@@ -126,7 +126,7 @@ class Flowline(Ice):
     def process_width(self):
         self.width_function = interpolate.interp1d(ArcArray(self.coords), self.width)
     
-    def optimize_yield_strength(self, testrange=np.arange(50e3, 500e3, 5e3), arcmax=None):
+    def optimize_yield_strength(self, testrange=np.arange(50e3, 500e3, 5e3), arcmax=None, use_balancethick=True):
         """Run optimization and set the result to be the optimal value for the flowline instance.  
         Arcmax over which to run optimization can be adjusted according to how high up we think plastic approximation should go.
         NOTE: arcmax default is None but will set to self.length.  self unavailable at function define-time"""
@@ -141,12 +141,16 @@ class Flowline(Ice):
         surf = self.surface_function
         
         for tau in testrange:
+            if use_balancethick:
+                hinit = BalanceThick(bedf(0)/H0, tau/(rho_ice*g*H0**2/L0))+(bedf(0)/H0)
+            else:
+                hinit = surf(0)/H0
                 
             ##CONSTANT YIELD
-            model_const = plasticmodel_error(bedf, tau, B_const, 0, surf(0)/H0, arcmax, 25000, surf) #prescribed terminus thickness
+            model_const = plasticmodel_error(bedf, tau, B_const, 0, hinit, arcmax, 25000, surf) #prescribed terminus thickness
             CV_const = model_const[1]
             ##VARIABLE YIELD
-            model_var = plasticmodel_error(bedf, tau, B_var, 0, surf(0)/H0, arcmax, 25000, surf) #prescribed terminus thickness
+            model_var = plasticmodel_error(bedf, tau, B_var, 0, hinit, arcmax, 25000, surf) #prescribed terminus thickness
             CV_var = model_var[1]
             
             CV_const_arr.append(CV_const)
@@ -299,7 +303,7 @@ class Flowline(Ice):
         x1 = min(profile1[0]) #initial terminus position, in nondimensional units
         x2 = min(profile2[0]) #new terminus position
         print x1,x2
-        print 'Downstream limit={}.'.format(downstream_limit)
+        #print 'Downstream limit={}.'.format(downstream_limit)
         
         dX = (x2-x1)*self.L0 #in physical units of m
         print 'dX={} m'.format(dX)
@@ -321,26 +325,26 @@ class Flowline(Ice):
                 frontal_dH = 0
             if x2 > downstream_limit:
                 frontal_dH = quad(full_thickness, downstream_limit, x2)[0]
-                print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(downstream_limit), full_thickness(x2))
-                print 'Integrated: frontal_dH = {}'.format(frontal_dH)
+                #print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(downstream_limit), full_thickness(x2))
+                #print 'Integrated: frontal_dH = {}'.format(frontal_dH)
         else:    
             frontal_dH = quad(full_thickness, x1, x2)[0] #should handle signs correctly 
-            print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(x1), full_thickness(x2))
-            print 'Integrated: frontal_dH = {}'.format(frontal_dH)
+            #print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(x1), full_thickness(x2))
+            #print 'Integrated: frontal_dH = {}'.format(frontal_dH)
         frontal_dV = frontal_dH * self.L0 * 0.5*(w1+w2)
         frontal_dM = frontal_dV * self.rho_ice
         
         upstream_dH = lambda x: self.H0*(interpolated_func1(x) - interpolated_func2(x))*self.width_function(x)
         if x2 < downstream_limit:
             upstream_dV_raw = quad(upstream_dH, downstream_limit, upstream_limit)[0]
-            print 'upstream_dH function: interpolated_func1(downstream_limit)={}, interpolated_func2(downstream_limit)={}, width_function(downstream_limit)={}'.format(interpolated_func1(downstream_limit), interpolated_func2(downstream_limit), self.width_function(downstream_limit))
-            print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(downstream_limit), upstream_dH(upstream_limit))
-            print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
+            #print 'upstream_dH function: interpolated_func1(downstream_limit)={}, interpolated_func2(downstream_limit)={}, width_function(downstream_limit)={}'.format(interpolated_func1(downstream_limit), interpolated_func2(downstream_limit), self.width_function(downstream_limit))
+            #print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(downstream_limit), upstream_dH(upstream_limit))
+            #print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
         else:
             upstream_dV_raw = quad(upstream_dH, x2, upstream_limit)[0]
-            print 'upstream_dH function: interpolated_func1(x2)={}, interpolated_func2(x2)={}, width_function(x2)={}'.format(interpolated_func1(x2), interpolated_func2(x2), self.width_function(x2))
-            print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(x2), upstream_dH(upstream_limit))
-            print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
+            #print 'upstream_dH function: interpolated_func1(x2)={}, interpolated_func2(x2)={}, width_function(x2)={}'.format(interpolated_func1(x2), interpolated_func2(x2), self.width_function(x2))
+            #print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(x2), upstream_dH(upstream_limit))
+            #print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
         upstream_dV = upstream_dV_raw * self.L0
         upstream_dM = upstream_dV * self.rho_ice
         
@@ -620,7 +624,7 @@ class PlasticNetwork(Ice):
         print 'Coordinates with ice thickness less than flotation removed.  Please re-run make_full_lines and process_full_lines for network {}.'.format(self.name)
             
     
-    def optimize_network_yield(self, testrange=arange(50e3, 500e3, 5e3), arcmax_list = None, check_all=False):
+    def optimize_network_yield(self, testrange=arange(50e3, 500e3, 5e3), arcmax_list = None, check_all=False, use_balancethick=True):
         """Runs yield strength optimization on each of the network Flowline objects and sets the yield strength of the 'main' branch as the network's default.
         Could find a better way to do this...
         arcmax_list: list of how high up to optimise in order of flowline index; default is full length (NOTE: default of "None" is set to more sensible default in function.  Same problem with self unavailable at define-time)
@@ -824,7 +828,7 @@ class PlasticNetwork(Ice):
             dL = 5/self.L0
         
         if separation_buffer is None:
-            separation_buffer = 5000/self.L0
+            separation_buffer_default = 5000/self.L0
         
         dt = round(mean(diff(testyears)), dt_rounding) #size of time step, rounded to number of digits specified by dt_rounding
         
@@ -910,7 +914,13 @@ class PlasticNetwork(Ice):
                 if j==ref_branch_index:
                     continue
                 else:
+                    #separation_distance = ArcArray(fl.coords)[fl.intersections[1]] + separation_buffer #where line separates from mainline
+                    try:
+                        separation_buffer = 0.5*ref_line.width_function(ArcArray(fl.coords)[fl.intersections[1]])/self.L0
+                    except AttributeError:
+                        separation_buffer = separation_buffer_default #set = default value given as optional argument if reference line has no width
                     separation_distance = ArcArray(fl.coords)[fl.intersections[1]] + separation_buffer #where line separates from mainline
+
                     if use_mainline_tau:
                         fl.optimal_tau = self.network_tau
                         fl.yield_type = self.network_yield_type #this is probably too powerful, but unclear how else to exploit Bingham_number functionality
@@ -920,22 +930,25 @@ class PlasticNetwork(Ice):
                     if out_dict['Termini'][-1]/self.L0 < ArcArray(fl.coords)[fl.intersections[1]] : ## Below is only applicable while branches share single terminus 
                         print 'Previous terminus {} < {}'.format(out_dict['Termini'][-1]/self.L0, ArcArray(fl.coords)[fl.intersections[1]])
                         dLdt_branch = dLdt_annum
-                        ##branch terminus should be determined by whether thickness is from main branch or yield thickness
-                        branch_terminus = new_termpos
-                        branch_termheight = new_termheight
-                        branchmodel_full = fl.plastic_profile(startpoint=branch_terminus/self.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function) #model profile only down to intersection
-                        cutoff_idx = (np.abs(branchmodel_full[0] - separation_distance)).argmin() #retrieve index of closest point in full profile to the tributary cutoff
-                        print 'cutoff_idx = {}. Distance ={}'.format(cutoff_idx, branchmodel_full[0][cutoff_idx])
-                        cutoff_height = branchmodel_full[1][cutoff_idx]
-                        cutoff_yieldheight = BalanceThick(branchmodel_full[2][cutoff_idx], fl.Bingham_num(0,0)) + branchmodel_full[2][cutoff_idx] #for constant yield, Bingham_num(0,0) = Bingham_num everywhere.  Might introduce bug for Mohr-Coulomb case
-                        branch_termheight = max(cutoff_height, cutoff_yieldheight) #identify wand handle if tributary has separated from main branch based on whether main surface elevation is below reasonable intersection with trib
-                        print 'Bed around cutoff point = {}, {}, {}'.format(branchmodel_full[2][cutoff_idx-1], branchmodel_full[2][cutoff_idx], branchmodel_full[2][cutoff_idx+1])
-                        print 'Cutoff_height = {}.  Cutoff_yieldheight = {}.  Branch_termheight = {}'.format(cutoff_height, cutoff_yieldheight, branch_termheight)
+                        branchmodel_full = fl.plastic_profile(startpoint=new_termpos/self.L0, hinit=new_termheight, endpoint=fl_amax, surf=fl.surface_function) #model profile only down to intersection
+                        mainbranch_int_idx = (np.abs(branchmodel_full[0] - ArcArray(fl.coords)[fl.intersections[1]])).argmin()
+                        mainbranch_tribheight = refdict[new_key][1][mainbranch_int_idx] #finding surface elevation across main trough based on modelling of main branch
+                        cutoff_yieldheight = BalanceThick(fl.bed_function(separation_distance), fl.Bingham_num(0,0)) + (fl.bed_function(separation_distance)/fl.H0)
+                        ##Note for constant yield, Bingham_num(0,0) = Bingham_num everywhere.  Might introduce bug for Mohr-Coulomb case
+                        
+                        branch_termheight = max(mainbranch_tribheight, cutoff_yieldheight) #identify and handle if tributary has separated from main branch based on whether main surface elevation is below reasonable intersection with trib
+                        print 'Main branch tributary height: {}, cutoff yield height {}'.format(mainbranch_tribheight, cutoff_yieldheight)
                         if branch_termheight==cutoff_yieldheight: #tributary has fully separated from downstream branch
                             print 'Tributary {} has separated due to thinning disconnection from main branch at time {} a'.format(j, key+dt)
                             branch_terminus = separation_distance * self.L0
                             branchmodel = fl.plastic_profile(startpoint=separation_distance, hinit=cutoff_yieldheight, endpoint=fl_amax, surf=fl.surface_function)
+                        ##print 'cutoff_idx = {}. Distance ={}'.format(cutoff_idx, branchmodel_full[0][cutoff_idx])
+                        #cutoff_height = branchmodel_full[1][cutoff_idx]
+                        #print 'Bed around cutoff point = {}, {}, {}'.format(branchmodel_full[2][cutoff_idx-1], branchmodel_full[2][cutoff_idx], branchmodel_full[2][cutoff_idx+1])
+                        #print 'Cutoff_height = {}.  Cutoff_yieldheight = {}.  Branch_termheight = {}'.format(cutoff_height, cutoff_yieldheight, branch_termheight)
                         else:
+                            branch_terminus = new_termpos
+                            cutoff_idx = (np.abs(branchmodel_full[0] - separation_distance)).argmin() #retrieve index of closest point in full profile to the tributary cutoff
                             branchmodel = tuple([branchmodel_full[j][cutoff_idx::] for j in range(len(branchmodel_full))]) #truncate branchmodel profile to be counted only above cutoff point
 
                     else: ##if branches have split, find new terminus quantities
@@ -963,7 +976,7 @@ class PlasticNetwork(Ice):
                     else:
                         branch_termflux = np.nan
                     
-                    print 'Year {} tributary {} terminus = {}'.format(yr, fl.index, branch_terminus)
+                    #print 'Year {} tributary {} terminus = {}'.format(yr, fl.index, branch_terminus)
                     out_dict[new_key] = branchmodel
                     out_dict['Termini'].append(branch_terminus)
                     out_dict['Terminus_heights'].append(branch_termheight*self.H0)
