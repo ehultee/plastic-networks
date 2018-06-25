@@ -100,16 +100,18 @@ vx_upper = np.ma.masked_greater(vx_raw, 10000)
 vy_upper = np.ma.masked_greater(vy_raw, 10000)
 fh2.close()
 
-xvm, yvm = np.meshgrid(xv, yv)
-x_lon, y_lat = pyproj.transform(psn_gl, wgs84, xvm, yvm)
-regridded_v = interpolate.griddata((xvm.ravel(), yvm.ravel()), v_upper.ravel(), (x_lon, y_lat), method='nearest') #do we need to regrid, or just call contour?
+yv_flipped = yv[::-1]
+xvm, yvm = np.meshgrid(xv, yv_flipped)
+#x_lon, y_lat = pyproj.transform(psn_gl, wgs84, xvm, yvm)
+#regridded_v = interpolate.griddata((xvm.ravel(), yvm.ravel()), v_upper.ravel(), (x_lon, y_lat), method='nearest') #do we need to regrid, or just call contour?
 
 #Plot flowlines (or just termini) on map of Greenland
 grnld = Greenland_map()
-#grnld.contourf(xvm, yvm, v_upper, latlon=False, cmap='viridis', norm=matplotlib.colors.LogNorm(vmin=0.01, vmax=20.0)) #overlay Sentinel velocity
-for j in range(len(all_coords_latlon)):
-    grnld.scatter(all_coords_latlon[j][:,0], all_coords_latlon[j][:,1], s=5, color='DarkSlateBlue', latlon=True) #flowlines
-    grnld.scatter(all_coords_latlon[j][0,0], all_coords_latlon[j][0,1], s=100, marker='*', color='Cyan', edgecolors='DarkSlateBlue', linewidths=1, latlon=True) #termini
+x_lon, y_lat = grnld(xvm, yvm, inverse=True)
+grnld.contourf(x_lon, y_lat, v_upper, latlon=True, cmap='viridis', norm=matplotlib.colors.LogNorm(vmin=0.01, vmax=20.0), levels=(0.01, 0.5, 1.0, 5.0, 10.0, 50.0), zorder=3, alpha=0.5) #overlay Sentinel velocity
+#for j in range(len(all_coords_latlon)):
+#    grnld.scatter(all_coords_latlon[j][:,0], all_coords_latlon[j][:,1], s=5, color='DarkSlateBlue', latlon=True) #flowlines
+#    grnld.scatter(all_coords_latlon[j][0,0], all_coords_latlon[j][0,1], s=100, marker='*', color='Cyan', edgecolors='DarkSlateBlue', linewidths=1, latlon=True) #termini
 #grnld.plot(Jak_main_lon, Jak_main_lat, latlon=True)
 plt.show()
 

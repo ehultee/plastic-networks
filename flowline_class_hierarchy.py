@@ -351,6 +351,95 @@ class Flowline(Ice):
         dM = frontal_dM + upstream_dM
         print 'dM {} = frontal {} + upstream {}'.format(dM, frontal_dM, upstream_dM)
         return dM #in kg
+        
+    def icediff_SL(self, profile1, profile2, upstream_lim=None, shape='trapezoid', separation_buffer=None):
+        """Calculate sea level contribution due to calving between two plastic profiles (interpret as successive timesteps).  Nearly identical to icediff, but excludes ice already below sea level.
+        Inputs:
+            profile1: an output from Flowline.plastic_profile
+            profile2: an output from Flowline.plastic_profile (at a later time step)
+            shape: 'trapezoid' ##Add others later e.g. parabolic bed
+            separation_buffer: distance away from intersection point (0D) to start counting flux from tributaries.  Should be ~0.5*width of downstream branch to prevent double-counting of ice mass.  Default 5000 m/L0. Does not affect single-branch networks.
+        Output:
+            dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2, in kg
+        """
+        try:
+            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True, bounds_error=False) #Creating interpolated surface elevation profile
+            bed_function1 = interpolate.interp1d(profile1[0], profile1[2]) #useful to calculate full-thickness volume change from retreat/advance
+        except ValueError: #this happens when terminus retreats past upstream forcing point
+            interpolated_func1 = lambda x: np.nan
+            bed_function1 = lambda x: np.nan
+        try:
+            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True, bounds_error=False) #Creating interpolated profile if needed
+        except ValueError: #this happens when terminus retreats past upstream forcing point
+            interpolated_func2 = lambda x: np.nan #return NaN once no longer calculating meaningful changes
+    
+        arcmax = self.length
+                
+        if upstream_lim is None:
+            upstream_lim = arcmax
+        upstream_limit = min(upstream_lim, arcmax) #catches if a uniform upstream limit has been applied that exceeds length of a particular flowline
+        
+        if separation_buffer is None:
+            separation_buffer = 5000/self.L0
+        
+        if self.index != 0:
+            idx = self.intersections[1] #for now will only catch one intersection...can refine later for more complex networks
+            downstream_limit = ArcArray(self.coords)[idx] + separation_buffer
+        else:
+            downstream_limit = 0
+    
+        ## Limits of integration
+        x1 = min(profile1[0]) #initial terminus position, in nondimensional units
+        x2 = min(profile2[0]) #new terminus position
+        print x1,x2
+        #print 'Downstream limit={}.'.format(downstream_limit)
+        
+        dX = (x2-x1)*self.L0 #in physical units of m
+        print 'dX={} m'.format(dX)
+        
+        w1 = self.width_function(x1)
+        w2 = self.width_function(x2) ## BRANCH SEPARATION?
+        #dW = abs(w2-w1) #in physical units of m
+        print 'Widths: {}, {}'.format(w1, w2)
+        print 'dW={} m'.format(w2-w1)
+        
+        if dX < 0: #second profile is more advanced than first
+            bed_function2 = interpolate.interp1d(profile2[0], profile2[2]) #bed function that extends to more advanced terminus
+            full_thickness = lambda x: self.H0*interpolated_func2(x) - max(0, self.H0*bed_function2(x)) #max(0,D) adjusts for ice that is already below sea level
+        else:
+            full_thickness = lambda x: self.H0*interpolated_func1(x) - max(0, self.H0*bed_function1(x))
+        
+        if x1 < downstream_limit:
+            if x2 <= downstream_limit:
+                frontal_dH = 0
+            if x2 > downstream_limit:
+                frontal_dH = quad(full_thickness, downstream_limit, x2)[0]
+                #print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(downstream_limit), full_thickness(x2))
+                #print 'Integrated: frontal_dH = {}'.format(frontal_dH)
+        else:    
+            frontal_dH = quad(full_thickness, x1, x2)[0] #should handle signs correctly 
+            #print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(x1), full_thickness(x2))
+            #print 'Integrated: frontal_dH = {}'.format(frontal_dH)
+        frontal_dV = frontal_dH * self.L0 * 0.5*(w1+w2)
+        frontal_dM = frontal_dV * self.rho_ice
+        
+        upstream_dH = lambda x: self.H0*(interpolated_func1(x) - interpolated_func2(x))*self.width_function(x)
+        if x2 < downstream_limit:
+            upstream_dV_raw = quad(upstream_dH, downstream_limit, upstream_limit)[0]
+            #print 'upstream_dH function: interpolated_func1(downstream_limit)={}, interpolated_func2(downstream_limit)={}, width_function(downstream_limit)={}'.format(interpolated_func1(downstream_limit), interpolated_func2(downstream_limit), self.width_function(downstream_limit))
+            #print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(downstream_limit), upstream_dH(upstream_limit))
+            #print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
+        else:
+            upstream_dV_raw = quad(upstream_dH, x2, upstream_limit)[0]
+            #print 'upstream_dH function: interpolated_func1(x2)={}, interpolated_func2(x2)={}, width_function(x2)={}'.format(interpolated_func1(x2), interpolated_func2(x2), self.width_function(x2))
+            #print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(x2), upstream_dH(upstream_limit))
+            #print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
+        upstream_dV = upstream_dV_raw * self.L0
+        upstream_dM = upstream_dV * self.rho_ice
+        
+        dM = frontal_dM + upstream_dM
+        print 'dM {} = frontal {} + upstream {}'.format(dM, frontal_dM, upstream_dM)
+        return dM #in kg
     
     def find_dHdL(self, profile, dL=None, debug_mode=False):
         """Function to compute successive profiles of length L-dL, L, L+dL to calculate dHdL over glacier flowline.
@@ -789,7 +878,7 @@ class PlasticNetwork(Ice):
         self.balance_forcing = float(balance_a) #save to this network instance
         return balance_a     
     
-    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, separation_buffer=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0, rate_factor=1.7E-24, output_heavy=False):
+    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, separation_buffer=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0, rate_factor=1.7E-24, output_heavy=False, sl_contribution=True):
         """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
         Arguments:
             testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
@@ -896,7 +985,10 @@ class PlasticNetwork(Ice):
             new_profile = ref_line.plastic_profile(startpoint=new_termpos/self.L0, hinit=new_termheight, endpoint=ref_amax, surf=ref_surface)
             if yr>dt:
                 #key = round(yr-dt, dt_rounding)
-                termflux = ref_line.icediff(profile1=refdict[key], profile2=new_profile)
+                if sl_contribution:
+                    termflux = ref_line.icediff_SL(profile1=refdict[key], profile2=new_profile)
+                else:
+                    termflux = ref_line.icediff(profile1=refdict[key], profile2=new_profile)
             else:
                 termflux = np.nan
             
@@ -972,7 +1064,10 @@ class PlasticNetwork(Ice):
                         branchmodel = fl.plastic_profile(startpoint=branch_terminus/self.L0, hinit=branch_termheight, endpoint=fl_amax, surf=fl.surface_function)
                     
                     if yr>dt:
-                        branch_termflux = fl.icediff(profile1=out_dict[key], profile2=branchmodel, separation_buffer=separation_buffer)
+                        if sl_contribution:
+                            branch_termflux = fl.icediff_SL(profile1=out_dict[key], profile2=branchmodel, separation_buffer=separation_buffer)
+                        else:
+                            branch_termflux = fl.icediff(profile1=out_dict[key], profile2=branchmodel, separation_buffer=separation_buffer)
                     else:
                         branch_termflux = np.nan
                     
