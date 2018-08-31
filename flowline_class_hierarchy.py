@@ -46,6 +46,7 @@ class Branch(Ice):
         Ice.__init__(self)
         self.full_coords = np.asarray(coords) #keeping width with other coords so it can be used in make_full_lines
         self.coords = np.asarray(coords)[:,0:2] # (x,y) coordinates of triples (x,y,width) read in by Flowline_CSV
+        self.index = index
         self.order = order
         self.flows_to = flows_to
         self.intersect = intersect 
