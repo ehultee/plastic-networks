@@ -1,11 +1,14 @@
 # Formalizing flowline selection algorithm for Greenland glaciers
 # Adding functionality to find widths
 # 16 March 2018  EHU
+## Edits 20 Sept 2018: adding automated identification of centerline
 
 from netCDF4 import Dataset
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+import shapely.geometry as geom
+from shapely.ops import nearest_points
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 from scipy.signal import savgol_filter
@@ -121,7 +124,7 @@ def check_sides(x, y, Vx = vf_x, Vy = vf_y, V=vf, side_cutoff = 1.0, dw=20):
     return rightcoords, leftcoords
 
 
-def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx = vf_x, Vy = vf_y, V = vf, dx=150, side_cutoff = 0.5, dw=20, output_sidecoords=False, smooth_width=True):
+def Trace_wWidth(startcoord_x, startcoord_y, trace_up=True, xarr=X, yarr=Y, Vx = vf_x, Vy = vf_y, V = vf, dx=150, side_cutoff = 0.5, dw=20, output_sidecoords=False, smooth_width=True):
     """Traces flowlines down from a tributary head or up from terminus.  Stores evenly spaced coordinates and width at each point.
     startcoord_x: x-coordinate of the starting point
     startcoord_y: y-coordinate of the starting point
@@ -213,6 +216,28 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=False, xarr=X, yarr=Y, Vx 
         return outarr, width, rightside, leftside
     else:
         return outarr, width
+
+def IDCentralBranch(lines):
+    """Given a dictionary of flowline-like objects, oriented from terminus to head, finds which one is 'centerline' and returns its dictionary key
+    """
+    end_points = [lines[k][0][0:1] for k in lines.keys()] #(x,y) coordinates at downstream end of each line
+    end_ls = geom.LineString(end_points) #need LineString to identify centroid
+    end_mp = geom.MultiPoint(end_points) #need MultiPoint to find closest point to centroid
+    end_centr = end_ls.centroid
+    central_point = nearest_points(end_mp, end_centr)[0] #(x,y) coords of point closest to centroid
+    ## Now check which line has that terminus point
+    for i,p in enumerate(terminus_mp):
+        if p.distance(central_point) > 0.01: #allowing tolerance for floating-point errors in Shapely
+            pass
+        elif p.distance(central_point) < 0.01:
+            print 'Central branch has key {}'.format(i)
+            central_key = i
+        else:
+            print 'Error finding central key'
+    
+    return central_key
+    
+    
 
 def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
     """Given a dictionary of flowline-like objects, oriented from terminus to head, finds where they should be joined into mainline-tributary network.
