@@ -244,10 +244,13 @@ def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
     Expects input in the form of {'linenumber': ((x1, y1, w1), (x2, y2, w2))} - coordinates with width
     """
     branches = {}
+    central_branch_key = IDCentralBranch(lines)
+    branches[0] = lines[central_branch_key] #Keep full length and give central line index 0 for the output.  Index 0 needed for other functions in PlasticNetwork
+    
     for ln in range(len(lines)):
         #print ln
-        if ln==0: #mainline keeps its full length and becomes reference
-            branches[ln] = lines[ln] 
+        if ln==central_branch_key: #central line is reference, doesn't need filtering
+            pass
         else:
             mainline = branches[0] #should be an array of (x,y, w) coords describing flowline
             full_line = lines[ln]
@@ -288,8 +291,12 @@ def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
             #    print trunc_index
             #    truncated_line = full_line[trunc_index::]
             #    branches[ln] = truncated_line
-        
-    return branches
+      
+    branches_NoNone = {key: val for key,val in branches.iteritems() if val is not None} # dictionary with None entries removed  
+    remaining_keys = branches_NoNone.keys()
+    branches_cleaned = {k: branches_NoNone[remaining_keys] for k in range(len(branches_NoNone))} #making output dictionary have sequential keys
+    
+    return branches_cleaned
             
     
 
