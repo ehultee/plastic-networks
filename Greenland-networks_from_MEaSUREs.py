@@ -14,7 +14,7 @@ vy_comp_raw = read_velocities('Documents/GitHub/gld-y_velocity-composite.tif', r
 v_comp = np.ma.masked_invalid(v_comp_raw)
 vx_comp = np.ma.masked_invalid(vx_comp_raw)
 vy_comp = np.ma.masked_invalid(vy_comp_raw)
-v_excludemasked = np.ma.filled(v_comp, fill_value=np.nanmean(v_comp))
+#v_excludemasked = np.ma.filled(v_comp, fill_value=np.nanmean(v_comp))
 #vx_excludemasked = np.ma.filled(vx_comp, fill_value=np.nanmean(vx_comp))
 #vy_excludemasked = np.ma.filled(vy_comp, fill_value=np.nanmean(vy_comp))
 
@@ -26,7 +26,7 @@ y_1d = y_comp[:,0]
 #v_interp = interpolate.RectBivariateSpline(x_1d, y_1d[::-1], v_excludemasked.T[::, ::-1])
 func_vxcomp = interpolate.interp2d(x_1d, y_1d, vx_comp[::,::]) #check whether these need to be flipped along y-axis
 func_vycomp = interpolate.interp2d(x_1d, y_1d, vy_comp[::,::])
-func_vcomp = interpolate.interp2d(x_1d, y_1d[-1], v_excludemasked[::, ::-1])
+func_vcomp = interpolate.interp2d(x_1d, y_1d[::-1], v_comp[::, ::])
 
 xtest = np.linspace(min(x_1d), max(x_1d), 200)
 ytest = np.linspace(min(y_1d), max(y_1d), 200)
