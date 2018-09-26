@@ -154,7 +154,7 @@ for k in termini[2014].keys():
         master_initial_termini[k] = termini[2012][k]
         keys_12.append(k)
     else:
-        print 'Glacier ID ' + str(k) + ' not found'
+        print 'Glacier ID ' + str(k) + ' not found before 2014'
     
 
 #print 'Reading in MEaSUREs terminus positions for year 2000'
