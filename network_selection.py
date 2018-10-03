@@ -247,7 +247,7 @@ def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
     central_branch_key = IDCentralBranch(lines)
     branches[0] = lines[central_branch_key] #Keep full length and give central line index 0 for the output.  Index 0 needed for other functions in PlasticNetwork
     
-    for ln in range(len(lines)):
+    for ln in lines.keys():
         #print ln
         if ln==central_branch_key: #central line is reference, doesn't need filtering
             pass
@@ -294,7 +294,7 @@ def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
       
     branches_NoNone = {key: val for key,val in branches.iteritems() if val is not None} # dictionary with None entries removed  
     remaining_keys = branches_NoNone.keys()
-    branches_cleaned = {k: branches_NoNone[remaining_keys] for k in range(len(branches_NoNone))} #making output dictionary have sequential keys
+    branches_cleaned = {k: branches_NoNone[remaining_keys[k]] for k in range(len(branches_NoNone))} #making output dictionary have sequential keys
     
     return branches_cleaned
             
