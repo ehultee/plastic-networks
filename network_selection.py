@@ -218,7 +218,7 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=True, xarr=X, yarr=Y, Vx =
         return outarr, width
 
 def IDCentralBranch(lines):
-    """Given a dictionary of flowline-like objects, oriented from terminus to head, finds which one is 'centerline' and returns its dictionary key
+    """Given a dictionary of flowline-like objects, oriented from terminus to head, finds which one is 'centerline' (terminal point closest to centroid of terminus) and returns its dictionary key
     """
     end_points = [lines[k][0][0:2] for k in lines.keys()] #(x,y) coordinates at downstream end of each line
     end_ls = geom.LineString(end_points) #need LineString to identify centroid
@@ -237,7 +237,8 @@ def IDCentralBranch(lines):
     
     return central_key
     
-    
+        
+        
 
 def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
     """Given a dictionary of flowline-like objects, oriented from terminus to head, finds where they should be joined into mainline-tributary network.
@@ -245,14 +246,14 @@ def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
     """
     branches = {}
     central_branch_key = IDCentralBranch(lines)
-    branches[0] = lines[central_branch_key] #Keep full length and give central line index 0 for the output.  Index 0 needed for other functions in PlasticNetwork
+    branches[central_branch_key] = lines[central_branch_key] #Keep full length.  Note central line will need to be re-indexed to have index 0 for other functions in PlasticNetwork
     
     for ln in lines.keys():
         #print ln
         if ln==central_branch_key: #central line is reference, doesn't need filtering
             pass
         else:
-            mainline = branches[0] #should be an array of (x,y, w) coords describing flowline
+            mainline = branches[central_branch_key] #should be an array of (x,y, w) coords describing flowline
             full_line = lines[ln]
             comparison_length = min(len(mainline), len(full_line))
             
@@ -275,8 +276,10 @@ def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
             try:
                 truncated_line = full_line[trunc_index::]
             except NameError: #no truncation index found
-                trunc_index = 0
                 print 'Line {} may parallel main line for full length. Removing from set.'.format(ln)
+                truncated_line = None
+            if trunc_index==0:
+                print 'Line {} may be dynamically independent from centerline at terminus.  Removing from set.'.format(ln)
                 truncated_line = None
             branches[ln] = truncated_line
                 
@@ -294,8 +297,11 @@ def FilterMainTributaries(lines, Vx = vf_x, Vy = vf_y):
       
     branches_NoNone = {key: val for key,val in branches.iteritems() if val is not None} # dictionary with None entries removed  
     remaining_keys = branches_NoNone.keys()
-    branches_cleaned = {k: branches_NoNone[remaining_keys[k]] for k in range(len(branches_NoNone))} #making output dictionary have sequential keys
+    remaining_keys.remove(central_branch_key)
+    branches_cleaned = {int(k+1): branches_NoNone[remaining_keys[k]] for k in range(len(remaining_keys))} #making output dictionary have sequential keys, starting from 1 so central branch can be 0 index
+    branches_cleaned[0] = branches_NoNone[central_branch_key]
     
+    #return branches_NoNone
     return branches_cleaned
             
     
