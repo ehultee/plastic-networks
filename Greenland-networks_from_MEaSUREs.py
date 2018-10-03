@@ -103,20 +103,36 @@ termini_init = read_termini(fn, init_year)
 
 ##iterate over keys in termini_init to make dictionary of lines for each GlacierID
 #ids_to_trace = termini_init.keys() #trace all points of all glaciers
-#ids_to_trace = (3, 153, 175) # IDs for only Jakobshavn, Kangerlussuaq, Helheim
-ids_to_trace = (3,) #Just Jakobshavn
+ids_to_trace = (3, 153, 175) # IDs for only Jakobshavn, Kangerlussuaq, Helheim
+#ids_to_trace = (3,) #Just Jakobshavn
 
 all_lines = {}
 for gid in ids_to_trace:
     lines = {}
     termcoords = termini_init[gid] #points spanning terminus for this glacier
-    for j in range(len(termcoords))[::5]: #need to down-sample, since some glaciers have 50 points across terminus (and we expect most will have fairly simple networks)
+    for j in range(len(termcoords))[::10]: #need to down-sample, since some glaciers have 50 points across terminus (and we expect most will have fairly simple networks)
         print 'Tracing terminus point {} of {} in Glacier ID {}'.format(j, len(termcoords), gid)
         p = termcoords[j]
         line_coords, width = Trace_wWidth(p[0], p[1], trace_up=True, xarr=x_comp, yarr=y_comp, Vx = func_vxcomp, Vy = func_vycomp, V = func_vcomp) #Uses Trace_wWidth and FilterMainTributaries from network_selection.py
-        xyw = [(line_coords[n][0], line_coords[n][1], width[n]) for n in range(len(line_coords))]
-        lines[j] = (xyw)
+        if sum(np.isnan(line_coords))>0:
+            pass #Don't save the line if it contains nan points
+        else:
+            xyw = [(line_coords[n][0], line_coords[n][1], width[n]) for n in range(len(line_coords))]
+            lines[j] = (xyw)
     filtered_tribs = FilterMainTributaries(lines, Vx = func_vxcomp, Vy = func_vycomp)
-    all_lines[gid] = lines
+    all_lines[gid] = filtered_tribs
 
-        
+#plt.figure()
+#for k in filtered_tribs.keys():
+#    trib = np.asarray(filtered_tribs[k])
+#    #print shape(trib), type(trib)
+#    plt.plot(trib[:,0], trib[:,1], label='Line {}'.format(k))
+#plt.legend()
+#plt.show()
+#
+#plt.figure()
+#for j in range(len(termcoords))[::10]:
+#    p=termcoords[j]
+#    plt.plot(p[0], p[1], label='Point {}'.format(j), marker='*', ms=20)
+#plt.legend()
+#plt.show()
