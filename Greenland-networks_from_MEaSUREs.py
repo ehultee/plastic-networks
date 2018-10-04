@@ -8,6 +8,7 @@ from osgeo import gdal
 import sys #allowing GDAL to throw Python exceptions
 import pandas as pd #want to treat velocity maps as Pandas dataframes
 import shapefile
+import datetime
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from matplotlib import cm
@@ -103,14 +104,16 @@ termini_init = read_termini(fn, init_year)
 
 ##iterate over keys in termini_init to make dictionary of lines for each GlacierID
 #ids_to_trace = termini_init.keys() #trace all points of all glaciers
-ids_to_trace = (3, 153, 175) # IDs for only Jakobshavn, Kangerlussuaq, Helheim
-#ids_to_trace = (3,) #Just Jakobshavn
+#ids_to_trace = (3, 153, 175) # IDs for only Jakobshavn, Kangerlussuaq, Helheim
+ids_to_trace = (143, 144, 145, 146, 147, 148, 149, 151, 159, 177, 195) #branches that previously returned a KeyError when filtered (4 Oct)
+#ids_to_trace = range(201, 230)
 
 all_lines = {}
 for gid in ids_to_trace:
     lines = {}
     termcoords = termini_init[gid] #points spanning terminus for this glacier
-    for j in range(len(termcoords))[::10]: #need to down-sample, since some glaciers have 50 points across terminus (and we expect most will have fairly simple networks)
+    sampling = int(floor(len(termcoords)/10))+1 #allowing up to 10 branches traced, and with +1 ensuring that we don't step by 0
+    for j in range(len(termcoords))[::sampling]: #need to down-sample, since some glaciers have 50 points across terminus (and we expect most will have fairly simple networks)
         print 'Tracing terminus point {} of {} in Glacier ID {}'.format(j, len(termcoords), gid)
         p = termcoords[j]
         line_coords, width = Trace_wWidth(p[0], p[1], trace_up=True, xarr=x_comp, yarr=y_comp, Vx = func_vxcomp, Vy = func_vycomp, V = func_vcomp) #Uses Trace_wWidth and FilterMainTributaries from network_selection.py
@@ -119,8 +122,19 @@ for gid in ids_to_trace:
         else:
             xyw = [(line_coords[n][0], line_coords[n][1], width[n]) for n in range(len(line_coords))]
             lines[j] = (xyw)
-    filtered_tribs = FilterMainTributaries(lines, Vx = func_vxcomp, Vy = func_vycomp)
-    all_lines[gid] = filtered_tribs
+    filtered_tribs = FilterMainTributaries(lines, Vx = func_vxcomp, Vy = func_vycomp) 
+    all_lines[gid] = filtered_tribs #saving this to the dictionary of all lines we're working with
+    
+    #writing to CSV (based on Write_Network)
+    out_dir = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/'
+    output_name = out_dir + 'Gld-autonetwork-GID{}-date_{}.csv'.format(gid, datetime.date.today())
+    with open(output_name, 'wb') as csvfile:
+        linewriter = csv.writer(csvfile, delimiter=',')
+        linewriter.writerow(['Line-number', 'x-coord', 'y-coord', 'width'])
+        for n in range(len(filtered_tribs)):
+            for m in range(len(filtered_tribs[n])):
+                linewriter.writerow([str(n), filtered_tribs[n][m][0], filtered_tribs[n][m][1], filtered_tribs[n][m][2]])
+
 
 #plt.figure()
 #for k in filtered_tribs.keys():
@@ -129,7 +143,7 @@ for gid in ids_to_trace:
 #    plt.plot(trib[:,0], trib[:,1], label='Line {}'.format(k))
 #plt.legend()
 #plt.show()
-#
+
 #plt.figure()
 #for j in range(len(termcoords))[::10]:
 #    p=termcoords[j]
