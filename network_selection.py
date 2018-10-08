@@ -313,8 +313,12 @@ def WriteNetwork(startcoords, trace_up=False, output_name='glacier-network-lines
     for j in range(len(startcoords)):
         k = startcoords[j]
         line_coords, width = Trace_wWidth(k[0], k[1], trace_up=trace_up)
-        xyw = [(line_coords[n][0], line_coords[n][1], width[n]) for n in range(len(line_coords))]
-        lines[j] = (xyw)
+        if sum(np.isnan(line_coords))>0:
+            pass #Don't save the line if it contains nan points
+        else:
+            xyw = [(line_coords[n][0], line_coords[n][1], width[n]) for n in range(len(line_coords))]
+            lines[j] = (xyw)
+
    
     if len(lines) > 1:    
         outdict = FilterMainTributaries(lines)
