@@ -127,10 +127,12 @@ class Flowline(Ice):
     def process_width(self):
         self.width_function = interpolate.interp1d(ArcArray(self.coords), self.width)
     
-    def optimize_yield_strength(self, testrange=np.arange(50e3, 500e3, 5e3), arcmax=None, use_balancethick=True):
+    def optimize_yield_strength(self, testrange=np.arange(50e3, 500e3, 5e3), arcmax=None, use_balancethick=True, initial_termpos=0):
         """Run optimization and set the result to be the optimal value for the flowline instance.  
         Arcmax over which to run optimization can be adjusted according to how high up we think plastic approximation should go.
-        NOTE: arcmax default is None but will set to self.length.  self unavailable at function define-time"""
+        initial_termpos defaults to 0 (i.e. the end of the flowline we've saved) but if observations against which we optimize have a different terminus, we can specify where to start the test profiles
+        NOTE: arcmax default is None but will set to self.length.  self unavailable at function define-time
+        """
         
         #Fixing default that could not be used in definition of arguments
         if arcmax is None:
@@ -143,15 +145,15 @@ class Flowline(Ice):
         
         for tau in testrange:
             if use_balancethick:
-                hinit = BalanceThick(bedf(0)/H0, tau/(rho_ice*g*H0**2/L0))+(bedf(0)/H0)
+                hinit = BalanceThick(bedf(initial_termpos)/H0, tau/(rho_ice*g*H0**2/L0))+(bedf(initial_termpos)/H0)
             else:
-                hinit = surf(0)/H0
+                hinit = surf(initial_termpos)/H0
                 
             ##CONSTANT YIELD
-            model_const = plasticmodel_error(bedf, tau, B_const, 0, hinit, arcmax, 25000, surf) #prescribed terminus thickness
+            model_const = plasticmodel_error(bedf, tau, B_const, initial_termpos, hinit, arcmax, 25000, surf) #prescribed terminus thickness
             CV_const = model_const[1]
             ##VARIABLE YIELD
-            model_var = plasticmodel_error(bedf, tau, B_var, 0, hinit, arcmax, 25000, surf) #prescribed terminus thickness
+            model_var = plasticmodel_error(bedf, tau, B_var, initial_termpos, hinit, arcmax, 25000, surf) #prescribed terminus thickness
             CV_var = model_var[1]
             
             CV_const_arr.append(CV_const)
