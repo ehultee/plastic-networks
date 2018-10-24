@@ -179,7 +179,7 @@ for gl in glacier_networks:
     #        gl.make_full_lines()
     #    else:
     #        pass
-        #gl.process_full_lines(B_interp, S_interp, H_interp)
+    #    gl.process_full_lines(B_interp, S_interp, H_interp)
     #gl.optimize_network_yield(check_all=False)
     for fln in gl.flowlines:
         fln.yield_type  = gl.network_yield_type
@@ -187,25 +187,81 @@ for gl in glacier_networks:
     gl.network_ref_profiles()
 
 
+#Jakobshavn_smb_l = [0.001*SMB_l(Jakobshavn_main.flowlines[0].coords[i,0], Jakobshavn_main.flowlines[0].coords[i,1]) for i in range(len(Jakobshavn_main.flowlines[0].coords))] #multiplied by 0.001 to convert from mm to m
+#Jak_smb_alphadot = np.mean(Jakobshavn_smb_l)
+#Jak_terminus_adot = Jakobshavn_smb_l[0]
+#
+##Jak_sec_mainline = np.asarray([SEC_i(Jakobshavn_main.flowlines[0].coords[i,0], Jakobshavn_main.flowlines[0].coords[i,1]) for i in range(len(Jakobshavn_main.flowlines[0].coords))])
+##away_from_edge = np.argmin(Jak_sec_mainline)
+##Jak_sec_alphadot = np.mean(Jak_sec_mainline[away_from_edge::])
+##Jak_terminus_sec = float(min(np.asarray(Jak_sec_mainline).flatten())) #using min because close to edge, values get disrupted by mask interpolation
+#
+#Jakobshavn_main.terminus_time_evolve(testyears=arange(0, 15, 0.25), alpha_dot=Jak_smb_alphadot/Jakobshavn_main.H0, has_smb=True, terminus_balance=Jak_terminus_adot/Jakobshavn_main.H0, debug_mode=True)
 
-jakcoords_main = Flowline_CSV('Documents/GitHub/plastic-networks/Data/jakobshavn-mainline-w_width.csv', 1, has_width=True, flip_order=False)[0]
-jak_0 = Flowline(coords=jakcoords_main, index=0, name='Jak mainline', has_width=True)
-Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main/south]', init_type='Flowline', branches=(jak_0), main_terminus=jakcoords_main[0])
-Jakobshavn_main.load_network(filename='JakobshavnIsbrae-main_south.pickle')
+testyears = arange(0, 15, 0.25)
+branch_sep_buffer = 10000/L0 #buffer between tributary intersections
+db = True
+test_A = 1.7E-24
 
-Jakobshavn_main.process_full_lines(B_interp, S_interp, H_interp)
-for fln in Jakobshavn_main.flowlines:
-    fln.yield_type = Jakobshavn_main.network_yield_type
-    fln.optimal_tau = Jakobshavn_main.network_tau
-Jakobshavn_main.network_ref_profiles()
 
-Jakobshavn_smb_l = [0.001*SMB_l(Jakobshavn_main.flowlines[0].coords[i,0], Jakobshavn_main.flowlines[0].coords[i,1]) for i in range(len(Jakobshavn_main.flowlines[0].coords))] #multiplied by 0.001 to convert from mm to m
-Jak_smb_alphadot = np.mean(Jakobshavn_smb_l)
-Jak_terminus_adot = Jakobshavn_smb_l[0]
+#Finding SEC rates and making persistence projection
+for gl in glacier_networks:
+    print gl.name
+    gl_smb_l = [0.001*SMB_l(gl.flowlines[0].coords[i,0], gl.flowlines[0].coords[i,1]) for i in range(len(gl.flowlines[0].coords))]
+    gl.smb_alphadot = np.mean(gl_smb_l) #work on summing over all branches later
+    print 'a_dot from SMB: {}'.format(gl.smb_alphadot)
+    gl.terminus_adot = gl_smb_l[0]
+    print 'Terminus a_dot: {}'.format(gl.terminus_adot)
+    #gl.sec_mainline = np.asarray([SEC_i(gl.flowlines[0].coords[i,0], gl.flowlines[0].coords[i,1]) for i in range(len(gl.flowlines[0].coords))])
+    #away_from_edge = np.argmin(gl.sec_mainline)
+    #gl.sec_alphadot = np.mean(gl.sec_mainline[away_from_edge::])
+    #variable_forcing = linspace(start=gl.sec_alphadot, stop=2*gl.sec_alphadot, num=len(testyears))
+    #gl.terminus_sec = float(min(gl.sec_mainline.flatten()))#using min because values close to edge get disrupted by mask interpolation
+    gl.terminus_time_evolve(testyears=testyears, alpha_dot=gl.smb_alphadot, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=gl.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A) 
+    
+    #print 'Saving output for {}'.format(gl.name)
+    #fn = str(gl.name)
+    #fn1 = fn.replace(" ", "")
+    #fn2 = fn1.replace("[", "-")
+    #fn3 = fn2.replace("/", "_")
+    #fn4 = fn3.replace("]", "")
+    #fn5 = fn4+'-7Oct18-SMB_persistence-coldice-15a_dt025a.pickle'
+    #gl.save_network(filename=fn5)
 
-#Jak_sec_mainline = np.asarray([SEC_i(Jakobshavn_main.flowlines[0].coords[i,0], Jakobshavn_main.flowlines[0].coords[i,1]) for i in range(len(Jakobshavn_main.flowlines[0].coords))])
-#away_from_edge = np.argmin(Jak_sec_mainline)
-#Jak_sec_alphadot = np.mean(Jak_sec_mainline[away_from_edge::])
-#Jak_terminus_sec = float(min(np.asarray(Jak_sec_mainline).flatten())) #using min because close to edge, values get disrupted by mask interpolation
 
-Jakobshavn_main.terminus_time_evolve(testyears=arange(0, 15, 0.25), alpha_dot=Jak_smb_alphadot/Jakobshavn_main.H0, has_smb=True, terminus_balance=Jak_terminus_adot/Jakobshavn_main.H0, debug_mode=True)
+
+######-------------------
+####### SUMMARY PLOTTING
+######-------------------
+
+projections = [Jakobshavn_main.model_output, Jakobshavn_sec.model_output, Jakobshavn_tert.model_output, KogeBugt.model_output, Helheim.model_output, Kanger.model_output]
+names = ['Sermeq Kujalleq [main]', 'Sermeq Kujalleq [central]', 'Sermeq Kujalleq [north]', 'Koge Bugt', 'Helheim', 'Kangerlussuaq']
+combined_networks = ['Sermeq Kujalleq', 'Koge Bugt', 'Helheim', 'Kangerlussuaq']
+#rates = ['{0:.2f} m/a'.format(gl.sec_alphadot) for gl in glacier_networks]
+##styles = [':', '-.', '--', '-']
+markers = ['o', '.', ',', '^', 'd', '*']
+styles = ['-', ':', '-.', '-', '-', '-']
+cmap = cm.get_cmap('winter')
+colors = cmap([0.1, 0.2, 0.3, 0.5, 0.7, 0.9])
+alt_colors = matplotlib.cm.get_cmap('Greys')([0.3, 0.5, 0.7, 0.9])
+#
+###
+####terminus
+plt.figure('Terminus retreat, 15 a -2C ice, SMB persistence (ERA-Interim)', figsize=(12,8))
+for j, pr in enumerate(projections):
+    print j
+    plt.plot(testyears, -0.001*np.array(pr[0]['Termini'][1::]), linewidth=4, color=colors[j], linestyle=styles[j], label='{}'.format(names[j]))
+    #plt.plot(testyears[::20], -0.001*np.array(pr[0]['Termini'][1::])[::20], linewidth=0, marker=markers[j], ms=10, color=colors[j])
+#plt.legend(loc='lower left')
+plt.axes().set_xlabel('Year of simulation', size=20)
+plt.axes().set_ylabel('Terminus change [km]', size=20)
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+#plt.axes().set_xlim(0, 82)
+#plt.axes().set_xticks([7, 32, 57, 82])
+#plt.axes().set_xticklabels(['2025', '2050', '2075', '2100']) #label projection out to calendar year 2100
+#plt.axes().set_xlim(0, 82)
+#plt.axes().set_xticks([0, 25, 50, 75, 100])
+##plt.axes().set_ylim(-100, 1)
+#plt.axes().set_yticks([-40, -30, -20, -10, 0])
+plt.title('15 yr SMB persistence, -2C ice', fontsize=26)
+plt.show()

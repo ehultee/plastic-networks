@@ -60,7 +60,7 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], B.T[::, ::-1])
 #Jakobshavn_1 = PlasticNetwork(name='Jakobshavn Isbrae 1', init_type='Flowline', branches=(jak_1), main_terminus=jakcoords_1[0])
 #Jakobshavn_2 = PlasticNetwork(name='Jakobshavn Isbrae 2', init_type='Flowline', branches=(jak_2), main_terminus=jakcoords_2[0])
 #
-jakcoords_main = Flowline_CSV('Documents/GitHub/plastic-networks/jakobshavn-mainline-w_width.csv', 1, has_width=True, flip_order=False)[0]
+jakcoords_main = Flowline_CSV('Documents/GitHub/plastic-networks/Data/jakobshavn-mainline-w_width.csv', 1, has_width=True, flip_order=False)[0]
 jak_0 = Flowline(coords=jakcoords_main, index=0, name='Jak mainline', has_width=True)
 Jakobshavn_main = PlasticNetwork(name='Jakobshavn Isbrae [main/south]', init_type='Flowline', branches=(jak_0), main_terminus=jakcoords_main[0])
 Jakobshavn_main.load_network(filename='JakobshavnIsbrae-main_south.pickle', load_mainline_output=False)
@@ -163,7 +163,7 @@ Jakobshavn_main.process_full_lines(B_interp, S_interp, H_interp)
 #cmap = matplotlib.cm.get_cmap('winter')
 #colors = cmap([0.3, 0.5, 0.7, 0.9])
 
-termflux = Jakobshavn_main.model_output[0]['Terminus_flux']
+#termflux = Jakobshavn_main.model_output[0]['Terminus_flux']
 #termpos = Jakobshavn_main.model_output[0]['Termini']
 #
 #plt.figure()
@@ -180,14 +180,14 @@ termflux = Jakobshavn_main.model_output[0]['Terminus_flux']
 #plt.axes().set_yticks([-15, -10, -5, 0])
 #plt.show()
 
-plt.figure()
-plt.plot(testyears[2::], 1E-12*np.array(termflux), linewidth=4, color=colors[0], label='Sermeq Kujalleq [Ilulissat]')
-plt.plot(testyears[5::5], 1E-12*np.array(termflux[3::5]), linewidth=0, marker=markers[0], ms=10, color=colors[0])    
-plt.legend(loc='upper right')
-plt.axes().set_xlabel('Year of simulation', size=30)
-plt.axes().set_ylabel('Terminus ice flux [Gt/a]', size=30)
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-#plt.axes().set_ylim(-16, 1)
-#plt.axes().set_yticks([-15, -10, -5, 0])
-plt.show()
+#plt.figure()
+#plt.plot(testyears[2::], 1E-12*np.array(termflux), linewidth=4, color=colors[0], label='Sermeq Kujalleq [Ilulissat]')
+#plt.plot(testyears[5::5], 1E-12*np.array(termflux[3::5]), linewidth=0, marker=markers[0], ms=10, color=colors[0])    
+#plt.legend(loc='upper right')
+#plt.axes().set_xlabel('Year of simulation', size=30)
+#plt.axes().set_ylabel('Terminus ice flux [Gt/a]', size=30)
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+##plt.axes().set_ylim(-16, 1)
+##plt.axes().set_yticks([-15, -10, -5, 0])
+#plt.show()
 
