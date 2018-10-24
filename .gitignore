@@ -1,2 +1,13 @@
 
 terminus_forcing_tests.py
+Data/MEaSUREs-velocities/greenland_vel_mosaic200_2016_2017_vel_v2.tif
+Data/MEaSUREs-velocities/greenland_vel_mosaic200_2016_2017_vx_v2.tif
+Data/MEaSUREs-velocities/greenland_vel_mosaic200_2016_2017_vy_v2.tif
+Data/MEaSUREs-velocities/greenland_vel_mosaic500_2000_2001_vel_v2.tif
+Data/MEaSUREs-velocities/greenland_vel_mosaic500_2000_2001_vx_v2.tif
+Data/MEaSUREs-velocities/greenland_vel_mosaic500_2000_2001_vy_v2.tif
+Data/MEaSUREs-velocities/greenland_vel_mosaic500_2016_2017_vel_v2.tif
+Data/MEaSUREs-velocities/greenland_vel_mosaic500_2016_2017_vx_v2.tif
+Data/MEaSUREs-velocities/greenland_vel_mosaic500_2016_2017_vy_v2.tif
+*.pyc
+GL_model_tools.pyc
