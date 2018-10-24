@@ -716,11 +716,12 @@ class PlasticNetwork(Ice):
         print 'Coordinates with ice thickness less than flotation removed.  Please re-run make_full_lines and process_full_lines for network {}.'.format(self.name)
             
     
-    def optimize_network_yield(self, testrange=arange(50e3, 500e3, 5e3), arcmax_list = None, check_all=False, use_balancethick=True):
+    def optimize_network_yield(self, testrange=arange(50e3, 500e3, 5e3), arcmax_list = None, check_all=False, use_balancethick=True, nw_initial_termpos=0):
         """Runs yield strength optimization on each of the network Flowline objects and sets the yield strength of the 'main' branch as the network's default.
         Could find a better way to do this...
         arcmax_list: list of how high up to optimise in order of flowline index; default is full length (NOTE: default of "None" is set to more sensible default in function.  Same problem with self unavailable at define-time)
         check_all=False/True decides whether to do full optimisation to find tau_y on each line (True) or just take the main line value (False)
+        nw_initial_termpos: default to 0, sets location of terminus from which to optimize
         """
         #Fixing default that could not be used in definition of arguments
         if arcmax_list is None:
@@ -730,13 +731,13 @@ class PlasticNetwork(Ice):
             self.network_yield_type = self.flowlines[0].yield_type
             self.network_tau = self.flowlines[0].optimal_tau
         except AttributeError:
-            self.flowlines[0].optimize_yield_strength(testrange, arcmax=arcmax_list[0])
+            self.flowlines[0].optimize_yield_strength(testrange, arcmax=arcmax_list[0], use_balancethick=use_balancethick, initial_termpos=nw_initial_termpos)
             self.network_yield_type = self.flowlines[0].yield_type
             self.network_tau = self.flowlines[0].optimal_tau
         
         if check_all:
             for j,line in enumerate(self.flowlines):
-                line.optimize_yield_strength(testrange, arcmax=arcmax_list[j]) #run optimisation for each flowline
+                line.optimize_yield_strength(testrange, arcmax=arcmax_list[j], use_balancethick=use_balancethick, initial_termpos=nw_initial_termpos) #run optimisation for each flowline
         else:
             pass
 

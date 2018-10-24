@@ -62,9 +62,9 @@ def Continuous_DownVStep(startcoord_x, startcoord_y, surface, xarr, yarr, Vx, Vy
 ##-------------------------------
 
 ## Read in line from CSV
-def Flowline_CSV(filename, nlines, has_width=False, flip_order=True):
+def Flowline_CSV(filename, nlines=None, has_width=False, flip_order=True):
     """Function to read in flowlines in CSV format, similar to those sent by C. Kienholz for Alaska.
-    Input: filename; nlines=number of flowlines
+    Input: filename; nlines=number of flowlines.  Edited to make this argument unnecessary, but leaving it in for backward compatibility
         has_width: default False for older files that have only (x,y) rather than (x,y,width) saved
         flip_order: default False for lines that already run from terminus to peak
     Output: list of flowlines
@@ -80,7 +80,9 @@ def Flowline_CSV(filename, nlines, has_width=False, flip_order=True):
     data = {k : [] for k in keys} #end of line has hidden characters, so 'point_m' does not get read
     #data['Line number'] = []
     data['Length_ID'] = collections.OrderedDict() #new dictionary that counts how many points (i.e. lines of file) are in each flowline.  Must be ordered for later iteration!
-    data['Lineslist'] = [[] for k in range(nlines)] 
+    #if nlines is not None:
+    #    data['Lineslist'] = [[] for k in range(nlines)] 
+    data['Lineslist'] = [] #initialize as empty list
     
     lines = f.readlines()
     f.close()
@@ -100,6 +102,7 @@ def Flowline_CSV(filename, nlines, has_width=False, flip_order=True):
         
         if parts[0] not in data['Length_ID'].keys(): #finding out where lines separate 
             temp = []
+            data['Lineslist'].append(temp) #initialize new empty array that can be modified in-place later
             data['Length_ID'][parts[0]] = 1
             j+=1 
         else:
@@ -113,10 +116,13 @@ def Flowline_CSV(filename, nlines, has_width=False, flip_order=True):
         else:
             temp.append((x_coord, y_coord))
             
-        data['Lineslist'][j-1] = np.array(temp) 
+        data['Lineslist'][j-1] = np.array(temp) #need to modify an existing array rather than append to keep correct indexing
 
         #data['Lineslist'][j] = np.array(temp) 
-
+    
+    if nlines is None:
+        nlines = len(data['Length_ID'].keys())
+    
     if flip_order:          
         centrelines_list = [np.array(data['Lineslist'][j])[::-1] for j in range(nlines)] #making arrays, reversed to start at terminus rather than peak
     else:
