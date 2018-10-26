@@ -159,16 +159,20 @@ class Flowline(Ice):
             CV_const_arr.append(CV_const)
             CV_var_arr.append(CV_var)
         
-        constopt_index = np.argmin(CV_const_arr)
-        varopt_index = np.argmin(CV_var_arr)
+        ##Masking 0 and NaN so that broken runs do not appear to be "optimal"
+        CV_const_ma = np.ma.masked_equal(CV_const_arr, 0.0, copy=False)
+        CV_var_ma = np.ma.masked_equal(CV_var_arr, 0.0, copy=False)
+        
+        constopt_index = np.argmin(CV_const_ma)
+        varopt_index = np.argmin(CV_var_ma)
         
         constopt = testrange[constopt_index]
         varopt = testrange[varopt_index]
         
-        if np.min(CV_const_arr)<np.min(CV_var_arr):
+        if np.min(CV_const_ma)<np.min(CV_var_ma):
             yieldtype = 'constant'
             t_opt = constopt
-        elif np.min(CV_const_arr)>np.min(CV_var_arr):
+        elif np.min(CV_const_ma)>np.min(CV_var_ma):
             yieldtype = 'variable'
             t_opt = varopt
         #elif np.min(CV_const_arr)==np.min(CV_var_arr): # This is rare enough that it probably means something else is wrong.
