@@ -192,7 +192,7 @@ def B_const(tau_yield, elev, thick, pos=None, time=None):  #functional form of B
     return tau_yield/(rho_ice*g*H0**2/L0)
 
 
-def plasticmodel_error(bedfunction, tau_val, Bfunction, startpoint, hinit, endpoint, Npoints, obsheightfunction):
+def plasticmodel_error(bedfunction, tau_val, Bfunction, startpoint, hinit, endpoint, Npoints, obsheightfunction, allow_upstream_breakage=True):
     """Arguments used:
         bedfunction should be function of arclength returning bed elevation of the glacier.
         Bfunction is nondim yield strength.  Should be function with arguments elevation, ice thickness, position, and time (can just not use last two if no variation)
@@ -202,7 +202,8 @@ def plasticmodel_error(bedfunction, tau_val, Bfunction, startpoint, hinit, endpo
         Npoints is how many model points to use (suggested 25000+)
         #Resolution (in m) is how closely we want to space the model sample points (CURRENTLY USING NPOINTS INSTEAD OF RESOLUTION)
         Obsheightfunction is the observations for comparison.  May need to process from a thickness measurement. (working on functionality to make this argument optional)
-     
+        allow_upstream_breakage: determines whether profiles should be allowed to break (due to yield) when stepping upstream--default is True, but False may allow optimization with more sparse data
+        
      plasticmodel_error function returns values: 
         RMS error
         CV(RMSE)
@@ -236,12 +237,12 @@ def plasticmodel_error(bedfunction, tau_val, Bfunction, startpoint, hinit, endpo
             if modelthick<BalanceThick(bed,B):
                 print 'Thinned below water balance at x=' + str(10*x)+'km'
                 break
-        if modelthick<FlotationThick(bed):
-            print 'Thinned below flotation at x=' + str(10*x)+'km'
-            break
-        if modelthick<4*B*H0/L0:
-            print 'Thinned below yield at x=' +str(10*x)+'km'
-            break
+            if modelthick<FlotationThick(bed) and allow_upstream_breakage: #new control on whether breaking happens
+                print 'Thinned below flotation at x=' + str(10*x)+'km'
+                break
+            if modelthick<4*B*H0/L0 and allow_upstream_breakage:
+                print 'Thinned below yield at x=' +str(10*x)+'km'
+                break
         else:
             basearr.append(bed)
             SEarr.append(SEarr[-1]+(B/modelthick)*dx) 

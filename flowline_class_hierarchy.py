@@ -127,10 +127,11 @@ class Flowline(Ice):
     def process_width(self):
         self.width_function = interpolate.interp1d(ArcArray(self.coords), self.width)
     
-    def optimize_yield_strength(self, testrange=np.arange(50e3, 500e3, 5e3), arcmax=None, use_balancethick=True, initial_termpos=0):
+    def optimize_yield_strength(self, testrange=np.arange(50e3, 500e3, 5e3), arcmax=None, use_balancethick=True, initial_termpos=0, allow_upstream_breakage=False):
         """Run optimization and set the result to be the optimal value for the flowline instance.  
         Arcmax over which to run optimization can be adjusted according to how high up we think plastic approximation should go.
         initial_termpos defaults to 0 (i.e. the end of the flowline we've saved) but if observations against which we optimize have a different terminus, we can specify where to start the test profiles
+        allow_upstream_breakage: argument passed to plasticmodel_error to allow or suppress upstream yield-strength breakage while optimizing
         NOTE: arcmax default is None but will set to self.length.  self unavailable at function define-time
         """
         
@@ -150,10 +151,10 @@ class Flowline(Ice):
                 hinit = surf(initial_termpos)/H0
                 
             ##CONSTANT YIELD
-            model_const = plasticmodel_error(bedf, tau, B_const, initial_termpos, hinit, arcmax, 25000, surf) #prescribed terminus thickness
+            model_const = plasticmodel_error(bedf, tau, B_const, initial_termpos, hinit, arcmax, 25000, surf, allow_upstream_breakage=allow_upstream_breakage) #prescribed terminus thickness
             CV_const = model_const[1]
             ##VARIABLE YIELD
-            model_var = plasticmodel_error(bedf, tau, B_var, initial_termpos, hinit, arcmax, 25000, surf) #prescribed terminus thickness
+            model_var = plasticmodel_error(bedf, tau, B_var, initial_termpos, hinit, arcmax, 25000, surf, allow_upstream_breakage=allow_upstream_breakage) #prescribed terminus thickness
             CV_var = model_var[1]
             
             CV_const_arr.append(CV_const)
@@ -720,7 +721,7 @@ class PlasticNetwork(Ice):
         print 'Coordinates with ice thickness less than flotation removed.  Please re-run make_full_lines and process_full_lines for network {}.'.format(self.name)
             
     
-    def optimize_network_yield(self, testrange=arange(50e3, 500e3, 5e3), arcmax_list = None, check_all=False, use_balancethick=True, nw_initial_termpos=0):
+    def optimize_network_yield(self, testrange=arange(50e3, 500e3, 5e3), arcmax_list = None, check_all=False, use_balancethick=True, nw_initial_termpos=0, allow_upstream_breakage=False):
         """Runs yield strength optimization on each of the network Flowline objects and sets the yield strength of the 'main' branch as the network's default.
         Could find a better way to do this...
         arcmax_list: list of how high up to optimise in order of flowline index; default is full length (NOTE: default of "None" is set to more sensible default in function.  Same problem with self unavailable at define-time)
@@ -735,13 +736,13 @@ class PlasticNetwork(Ice):
             self.network_yield_type = self.flowlines[0].yield_type
             self.network_tau = self.flowlines[0].optimal_tau
         except AttributeError:
-            self.flowlines[0].optimize_yield_strength(testrange, arcmax=arcmax_list[0], use_balancethick=use_balancethick, initial_termpos=nw_initial_termpos)
+            self.flowlines[0].optimize_yield_strength(testrange, arcmax=arcmax_list[0], use_balancethick=use_balancethick, initial_termpos=nw_initial_termpos, allow_upstream_breakage=allow_upstream_breakage)
             self.network_yield_type = self.flowlines[0].yield_type
             self.network_tau = self.flowlines[0].optimal_tau
         
         if check_all:
             for j,line in enumerate(self.flowlines):
-                line.optimize_yield_strength(testrange, arcmax=arcmax_list[j], use_balancethick=use_balancethick, initial_termpos=nw_initial_termpos) #run optimisation for each flowline
+                line.optimize_yield_strength(testrange, arcmax=arcmax_list[j], use_balancethick=use_balancethick, initial_termpos=nw_initial_termpos, allow_upstream_breakage=allow_upstream_breakage) #run optimisation for each flowline
         else:
             pass
 
