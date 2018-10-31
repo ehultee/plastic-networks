@@ -64,14 +64,19 @@ def NearestMaskVal(x0,y0):
 ### READ IN AND PROCESS ONE NETWORK AT A TIME
 ##-------------------
 
-#glacier_ids = range(1,195) #tell the function which MEaSUREs glacier IDs you want to process.
-#not_present = (144, 145, 146, 147, 148, 149, 151) #glacier IDs missing from set
-#for n in not_present:
-#    try:
-#        glacier_ids.remove(n)
-#    except ValueError:
-#        pass
-glacier_ids = range(1,10)
+glacier_ids = range(1,195) #tell the function which MEaSUREs glacier IDs you want to process.
+not_present = (93, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 159, 161, 169, 172, 173, 177) #glacier IDs missing from set
+for n in not_present:
+    try:
+        glacier_ids.remove(n)
+    except ValueError:
+        pass
+#glacier_ids = range(1,10) #abbreviated test set
+
+beds_foranalysis = []
+termheights_foranalysis = []
+optimal_taus = []
+optimal_yieldtypes = []
 
 base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
 
@@ -104,15 +109,32 @@ for gid in glacier_ids:
     print 'BedMachine terminus is at index {}, coords {}'.format(idx, term_bm)
     #idx, term_bm = next((i, c) for i, c in enumerate(nw.flowlines[0].coords) if S_interp(c[0], c[1])>2.0) #testing with surface cutoff (2m) for now instead of retrieving mask
     term_arcval = ArcArray(nw.flowlines[0].coords)[idx]
-    print 'Surface elevation at this terminus is {}. Bed elevation is {}.'.format(nw.flowlines[0].surface_function(term_arcval), nw.flowlines[0].bed_function(term_arcval))
+    term_bed = nw.flowlines[0].bed_function(term_arcval)
+    term_surface = nw.flowlines[0].surface_function(term_arcval)
+    print 'Surface elevation at this terminus is {}. Bed elevation is {}.'.format(term_surface, term_bed)
+    beds_foranalysis.append(term_bed)
+    termheights_foranalysis.append(term_surface)
     try:
-        nw.optimize_network_yield(check_all=False, nw_initial_termpos=term_arcval, use_balancethick=False)
+        nw.optimize_network_yield(check_all=False, nw_initial_termpos=term_arcval, use_balancethick=False, allow_upstream_breakage=False)
+        optimal_taus.append(nw.flowlines[0].optimal_tau)
+        optimal_yieldtypes.append(nw.network_yield_type)
         print 'Optimal yield strength for GID {} is {}, {}'.format(gid, nw.flowlines[0].optimal_tau, nw.network_yield_type)
     except UnboundLocalError: #type of error returned when no optimal value is found
         print 'Error finding optimal yield strength for glacier ID {}'.format(gid)
+        optimal_taus.append(np.nan)
+        optimal_yieldtypes.append('error')
+        
 #    
     #for fln in nw.flowlines:
     #    fln.yield_type = nw.network_yield_type
     #    fln.optimal_tau = nw.network_tau #actually I think this has already been done in optimize_network_yield...but we'll leave it for now
     #nw.network_ref_profiles()
+    
+out_dir = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/'
+output_fn = out_dir + 'bestfit_taus-fromdate_{}.csv'.format(datetime.date.today())
+with open(output_fn, 'wb') as csvfile:
+    linewriter = csv.writer(csvfile, delimiter=',')
+    linewriter.writerow(['Glacier ID', 'Optimal yield strength [Pa]', 'Yield type', 'Terminal bed [m a.s.l.]', 'Terminal SE [m a.s.l.]'])
+    for n, gid in enumerate(glacier_ids):
+        linewriter.writerow([gid, optimal_taus[n], optimal_yieldtypes[n], beds_foranalysis[n], termheights_foranalysis[n]])
 
