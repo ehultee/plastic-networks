@@ -51,7 +51,10 @@ unsmoothB = B
 smoothB = gaussian_filter(B, 2)
 #B_processed = np.ma.masked_where(thick_mask !=2, smoothB)
 
-S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S.T[::, ::-1])
+#Replacing interpolated surface with bed+thickness
+S_new = np.add(B, H)
+
+S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S_new.T[::, ::-1])
 H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
 B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 def NearestMaskVal(x0,y0):
@@ -115,7 +118,7 @@ for gid in glacier_ids:
     beds_foranalysis.append(term_bed)
     termheights_foranalysis.append(term_surface)
     try:
-        nw.optimize_network_yield(check_all=False, nw_initial_termpos=term_arcval, use_balancethick=False, allow_upstream_breakage=False)
+        nw.optimize_network_yield(check_all=False, testrange=arange(0e3, 500e3, 5e3), nw_initial_termpos=term_arcval, use_balancethick=False, allow_upstream_breakage=False)
         optimal_taus.append(nw.flowlines[0].optimal_tau)
         optimal_yieldtypes.append(nw.network_yield_type)
         print 'Optimal yield strength for GID {} is {}, {}'.format(gid, nw.flowlines[0].optimal_tau, nw.network_yield_type)
