@@ -201,7 +201,8 @@ for gl in glacier_networks:
 testyears = arange(0, 15, 0.25)
 branch_sep_buffer = 10000/L0 #buffer between tributary intersections
 db = True
-test_A = 1.7E-24
+#test_A = 1.7E-24 # -2 C, warm ice
+test_A = 3.5E-25 # -10 C, good guess for Greenland
 
 
 #Finding SEC rates and making persistence projection
@@ -247,12 +248,12 @@ alt_colors = matplotlib.cm.get_cmap('Greys')([0.3, 0.5, 0.7, 0.9])
 #
 ###
 ####terminus
-plt.figure('Terminus retreat, 15 a -2C ice, SMB persistence (ERA-Interim)', figsize=(12,8))
+plt.figure('Terminus retreat, 15 a -10C ice, SMB persistence (ERA-Interim)', figsize=(12,8))
 for j, pr in enumerate(projections):
     print j
     plt.plot(testyears, -0.001*np.array(pr[0]['Termini'][1::]), linewidth=4, color=colors[j], linestyle=styles[j], label='{}'.format(names[j]))
     #plt.plot(testyears[::20], -0.001*np.array(pr[0]['Termini'][1::])[::20], linewidth=0, marker=markers[j], ms=10, color=colors[j])
-#plt.legend(loc='lower left')
+plt.legend(loc='lower left')
 plt.axes().set_xlabel('Year of simulation', size=20)
 plt.axes().set_ylabel('Terminus change [km]', size=20)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
@@ -263,5 +264,5 @@ plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 #plt.axes().set_xticks([0, 25, 50, 75, 100])
 ##plt.axes().set_ylim(-100, 1)
 #plt.axes().set_yticks([-40, -30, -20, -10, 0])
-plt.title('15 yr SMB persistence, -2C ice', fontsize=26)
+plt.title('15 yr SMB persistence, -10C ice', fontsize=26)
 plt.show()
