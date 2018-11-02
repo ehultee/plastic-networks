@@ -68,7 +68,7 @@ def NearestMaskVal(x0,y0):
 ##-------------------
 
 glacier_ids = range(1,195) #tell the function which MEaSUREs glacier IDs you want to process.
-not_present = (93, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 159, 161, 169, 172, 173, 177) #glacier IDs missing from set
+not_present = (93, 94, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 159, 161, 169, 172, 173, 177) #glacier IDs missing from set
 for n in not_present:
     try:
         glacier_ids.remove(n)
@@ -83,12 +83,18 @@ optimal_yieldtypes = []
 
 base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
 
-for gid in glacier_ids:
+secondary_gids = range(153,195)
+for n in not_present:
+    try:
+        secondary_gids.remove(n)
+    except ValueError:
+        pass
+for gid in secondary_gids:
     print 'Reading in glacier ID: '+str(gid)
     if gid<160:
         filename = base_fpath+str(gid)+'-date_2018-10-03.csv'
     else:
-        filename = base_fpath+str(gid)+'date_2018-10-04.csv' #workaround because I ran these in batches and saved them with the date
+        filename = base_fpath+str(gid)+'-date_2018-10-04.csv' #workaround because I ran these in batches and saved them with the date
     
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
     nlines = len(coords_list)
