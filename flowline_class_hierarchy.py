@@ -360,13 +360,14 @@ class Flowline(Ice):
         print 'dM {} = frontal {} + upstream {}'.format(dM, frontal_dM, upstream_dM)
         return dM #in kg
         
-    def icediff_SL(self, profile1, profile2, upstream_lim=None, shape='trapezoid', separation_buffer=None):
+    def icediff_SL(self, profile1, profile2, upstream_lim=None, shape='trapezoid', separation_buffer=None, nan_to_zero=True):
         """Calculate sea level contribution due to calving between two plastic profiles (interpret as successive timesteps).  Nearly identical to icediff, but excludes ice already below sea level.
         Inputs:
             profile1: an output from Flowline.plastic_profile
             profile2: an output from Flowline.plastic_profile (at a later time step)
             shape: 'trapezoid' ##Add others later e.g. parabolic bed
             separation_buffer: distance away from intersection point (0D) to start counting flux from tributaries.  Should be ~0.5*width of downstream branch to prevent double-counting of ice mass.  Default 5000 m/L0. Does not affect single-branch networks.
+            nan_to_zero: determines whether to fill NaN values with 0 to support summation.  Default true.
         Output:
             dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2, in kg
         """
@@ -430,6 +431,8 @@ class Flowline(Ice):
             #print 'Integrated: frontal_dH = {}'.format(frontal_dH)
         frontal_dV = frontal_dH * self.L0 * 0.5*(w1+w2)
         frontal_dM = frontal_dV * self.rho_ice
+        if nan_to_zero:
+            frontal_dM = np.nan_to_num(frontal_dM)
         
         upstream_dH = lambda x: self.H0*(interpolated_func1(x) - interpolated_func2(x))*self.width_function(x)
         if x2 < downstream_limit:
@@ -444,6 +447,8 @@ class Flowline(Ice):
             #print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
         upstream_dV = upstream_dV_raw * self.L0
         upstream_dM = upstream_dV * self.rho_ice
+        if nan_to_zero:
+            upstream_dM = np.nan_to_num(upstream_dM)
         
         dM = frontal_dM + upstream_dM
         print 'dM {} = frontal {} + upstream {}'.format(dM, frontal_dM, upstream_dM)
