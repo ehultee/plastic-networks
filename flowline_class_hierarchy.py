@@ -372,14 +372,16 @@ class Flowline(Ice):
             dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2, in kg
         """
         try:
-            interpolated_func1 = interpolate.interp1d(profile1[0], profile1[1], kind='linear', copy=True, bounds_error=False) #Creating interpolated surface elevation profile
+            interpolated_func1 = interpolate.interp1d(profile1[0], np.asarray(profile1[1]).squeeze(), kind='linear', copy=True, bounds_error=False) #Creating interpolated surface elevation profile
             bed_function1 = interpolate.interp1d(profile1[0], profile1[2]) #useful to calculate full-thickness volume change from retreat/advance
         except ValueError: #this happens when terminus retreats past upstream forcing point
+            print 'There has been a ValueError calculating the old interpolated surface profile.'
             interpolated_func1 = lambda x: np.nan
             bed_function1 = lambda x: np.nan
         try:
-            interpolated_func2 = interpolate.interp1d(profile2[0], profile2[1], kind='linear', copy=True, bounds_error=False) #Creating interpolated profile if needed
+            interpolated_func2 = interpolate.interp1d(profile2[0], np.asarray(profile2[1]).squeeze(), kind='linear', copy=True, bounds_error=False) #Creating interpolated profile if needed
         except ValueError: #this happens when terminus retreats past upstream forcing point
+            print 'There has been a ValueError calculating the new interpolated surface profile.'
             interpolated_func2 = lambda x: np.nan #return NaN once no longer calculating meaningful changes
     
         arcmax = self.length
@@ -423,12 +425,12 @@ class Flowline(Ice):
                 frontal_dH = 0
             if x2 > downstream_limit:
                 frontal_dH = quad(full_thickness, downstream_limit, x2)[0]
-                #print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(downstream_limit), full_thickness(x2))
-                #print 'Integrated: frontal_dH = {}'.format(frontal_dH)
+                print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(downstream_limit), full_thickness(x2))
+                print 'Integrated: frontal_dH = {}'.format(frontal_dH)
         else:    
             frontal_dH = quad(full_thickness, x1, x2)[0] #should handle signs correctly 
-            #print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(x1), full_thickness(x2))
-            #print 'Integrated: frontal_dH = {}'.format(frontal_dH)
+            print 'frontal_dH integrand: \n full_thickness at downstream end: {} \n upstream end: {}'.format(full_thickness(x1), full_thickness(x2))
+            print 'Integrated: frontal_dH = {}'.format(frontal_dH)
         frontal_dV = frontal_dH * self.L0 * 0.5*(w1+w2)
         frontal_dM = frontal_dV * self.rho_ice
         if nan_to_zero:
@@ -438,13 +440,13 @@ class Flowline(Ice):
         if x2 < downstream_limit:
             upstream_dV_raw = quad(upstream_dH, downstream_limit, upstream_limit)[0]
             #print 'upstream_dH function: interpolated_func1(downstream_limit)={}, interpolated_func2(downstream_limit)={}, width_function(downstream_limit)={}'.format(interpolated_func1(downstream_limit), interpolated_func2(downstream_limit), self.width_function(downstream_limit))
-            #print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(downstream_limit), upstream_dH(upstream_limit))
-            #print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
+            print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(downstream_limit), upstream_dH(upstream_limit))
+            print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
         else:
             upstream_dV_raw = quad(upstream_dH, x2, upstream_limit)[0]
             #print 'upstream_dH function: interpolated_func1(x2)={}, interpolated_func2(x2)={}, width_function(x2)={}'.format(interpolated_func1(x2), interpolated_func2(x2), self.width_function(x2))
-            #print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(x2), upstream_dH(upstream_limit))
-            #print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
+            print 'upstream_dV integrand: \n  upstream_dH at downstream end: {} \n upstream end: {}'.format(upstream_dH(x2), upstream_dH(upstream_limit))
+            print 'Integrated: upstream_dH = {}'.format(upstream_dV_raw)
         upstream_dV = upstream_dV_raw * self.L0
         upstream_dM = upstream_dV * self.rho_ice
         if nan_to_zero:
