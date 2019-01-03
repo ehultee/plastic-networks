@@ -104,8 +104,8 @@ for gid in secondary_gids:
         for l in range(1, nlines):
             branch_l = Branch(coords = coords_list[l], index=l, order=1, flows_to=0)
             branch_list.append(branch_l)
-        nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
-        nw.make_full_lines()
+    nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
+    nw.make_full_lines()
     
     print 'Now processing glacier ID: '+str(gid)
     nw.process_full_lines(B_interp, S_interp, H_interp)
