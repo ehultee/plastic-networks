@@ -2,7 +2,7 @@
 ## 6 Nov 2018  EHU
 ## Edited 2 Jan 2019 - investigating networks that claim very small or negative terminus elevation
 import numpy as np
-from scipy import interpolate
+from scipy import interpolate, ndimage, misc
 from scipy.ndimage import gaussian_filter
 from scipy.signal import savgol_filter #use Savitzky-Golay filter to smooth catchments in Trace_wWidth
 from osgeo import gdal
@@ -206,6 +206,26 @@ for gid in IDs_neg_termini:
     fl.process_thickness(H_interp)
     flowlines_foranalysis.append(fl)
     
+
+##-------------------------------
+##   EXPLORATORY CALCULATIONS
+##-------------------------------
+
+## How far away are the MEaSUREs termini of networks stored empty from a valid MEaSUREs velocity composite value?
+IDs_stored_empty = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+def find_nearest_edge(masked_field, xgrid, ygrid, point, searchbuffer = 3):
+    '''Edge detection for masked quantities, e.g. surface, velocity
+    Default arg:
+        searchbuffer: buffer of surrounding pixels to search.  Default is 3--so will search a 6x6 pixel box
+    '''
+    sobel_x = ndimage.sobel(masked_field, axis=0, mode='constant')
+    sobel_y = ndimage.sobel(masked_field, axis=1, mode='constant')
+    sobel_im = np.hypot(sobel_x, sobel_y)
+    
+    nearest_gridx = np.argmin(xgrid - point[0])
+    nearest_gridy = np.argmin(ygrid - point[1]) #find indices of the point in the grid closest to the given coords
+    
+    
     
     
   
@@ -213,7 +233,6 @@ for gid in IDs_neg_termini:
 ##   EXPLORATORY PLOTTING
 ##-------------------------------
 ### Do networks stored empty have termini that lie 'off the map' of velocity for tracing?
-#IDs_stored_empty = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
 #plt.figure()
 #plt.contourf(x_comp, y_comp[::], v_comp[::-1, ::])
 #for gid in IDs_stored_empty:
