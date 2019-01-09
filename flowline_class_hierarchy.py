@@ -702,8 +702,11 @@ class PlasticNetwork(Ice):
             if line.thickness_function(0) < FlotationThick(line.bed_function(0)): #uses FlotationThick from plastic_utilities_v2
                 warnings.warn('{} line {} may have a floating terminus.  Run remove_floating and re-initialise.'.format(self.name, line.index))
     
-    def remove_floating(self):
+    def remove_floating(self, test_SE=True):
         """Checks mainline for floating terminus, removes offending coordinates.
+        Default arg.:
+            test_SE: when set to the default value of True, function performs an additional test to look for negative surface elevation.  
+                Tests SE = bed + thickness to identify ice that is either floating or a data artefact.
         """
         fltest = []
         mainline = self.flowlines[0]
@@ -714,7 +717,20 @@ class PlasticNetwork(Ice):
             flthick = FlotationThick(bed_init)
             fltest.append(thick_init - flthick)
         nonfloating = argwhere(sign(fltest)>0) #all points where thickness exceeds flotation
-        cleanfrom = nonfloating[0] #first point where thickness exceeds flotation
+        cleanthick = nonfloating[0] #first point where thickness exceeds flotation
+        
+        if test_SE:
+            surftest = []
+            for pt in arc:
+                thick_init = mainline.thickness_function(pt)
+                bed_init = mainline.bed_function(pt)
+                se_test = thick_init + bed_init
+                surftest.append(se_test)
+            nonneg = argwhere(sign(surftest)>0)
+            cleansurf = nonneg[0]
+            cleanfrom = max(cleanthick, cleansurf) #index where both tests have been passed
+        else:
+            cleanfrom = cleanthick #if not testing surface elevation, simply use result of first test
         
         cleaned_coords = mainline.coords[cleanfrom::]
         trimmed_width = mainline.width[cleanfrom::]
