@@ -13,6 +13,10 @@ from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 from scipy.signal import savgol_filter
 
+##------------------------------
+## Data used for these functions
+##------------------------------
+
 ## Reading in BedMachine map
 print 'Reading in surface topography'
 gl_bed_path ='Documents/1. Research/2. Flowline networks/Model/Data/BedMachine-Greenland/MCdataset-2015-04-27.nc'
@@ -220,20 +224,25 @@ def Trace_wWidth(startcoord_x, startcoord_y, trace_up=True, xarr=X, yarr=Y, Vx =
 def IDCentralBranch(lines):
     """Given a dictionary of flowline-like objects, oriented from terminus to head, finds which one is 'centerline' (terminal point closest to centroid of terminus) and returns its dictionary key
     """
-    end_points = [lines[k][0][0:2] for k in lines.keys()] #(x,y) coordinates at downstream end of each line
-    end_ls = geom.LineString(end_points) #need LineString to identify centroid
-    end_mp = geom.MultiPoint(end_points) #need MultiPoint to find closest point to centroid
-    end_centr = end_ls.centroid
-    central_point = nearest_points(end_mp, end_centr)[0] #(x,y) coords of point closest to centroid
-    ## Now check which line has that terminus point
-    for i,p in enumerate(end_mp):
-        if p.distance(central_point) > 0.01: #allowing tolerance for floating-point errors in Shapely
-            pass
-        elif p.distance(central_point) < 0.01:
-            print 'Central branch has key {}'.format(lines.keys()[i])
-            central_key = lines.keys()[i] # be careful that lines.keys() may be ordered differently from what we expect--but should match end_mp by construction
-        else:
-            print 'Error finding central key'
+    if len(lines.keys())>1:
+        end_points = [lines[k][0][0:2] for k in lines.keys()] #(x,y) coordinates at downstream end of each line
+        end_ls = geom.LineString(end_points) #need LineString to identify centroid
+        end_mp = geom.MultiPoint(end_points) #need MultiPoint to find closest point to centroid
+        end_centr = end_ls.centroid
+        central_point = nearest_points(end_mp, end_centr)[0] #(x,y) coords of point closest to centroid
+        ## Now check which line has that terminus point
+        for i,p in enumerate(end_mp):
+            if p.distance(central_point) > 0.01: #allowing tolerance for floating-point errors in Shapely
+                pass
+            elif p.distance(central_point) < 0.01:
+                print 'Central branch has key {}'.format(lines.keys()[i])
+                central_key = lines.keys()[i] # be careful that lines.keys() may be ordered differently from what we expect--but should match end_mp by construction
+            else:
+                print 'Error finding central key'
+    elif len(lines.keys())==1:
+        central_key = lines.keys()[0]
+    else:
+        print 'Error finding central key: no valid lines in input'
     
     return central_key
     

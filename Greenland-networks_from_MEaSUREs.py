@@ -1,5 +1,6 @@
 ## Finding flowline networks for all ~200 MEaSUREs outlet glaciers
 ## 24 Sept 2018  EHU
+## 10 Jan 19 - edit to use fuller MEaSUREs velocity composite, catching last glaciers stored empty
 import numpy as np
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
@@ -15,6 +16,7 @@ from matplotlib import cm
 #from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
+from network_selection import *
 
 
 ##Reading in velocities -- function lifted from Greenland-vel-compositing.py
@@ -52,9 +54,9 @@ def read_velocities(filename, return_grid=True, return_proj=False):
 
 ## Read in MEaSUREs velocity composite
 print 'Reading MEaSUREs velocities'
-x_comp, y_comp, v_comp_raw = read_velocities('Documents/GitHub/gld-velocity-composite.tif')
-vx_comp_raw = read_velocities('Documents/GitHub/gld-x_velocity-composite.tif', return_grid=False)
-vy_comp_raw = read_velocities('Documents/GitHub/gld-y_velocity-composite.tif', return_grid=False)
+x_comp, y_comp, v_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-velocity-composite-10Jan19.tif')
+vx_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-x_velocity-composite-10Jan19.tif', return_grid=False)
+vy_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-y_velocity-composite-10Jan19.tif', return_grid=False)
 v_comp = np.ma.masked_invalid(v_comp_raw)
 vx_comp = np.ma.masked_invalid(vx_comp_raw)
 vy_comp = np.ma.masked_invalid(vy_comp_raw)
@@ -96,7 +98,7 @@ def read_termini(filename, year):
         termpts_dict[key] = np.asarray(r.shape.points) #save points spanning terminus to dictionary
     return termpts_dict
 
-gl_termpos_fldr = 'Documents/GitHub/plastic-networks/Data/MEaSUREs-termini'
+gl_termpos_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-termini'
 terminus_basefile = '/termini_0607_v01_2'
 init_year = 2006
 fn = gl_termpos_fldr + terminus_basefile #filename to read in for termini that will be traced
@@ -105,19 +107,20 @@ termini_init = read_termini(fn, init_year)
 ##iterate over keys in termini_init to make dictionary of lines for each GlacierID
 #ids_to_trace = termini_init.keys() #trace all points of all glaciers
 #ids_to_trace = (3, 153, 175) # IDs for only Jakobshavn, Kangerlussuaq, Helheim
-ids_to_trace = (143, 144, 145, 146, 147, 148, 149, 151, 159, 177, 195) #branches that previously returned a KeyError when filtered (4 Oct)
+#ids_to_trace = (143, 144, 145, 146, 147, 148, 149, 151, 159, 177, 195) #branches that previously returned a KeyError when filtered (4 Oct)
+ids_stored_empty = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177) #glaciers whose termini lie off previous velocity composite (10 Jan 19)
 #ids_to_trace = range(201, 230)
 
 all_lines = {}
-for gid in ids_to_trace:
+for gid in ids_stored_empty:
     lines = {}
     termcoords = termini_init[gid] #points spanning terminus for this glacier
-    sampling = int(floor(len(termcoords)/10))+1 #allowing up to 10 branches traced, and with +1 ensuring that we don't step by 0
+    sampling = int(np.floor(len(termcoords)/10))+1 #allowing up to 10 branches traced, and with +1 ensuring that we don't step by 0
     for j in range(len(termcoords))[::sampling]: #need to down-sample, since some glaciers have 50 points across terminus (and we expect most will have fairly simple networks)
         print 'Tracing terminus point {} of {} in Glacier ID {}'.format(j, len(termcoords), gid)
         p = termcoords[j]
         line_coords, width = Trace_wWidth(p[0], p[1], trace_up=True, xarr=x_comp, yarr=y_comp, Vx = func_vxcomp, Vy = func_vycomp, V = func_vcomp) #Uses Trace_wWidth and FilterMainTributaries from network_selection.py
-        if sum(np.isnan(line_coords))>0:
+        if np.any(np.isnan(line_coords)):
             pass #Don't save the line if it contains nan points
         else:
             xyw = [(line_coords[n][0], line_coords[n][1], width[n]) for n in range(len(line_coords))]
