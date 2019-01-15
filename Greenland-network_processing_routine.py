@@ -56,7 +56,7 @@ S_new = np.add(B, H)
 
 S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S_new.T[::, ::-1])
 H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
-B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
+B_interp = interpolate.RectBivariateSpline(X, Y[::-1], unsmoothB.T[::, ::-1])
 def NearestMaskVal(x0,y0):
     x_idx = np.abs(X-x0).argmin()
     y_idx = np.abs(Y-y0).argmin()
@@ -68,7 +68,8 @@ def NearestMaskVal(x0,y0):
 ##-------------------
 
 glacier_ids = range(1,195) #tell the function which MEaSUREs glacier IDs you want to process.
-not_present = (93, 94, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 159, 161, 169, 172, 173, 177) #glacier IDs missing from set
+not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
+added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
 for n in not_present:
     try:
         glacier_ids.remove(n)
@@ -83,15 +84,13 @@ optimal_yieldtypes = []
 
 base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
 
-secondary_gids = range(153,195)
-for n in not_present:
-    try:
-        secondary_gids.remove(n)
-    except ValueError:
-        pass
-for gid in secondary_gids:
+#gids_totest = (3,) #11 Jan 19--testing only Jakobshavn with more sophisticated remove_floating
+gids_totest = glacier_ids #15 Jan 19--testing all networks with no bed smoothing
+for gid in gids_totest:
     print 'Reading in glacier ID: '+str(gid)
-    if gid<160:
+    if gid in added_jan19:
+        filename = base_fpath+str(gid)+'-date_2019-01-10.csv'
+    elif gid<160:
         filename = base_fpath+str(gid)+'-date_2018-10-03.csv'
     else:
         filename = base_fpath+str(gid)+'-date_2018-10-04.csv' #workaround because I ran these in batches and saved them with the date
@@ -140,7 +139,7 @@ for gid in secondary_gids:
     #nw.network_ref_profiles()
     
 out_dir = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/'
-output_fn = out_dir + 'bestfit_taus-fromdate_{}.csv'.format(datetime.date.today())
+output_fn = out_dir + 'bestfit_taus-nosmoothing-fromdate_{}.csv'.format(datetime.date.today())
 with open(output_fn, 'wb') as csvfile:
     linewriter = csv.writer(csvfile, delimiter=',')
     linewriter.writerow(['Glacier ID', 'Optimal yield strength [Pa]', 'Yield type', 'Terminal bed [m a.s.l.]', 'Terminal SE [m a.s.l.]'])
