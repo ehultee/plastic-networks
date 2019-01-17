@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 import collections
+import datetime
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
 #from shapely.geometry import *
@@ -46,17 +47,18 @@ M = thick_mask[::2,::2]
 #S = ss
 fh.close()
 
-#Smoothing bed to check effect on dLdt
+#Smoothing bed and surface
 unsmoothB = B
 smoothB = gaussian_filter(B, 2)
+smoothS = gaussian_filter(S, 2)
 #B_processed = np.ma.masked_where(thick_mask !=2, smoothB)
 
 #Replacing interpolated surface with bed+thickness
 S_new = np.add(B, H)
 
-S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S_new.T[::, ::-1])
+S_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothS.T[::, ::-1])
 H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
-B_interp = interpolate.RectBivariateSpline(X, Y[::-1], unsmoothB.T[::, ::-1])
+B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 def NearestMaskVal(x0,y0):
     x_idx = np.abs(X-x0).argmin()
     y_idx = np.abs(Y-y0).argmin()
@@ -139,7 +141,7 @@ for gid in gids_totest:
     #nw.network_ref_profiles()
     
 out_dir = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/'
-output_fn = out_dir + 'bestfit_taus-nosmoothing-fromdate_{}.csv'.format(datetime.date.today())
+output_fn = out_dir + 'bestfit_taus-B_S_smoothing-fromdate_{}.csv'.format(datetime.date.today())
 with open(output_fn, 'wb') as csvfile:
     linewriter = csv.writer(csvfile, delimiter=',')
     linewriter.writerow(['Glacier ID', 'Optimal yield strength [Pa]', 'Yield type', 'Terminal bed [m a.s.l.]', 'Terminal SE [m a.s.l.]'])
