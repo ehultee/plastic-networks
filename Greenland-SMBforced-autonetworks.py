@@ -148,13 +148,14 @@ start_year=2006 #determined by which MEaSUREs termini we used to initialize a gi
 branch_sep_buffer = 10000/L0 #buffer between tributary intersections
 db = False
 #test_A = 1.7E-24 # -2 C, warm ice
-test_A = 3.5E-25 # -10 C, good guess for Greenland
-#test_A = 3.7E-26 #-30 C, cold ice that should show slower response
+#test_A = 3.5E-25 # -10 C, good guess for Greenland
+test_A = 3.7E-26 #-30 C, cold ice that should show slower response
 
 #gids_totest = glacier_ids #test all
-gids_totest = range(4,7) #test a subset
+gids_totest = range(9,12) #test a subset
 network_output = []
 
+gids_totest = (4, 8)
 for gid in gids_totest:
     print 'Reading in glacier ID: '+str(gid)
     if gid in added_jan19:
@@ -223,7 +224,7 @@ for gid in gids_totest:
     fn2 = fn1.replace("[", "-")
     fn3 = fn2.replace("/", "_")
     fn4 = fn3.replace("]", "")
-    fn5 = fn4+'-28Jan19-persistence-min10Cice-20a_dt025a.pickle'
+    fn5 = fn4+'-30Jan19-persistence-min30Cice-20a_dt025a.pickle'
     nw.save_network(filename=fn5)
     
     network_output.append(nw.model_output)
