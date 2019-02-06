@@ -78,7 +78,7 @@ x_lon_81 = fh3.variables['lon'][:].copy() #x-coord (latlon)
 y_lat_81 = fh3.variables['lat'][:].copy() #y-coord (latlon)
 #zs = fh2.variables['height'][:].copy() #height in m - is this surface elevation or SMB?
 ts_81 = fh3.variables['time'][:].copy()
-smb_81_raw = fh3.variables['gld'][:].copy() #acc SMB in mm/day weq...need to convert
+smb_2081_raw = fh3.variables['gld'][:].copy() #acc SMB in mm/day weq...need to convert
 fh3.close()
 
 
@@ -86,27 +86,28 @@ print 'Now transforming coordinate system of SMB'
 wgs84 = pyproj.Proj("+init=EPSG:4326") # LatLon with WGS84 datum used by GPS units and Google Earth
 psn_gl = pyproj.Proj("+init=epsg:3413") # Polar Stereographic North used by BedMachine (as stated in NetDCF header)
 xs, ys = pyproj.transform(wgs84, psn_gl, x_lon, y_lat)
-xs_81, ys_81 = pyproj.transform(wgs84, psn_gl, x_lon_81, y_lat_81)
+#xs_81, ys_81 = pyproj.transform(wgs84, psn_gl, x_lon_81, y_lat_81)
 
 #Xs = xs[0:,] #flattening; note that x-dimension is 402 according to file header
 #Ys = ys[:,0] #flattening; note that y-dimension is 602 according to file header
 
-smb_init = smb_raw[0][0]
-smb_latest = smb_raw[-1][0]
+smb_1980 = smb_raw[0][0]
+smb_2014 = smb_raw[-1][0]
 #smb_init_interpolated = interpolate.interp2d(ys, xs, smb_init, kind='linear')
 Xmat, Ymat = np.meshgrid(X, Y)
-regridded_smb_init = interpolate.griddata((xs.ravel(), ys.ravel()), smb_init.ravel(), (Xmat, Ymat), method='nearest')
-regridded_smb_latest = interpolate.griddata((xs.ravel(), ys.ravel()), smb_latest.ravel(), (Xmat, Ymat), method='nearest')
-SMB_i = interpolate.interp2d(X, Y, regridded_smb_init, kind='linear')
-SMB_l = interpolate.interp2d(X, Y, regridded_smb_latest, kind='linear')
+regridded_smb_1980 = interpolate.griddata((xs.ravel(), ys.ravel()), smb_1980.ravel(), (Xmat, Ymat), method='nearest')
+regridded_smb_2014 = interpolate.griddata((xs.ravel(), ys.ravel()), smb_2014.ravel(), (Xmat, Ymat), method='nearest')
+SMB_1980 = interpolate.interp2d(X, Y, regridded_smb_init, kind='linear')
+SMB_2014 = interpolate.interp2d(X, Y, regridded_smb_latest, kind='linear')
 
-smb_81 = smb_81_raw[0]
-smb_00 = smb_81_raw[-1] #2100
-regridded_smb_81 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_81.ravel(), (Xmat, Ymat), method='nearest')
-regridded_smb_00 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_00.ravel(), (Xmat, Ymat), method='nearest')
-SMB_2081 = interpolate.interp2d(X, Y, regridded_smb_81, kind='linear')
-SMB_2100 = interpolate.interp2d(X, Y, regridded_smb_00, kind='linear')
+smb_2081_rcp4pt5 = smb_2081_raw[0]
+smb_2100_rcp4pt5 = smb_2081_raw[-1] #2100
+regridded_smb_2081 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2081_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
+regridded_smb_2100 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2100_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
+SMB_2081_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2081, kind='linear')
+SMB_2100_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2100, kind='linear')
 
+## Add RCP 8.5 when available
 
 ##-------------------
 ### LOADING SAVED GLACIERS
@@ -143,19 +144,23 @@ for n in not_present:
 base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
 
 ## Simulation settings
-testyears = arange(0, 20, 0.25)
+testyears = arange(0, 100.25, 0.25)
 start_year=2006 #determined by which MEaSUREs termini we used to initialize a given set
 branch_sep_buffer = 10000/L0 #buffer between tributary intersections
 db = False
-#test_A = 1.7E-24 # -2 C, warm ice
-#test_A = 3.5E-25 # -10 C, good guess for Greenland
-test_A = 3.7E-26 #-30 C, cold ice that should show slower response
+#test_A, icetemp = 1.7E-24, 'min2C' # -2 C, warm ice
+test_A, icetemp = 3.5E-25, 'min10C' # -10 C, good guess for Greenland
+#test_A, icetemp = 3.7E-26, 'min30C' #-30 C, cold ice that should show slower response
+
+scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scenario - persistence of 1981-2014 climatology
+#scenario, SMB_i, SMB_l = 'RCP4pt5', SMB_2014, SMB_2100_RCP4pt5 #or RCP 4.5
+#scenario, SMB_i, SMB_l = 'RCP8pt5', SMB_2014, SMB_2100_RCP8pt5 #or RCP 8.5
 
 #gids_totest = glacier_ids #test all
-gids_totest = range(9,12) #test a subset
+#gids_totest = range(9,12) #test a subset
+gids_totest = (4, 8, 9, 10, 11)
 network_output = []
 
-gids_totest = (4, 8)
 for gid in gids_totest:
     print 'Reading in glacier ID: '+str(gid)
     if gid in added_jan19:
@@ -195,10 +200,10 @@ for gid in gids_totest:
     nw.network_ref_profiles()
     
     ## Simulations forced by SMB
-    gl_smb_l = [0.001*SMB_l(nw.flowlines[0].coords[i,0], nw.flowlines[0].coords[i,1]) for i in range(len(nw.flowlines[0].coords))]
-    nw.smb_alphadot = np.mean(gl_smb_l) #work on summing over all branches later
+    gl_smb_init = [0.001*SMB_i(nw.flowlines[0].coords[i,0], nw.flowlines[0].coords[i,1]) for i in range(len(nw.flowlines[0].coords))]
+    nw.smb_alphadot = np.mean(gl_smb_init) #work on summing over all branches later
     print 'a_dot from SMB: {}'.format(nw.smb_alphadot)
-    nw.terminus_adot = gl_smb_l[0]
+    nw.terminus_adot = gl_smb_init[0]
     print 'Terminus a_dot: {}'.format(nw.terminus_adot)
     #gl.sec_mainline = np.asarray([SEC_i(gl.flowlines[0].coords[i,0], gl.flowlines[0].coords[i,1]) for i in range(len(gl.flowlines[0].coords))])
     #away_from_edge = np.argmin(gl.sec_mainline)
@@ -206,13 +211,13 @@ for gid in gids_totest:
     #variable_forcing = linspace(start=gl.sec_alphadot, stop=2*gl.sec_alphadot, num=len(testyears))
     #gl.terminus_sec = float(min(gl.sec_mainline.flatten()))#using min because values close to edge get disrupted by mask interpolation
     #gl.terminus_time_evolve(testyears=testyears, alpha_dot=gl.smb_alphadot, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=gl.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=False) 
-    gl_smb_2100 = [0.001*365.26*SMB_2100(nw.flowlines[0].coords[i,0], nw.flowlines[0].coords[i,1]) for i in range(len(nw.flowlines[0].coords))]
+    gl_smb_2100 = [0.001*365.26*SMB_l(nw.flowlines[0].coords[i,0], nw.flowlines[0].coords[i,1]) for i in range(len(nw.flowlines[0].coords))]
     nw.smb_2100_alphadot = np.mean(gl_smb_2100)
     steps_til_2100 = (2100-start_year) / mean(diff(testyears)) #length of linspace array that will determine forcing up to 2100 (HIRHAM-5 end 21st Century time)
-    forcing_til_2100 = linspace(start=nw.smb_alphadot, stop=nw.smb_alphadot, num=steps_til_2100) #doing persistence forcing for now
+    forcing_til_2100 = linspace(start=nw.smb_alphadot, stop=nw.smb_2100_alphadot, num=steps_til_2100) 
     if len(testyears)>steps_til_2100:
         steps_after_2100 = len(testyears) - steps_til_2100 #length of array that determines forcing after 2100
-        forcing_after_2100 = np.full(shape=steps_after_2100, fill_value=nw.smb_2100_alphadot)
+        forcing_after_2100 = np.full(shape=steps_after_2100, fill_value=nw.smb_2100_alphadot) #persist with 2100 SMB for timesteps after 2100
         variable_forcing = np.concatenate((forcing_til_2100, forcing_after_2100))
     else:
         variable_forcing = forcing_til_2100[:len(testyears)]
@@ -224,7 +229,7 @@ for gid in gids_totest:
     fn2 = fn1.replace("[", "-")
     fn3 = fn2.replace("/", "_")
     fn4 = fn3.replace("]", "")
-    fn5 = fn4+'-30Jan19-persistence-min30Cice-20a_dt025a.pickle'
+    fn5 = fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
     nw.save_network(filename=fn5)
     
     network_output.append(nw.model_output)
