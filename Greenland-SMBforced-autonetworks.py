@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import mpl_toolkits.basemap.pyproj as pyproj
 import csv
 import collections
+import datetime
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
 #from shapely.geometry import *
@@ -71,15 +72,15 @@ ts = fh2.variables['time'][:].copy()
 smb_raw = fh2.variables['smb'][:].copy()
 fh2.close()
 
-print 'Reading in RCP 4.5 SMB'
-gl_smb_2081_path = 'Documents/GitHub/Data_unsynced/DMI-HIRHAM5_G6s2_ECEARTH_RCP45_2081_2100_gld_YM.nc'
-fh3 = Dataset(gl_smb_2081_path, mode='r')
-x_lon_81 = fh3.variables['lon'][:].copy() #x-coord (latlon)
-y_lat_81 = fh3.variables['lat'][:].copy() #y-coord (latlon)
-#zs = fh2.variables['height'][:].copy() #height in m - is this surface elevation or SMB?
-ts_81 = fh3.variables['time'][:].copy()
-smb_2081_raw = fh3.variables['gld'][:].copy() #acc SMB in mm/day weq...need to convert
-fh3.close()
+#print 'Reading in RCP 4.5 SMB'
+#gl_smb_2081_path = 'Documents/GitHub/Data_unsynced/DMI-HIRHAM5_G6s2_ECEARTH_RCP45_2081_2100_gld_YM.nc'
+#fh3 = Dataset(gl_smb_2081_path, mode='r')
+#x_lon_81 = fh3.variables['lon'][:].copy() #x-coord (latlon)
+#y_lat_81 = fh3.variables['lat'][:].copy() #y-coord (latlon)
+##zs = fh2.variables['height'][:].copy() #height in m - is this surface elevation or SMB?
+#ts_81 = fh3.variables['time'][:].copy()
+#smb_2081_raw = fh3.variables['gld'][:].copy() #acc SMB in mm/day weq...need to convert
+#fh3.close()
 
 
 print 'Now transforming coordinate system of SMB'
@@ -97,15 +98,15 @@ smb_2014 = smb_raw[-1][0]
 Xmat, Ymat = np.meshgrid(X, Y)
 regridded_smb_1980 = interpolate.griddata((xs.ravel(), ys.ravel()), smb_1980.ravel(), (Xmat, Ymat), method='nearest')
 regridded_smb_2014 = interpolate.griddata((xs.ravel(), ys.ravel()), smb_2014.ravel(), (Xmat, Ymat), method='nearest')
-SMB_1980 = interpolate.interp2d(X, Y, regridded_smb_init, kind='linear')
-SMB_2014 = interpolate.interp2d(X, Y, regridded_smb_latest, kind='linear')
+SMB_1980 = interpolate.interp2d(X, Y, regridded_smb_1980, kind='linear')
+SMB_2014 = interpolate.interp2d(X, Y, regridded_smb_2014, kind='linear')
 
-smb_2081_rcp4pt5 = smb_2081_raw[0]
-smb_2100_rcp4pt5 = smb_2081_raw[-1] #2100
-regridded_smb_2081 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2081_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
-regridded_smb_2100 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2100_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
-SMB_2081_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2081, kind='linear')
-SMB_2100_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2100, kind='linear')
+#smb_2081_rcp4pt5 = smb_2081_raw[0]
+#smb_2100_rcp4pt5 = smb_2081_raw[-1] #2100
+#regridded_smb_2081 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2081_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
+#regridded_smb_2100 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2100_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
+#SMB_2081_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2081, kind='linear')
+#SMB_2100_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2100, kind='linear')
 
 ## Add RCP 8.5 when available
 
@@ -144,7 +145,7 @@ for n in not_present:
 base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
 
 ## Simulation settings
-testyears = arange(0, 100.25, 0.25)
+testyears = arange(0, 50.25, 0.25)
 start_year=2006 #determined by which MEaSUREs termini we used to initialize a given set
 branch_sep_buffer = 10000/L0 #buffer between tributary intersections
 db = False
@@ -158,7 +159,8 @@ scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scena
 
 #gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
-gids_totest = (4, 8, 9, 10, 11)
+#gids_totest = (50, 100, 155, 179) #test a geographically distributed subset
+gids_totest = (3,) #test Sermeq Kujalleq
 network_output = []
 
 for gid in gids_totest:
@@ -232,4 +234,4 @@ for gid in gids_totest:
     fn5 = fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
     nw.save_network(filename=fn5)
     
-    network_output.append(nw.model_output)
+    #network_output.append(nw.model_output)

@@ -1077,7 +1077,11 @@ class PlasticNetwork(Ice):
 
                     else: ##if branches have split, find new terminus quantities
                         print 'Tributary {} has split from main branch at time {} a'.format(j, key+dt)
-                        dLdt_branch = fl.dLdt_dimensional(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
+                        if k<1:
+                            out_dict[0] = fl.plastic_profile(startpoint=0, hinit=fl.surface_function(0), endpoint=fl_amax, surf=fl.surface_function) #initial condition for time evolution - needed to calculate calving flux at first timestep
+                            dLdt_branch = fl.dLdt_dimensional(profile=out_dict[0], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
+                        else:
+                            dLdt_branch = fl.dLdt_dimensional(profile=out_dict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
                         if np.isnan(dLdt_branch):
                             dLdt_branch = out_dict['Termrates'][-1] /dt
                         else:
