@@ -1057,7 +1057,7 @@ class PlasticNetwork(Ice):
                         branchmodel_full = fl.plastic_profile(startpoint=new_termpos/self.L0, hinit=new_termheight, endpoint=fl_amax, surf=fl.surface_function) #model profile only down to intersection
                         mainbranch_int_idx = (np.abs(branchmodel_full[0] - ArcArray(fl.coords)[fl.intersections[1]])).argmin()
                         mainbranch_tribheight = refdict[new_key][1][mainbranch_int_idx] #finding surface elevation across main trough based on modelling of main branch
-                        cutoff_yieldheight = BalanceThick(fl.bed_function(separation_distance), fl.Bingham_num(0,0)) + (fl.bed_function(separation_distance)/fl.H0)
+                        cutoff_yieldheight = BalanceThick(fl.bed_function(separation_distance)/fl.H0, fl.Bingham_num(0,0)) + (fl.bed_function(separation_distance)/fl.H0)
                         ##Note for constant yield, Bingham_num(0,0) = Bingham_num everywhere.  Might introduce bug for Mohr-Coulomb case
                         
                         branch_termheight = max(mainbranch_tribheight, cutoff_yieldheight) #identify and handle if tributary has separated from main branch based on whether main surface elevation is below reasonable intersection with trib
