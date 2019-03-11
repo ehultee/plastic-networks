@@ -1,5 +1,5 @@
-# Forward projections with calving flux on Greenland glaciers
-# 9 Apr 2018  EHU
+# Forward projections with calving flux on Greenland glaciers, forced by surface mass balance
+# Sept 2018  EHU
 
 from netCDF4 import Dataset
 import numpy as np
@@ -101,6 +101,14 @@ regridded_smb_2014 = interpolate.griddata((xs.ravel(), ys.ravel()), smb_2014.rav
 SMB_1980 = interpolate.interp2d(X, Y, regridded_smb_1980, kind='linear')
 SMB_2014 = interpolate.interp2d(X, Y, regridded_smb_2014, kind='linear')
 
+## Hindcasting SMB: year-specific 2006-2014
+SMB_dict = {} #set up a dictionary of surface mass balance fields indexed by year
+for year in range(2006, 2015):
+    index = year - 2015 #so that 2014 will be smb_raw[-1], etc.
+    smb_year = smb_raw[index][0]
+    regridded_smb_year = interpolate.griddata((xs.ravel(), ys.ravel()), smb_year.ravel(), (Xmat, Ymat), method='nearest')
+    SMB_dict[year] = interpolate.interp2d(X, Y, regridded_smb_year, kind='linear')
+    
 #smb_2081_rcp4pt5 = smb_2081_raw[0]
 #smb_2100_rcp4pt5 = smb_2081_raw[-1] #2100
 #regridded_smb_2081 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2081_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
@@ -145,10 +153,10 @@ for n in not_present:
 base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
 
 ## Simulation settings
-testyears = arange(0, 50.25, 0.25)
+testyears = arange(0, 20, 0.25)
 start_year=2006 #determined by which MEaSUREs termini we used to initialize a given set
 branch_sep_buffer = 10000/L0 #buffer between tributary intersections
-db = False
+db = True
 #test_A, icetemp = 1.7E-24, 'min2C' # -2 C, warm ice
 test_A, icetemp = 3.5E-25, 'min10C' # -10 C, good guess for Greenland
 #test_A, icetemp = 3.7E-26, 'min30C' #-30 C, cold ice that should show slower response
@@ -160,7 +168,7 @@ scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scena
 #gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
 #gids_totest = (50, 100, 155, 179) #test a geographically distributed subset
-gids_totest = (3,) #test Sermeq Kujalleq
+gids_totest = (9, 10) #test a single glacier or specific selection
 network_output = []
 
 for gid in gids_totest:
