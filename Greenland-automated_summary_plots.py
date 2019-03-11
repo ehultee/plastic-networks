@@ -1,11 +1,12 @@
 ## Load-in and plotting of forward projections for automatically-selected Greenland networks 
 ## Generalization of Greenland-summary_plotting.py, developed Apr-Jun 2018 by EHU
 
-from netCDF4 import Dataset
+#from netCDF4 import Dataset
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
-import collections
+#import collections
+import glob
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
 import matplotlib.patches as mpatches
@@ -21,7 +22,6 @@ from flowline_class_hierarchy import *
 ###-------------------
 #### DEFINING NECESSARY FUNCTIONS
 ###-------------------
-glacier_names = ('Sermeq Kujalleq [main]', 'Sermeq Kujalleq [central]', 'Sermeq Kujalleq [north]', 'Koge Bugt', 'Helheim', 'Kangerlussuaq')
 ty_50a = arange(50, step=0.25)
 ty_100a = arange(100, step=0.25)
 
@@ -52,24 +52,29 @@ def lightload(filename, glacier_name, output_dictionary):
 #### GLACIERS & SCENARIOS TO BE COMPARED
 ###--------------------------------------
 
-glaciers_simulated = (4, 8, 10, 11) #list MEaSUREs glacier IDs
+#glaciers_simulated = (4, 8, 11, 12, 13, 14, 15, 16, 17, 50) #list MEaSUREs glacier IDs
+#glaciers_simulated = (3,)
+glaciers_simulated = (9,10) #study problematic ones
 testyears = arange(20, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence', 
 #'RCP4pt5', 
 #'RCP8pt5'
 )
 
-datemarker = '30Jan19' #markers on filename to indicate date run
-tempmarker = 'min30Cice' #and temperature of ice
-timestepmarker = '20a_dt025a' #and total time and timestep
+#datemarker = '2019-02-08' #markers on filename to indicate date run
+tempmarker = 'min10Cice' #and temperature of ice
+timestepmarker = '19a_dt025a' #and total time and timestep
 
 full_output_dicts = {}
 
 for s in scenarios:
     scenario_output = {'Testyears': testyears}
-    for i, gid in enumerate(glaciers_simulated):
-        fn = 'GID{}-{}-{}-{}-{}.pickle'.format(gid, datemarker, s, tempmarker, timestepmarker)
+    for gid in glaciers_simulated:
+        fn = glob.glob('GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0]
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
+    #for i, gid in enumerate(glaciers_simulated):
+    #    fn = 'GID{}-{}-{}-{}-{}.pickle'.format(gid, datemarker, s, tempmarker, timestepmarker)
+    #    lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
 
 perscenario_fluxes = []
@@ -124,194 +129,34 @@ plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 ##plt.axes().set_yticks([0, 1, 2, 3, 4])
 plt.show()
 
-##### Scenario build
-##for k in range(len(perscenario_SLE)):
-##    plt.figure(k)
-##    for j in range(k+1):
-##        plt.plot(ty_100a, perscenario_SLE[j], color=alt_colors[j], label=scenarios[j], linewidth=4)
-##    #for m in range(len(coarser_SLE)):
-##    #    plt.plot(arange(100, step=0.5), coarser_SLE[m], color=alt_colors[m+3], label=scenarios[m+3])
-##    plt.legend(loc='upper left')
-##    plt.axes().set_xlabel('Year of simulation', size=20)
-##    plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
-##    plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-##    plt.axes().set_xlim(0, 100)
-##    plt.axes().set_xticks([0, 25, 50, 75, 100])
-##    plt.axes().set_ylim(0, 40)
-##    plt.axes().set_yticks([0, 5, 10, 15, 20, 25, 30, 35, 40])
-##    plt.axes().set_yticklabels(['0', '', '10', '', '20', '', '30', '', '40'])
-##    plt.show()
-#
-### Plotting warm in red and cool in blue
-#plt.figure('Scenariodiff', figsize=(12, 8))
-#plt.plot(ty_100a, perscenario_SLE[0], color='MediumBlue', label=scenarios[0], linewidth=2, ls='--') #cold baseline
-#plt.plot(ty_100a, perscenario_SLE[1], color='FireBrick', label=scenarios[1], linewidth=2, ls='--') #warm baseline
-#plt.plot(ty_100a, perscenario_SLE[2], color='MediumBlue', linewidth=2) #cold persistence
-#plt.plot(ty_100a[::20], perscenario_SLE[2][::20], color='MediumBlue', label=scenarios[2], linewidth=0, marker='o', ms=6) #cold persistence
-#plt.plot(ty_100a, perscenario_SLE[3], color='FireBrick', linewidth=2) #warm persistence
-#plt.plot(ty_100a[::20], perscenario_SLE[3][::20], color='FireBrick', label=scenarios[3], linewidth=0, marker='o', ms=6) #warm persistence
-#plt.plot(ty_100a, perscenario_SLE[4], color='FireBrick', linewidth=2) #warm doubling
-#plt.plot(ty_100a[::20], perscenario_SLE[4][::20], color='FireBrick', label=scenarios[4], linewidth=0, marker='^', ms=8) #warm doubling
-#plt.plot(ty_100a, perscenario_SLE[5], color='MediumBlue', linewidth=2) #cold persistence
-#plt.plot(ty_100a[::20], perscenario_SLE[5][::20], color='MediumBlue', label=scenarios[5], linewidth=0, marker='.', ms=6) #cold persistence - modified to 0.8*forcing for SK main
-#plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
-#rect = mpatches.Rectangle((98,8.5), width=2, height=4.6, color='k', alpha=0.7) # Nick et al total projection for 2100, A1B
-#rect2 = mpatches.Rectangle((98,11.3), width=2, height=6.2, color='k', alpha=0.7) # Nick et al total projection for 2100, RCP8.5
-#plt.axes().add_patch(rect)
-#plt.axes().add_patch(rect2)
-#plt.legend(loc='upper left')
-#plt.axes().set_xlabel('Year of simulation', size=20)
-#plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
-#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-#plt.axes().set_xlim(0, 100)
-#plt.axes().set_xticks([0, 25, 50, 75, 100])
-#plt.axes().set_ylim(0,30)
-#plt.axes().set_yticks([0,10,20,30])
-#plt.tight_layout()
-#plt.show()
-#
-### Branch separation
-##for j, s in enumerate(scenarios):
-##    figname = 'Scenario_{}-branchsep'.format(s)
-##    plt.figure(figname)
-##    for k in range(len(output_dicts[j]['Helheim'])): #for each branch j
-##        #colork = matplotlib.cm.get_cmap('viridis')(k/len(Helheim.model_output))
-##        #markerk = (k+2, mod(k+1, 3), 0)
-##        lsk = (':', '-.', '--', '-')
-##        plt.plot(ty_100a[::], -0.001*np.array(CB_100a_output['Helheim'][k]['Termini'])[:-1:], linewidth=4, color='k', ls=lsk[k], label='Helheim line {}'.format(k))
-##        #plt.plot(testyears[::10], -0.001*np.array(mo['Termini'])[:-1:10], linewidth=0, color='k', marker=markerk, ms=10, label='Helheim line {}'.format(k))
-##    #plt.legend(loc='upper right')
-##    plt.axes().set_xlabel('Year of simulation', size=20)
-##    plt.axes().set_ylabel('Terminus change [km]', size=20)
-##    plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-##    plt.axes().set_xlim(0, 100)
-##    plt.axes().set_xticks([0, 25, 50, 75, 100])
-##    plt.axes().set_xticklabels(['0', '', '50', '', '100'])
-##    #plt.axes().set_ylim(-16, 1)
-##    plt.axes().set_yticks([-40, -30, -20, -10, 0])
-##    plt.show()
-##
-##for j, s in enumerate(scenarios):
-##    figname = 'Scenario_{}-branchflux'.format(s)
-##    plt.figure(figname)
-##    for k in range(len(output_dicts[j]['Helheim'])): #for each scenario j
-##        #colork = matplotlib.cm.get_cmap('viridis')(k/len(Helheim.model_output))
-##        #markerk = (k+2, mod(k+1, 3), 0)
-##        lsk = (':', '-.', '--', '-')
-##        plt.plot(ty_100a[::], np.cumsum(1E-12*np.nan_to_num(output_dicts[j]['Helheim'][k]['Terminus_flux']))[::], linewidth=4, color='k', ls=lsk[k], label='Helheim line {}'.format(k))
-##        #plt.plot(testyears[::10], -0.001*np.array(mo['Termini'])[:-1:10], linewidth=0, color='k', marker=markerk, ms=10, label='Helheim line {}'.format(k))
-##    plt.legend(loc='upper left')
-##    plt.axes().set_xlabel('Year of simulation', size=20)
-##    plt.axes().set_ylabel('Terminus flux [Gt]', size=20)
-##    plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-##    plt.axes().set_xlim(0, 100)
-##    plt.axes().set_xticks([0, 25, 50, 75, 100])
-##    plt.axes().set_xticklabels(['0', '', '50', '', '100'])
-##    #plt.axes().set_ylim(-16, 1)
-##    #plt.axes().set_yticks([-40, -30, -20, -10, 0])
-##    plt.show()
-##
-##plt.figure('Summary')
-##for j in range(len(perscenario_SLE)):
-##    plt.plot(ty_100a, perscenario_SLE[j], color=alt_colors[j], label=scenarios[j], linewidth=4)
-##for m in range(len(coarser_SLE)):
-##    plt.plot(arange(100, step=0.5), coarser_SLE[m], color=alt_colors[m+3], label=scenarios[m+3], linewidth=4)
-##plt.legend(loc='upper left')
-##plt.axes().set_xlabel('Year of simulation', size=20)
-##plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
-##plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-##plt.axes().set_xlim(0, 100)
-##plt.axes().set_xticks([0, 25, 50, 75, 100])
-##plt.axes().set_ylim(0, 35)
-###plt.axes().set_yticks([0, 1, 2, 3, 4])
-##plt.show()
-#
-#
-#
-#
+
 ####-------------------
 ##### INDIVIDUAL SCENARIO BREAKDOWNS
 ####-------------------
-#
-##Warm baseline fluxes
-##Kanger_multibranch_flux = [Kanger_warmbaseline.model_output[j]['Terminus_flux'] for j in range(len(Kanger.flowlines))]
-##Kanger_total_flux = sum(Kanger_multibranch_flux, axis = 0) #note that Kanger_multibranch_flux is multidimensional, needs care in summing
-##Helheim_multibranch_flux = [Helheim_warmbaseline.model_output[j]['Terminus_flux'] for j in range(len(Helheim.flowlines))]
-##Helheim_total_flux = sum(Helheim_multibranch_flux, axis=0)
-##Jakobshavn_multibranch_flux = [Jak_main_warmbaseline.model_output[0]['Terminus_flux'], Jak_sec_warmbaseline.model_output[0]['Terminus_flux'], Jak_tert_warmbaseline.model_output[0]['Terminus_flux']]
-##Jakobshavn_total_flux = sum(Jakobshavn_multibranch_flux, axis=0)
-##fluxes = [Jak_main_warmbaseline.model_output[0]['Terminus_flux'], Jak_sec_warmbaseline.model_output[0]['Terminus_flux'], Jak_tert_warmbaseline.model_output[0]['Terminus_flux'], KogeBugt_warmbaseline.model_output[0]['Terminus_flux'], Helheim_warmbaseline.model_output[0]['Terminus_flux'], Kanger_warmbaseline.model_output[0]['Terminus_flux']]
-##total_fluxes = [Jakobshavn_total_flux, KogeBugt_warmbaseline.model_output[0]['Terminus_flux'], Helheim_total_flux, Kanger_total_flux]
-##NOTE NEED TO INCLUDE FLUXES FROM ALL LINES OF HELHEIM, KANGER
-#
-#
-####Cold baseline fluxes for plot
-##Kanger_multibranch_flux_cold = [np.nan_to_num(CB_100a_output['Kangerlussuaq'][j]['Terminus_flux']) for j in range(len(CB_100a_output['Kangerlussuaq']))]
-##Kanger_total_flux_cold = sum(Kanger_multibranch_flux_cold, axis = 0) #note that Kanger_multibranch_flux is multidimensional, needs care in summing
-##Helheim_multibranch_flux_cold = [np.absolute(CB_100a_output['Helheim'][j]['Terminus_flux']) for j in range(len(CB_100a_output['Helheim']))]
-##Helheim_total_flux_cold = sum(Helheim_multibranch_flux_cold, axis=0)
-##total_fluxes_split_CB = [CB_100a_output['Sermeq Kujalleq [main]'][0]['Terminus_flux'], CB_100a_output['Sermeq Kujalleq [central]'][0]['Terminus_flux'], CB_100a_output['Sermeq Kujalleq [north]'][0]['Terminus_flux'], CB_100a_output['Koge Bugt'][0]['Terminus_flux'], Helheim_total_flux_cold, Kanger_total_flux_cold] #totals from all termini, with Jak split by branch (network)
-##
-##fluxes_cleaned = []
-##sle = [] #will be array of annual sea level contributions
-##for flux in total_fluxes_split_CB:
-##    flux_c = np.nan_to_num(flux)
-##    #flux_abs = np.absolute(flux_c) #quick fix 9 Jun for some lines that have negative width upstream.  Fix more substantially later.
-##    fluxes_cleaned.append(flux_c)
-##    sleq = (1E-12)*np.array(flux_c)/(361.8) #Gt ice / mm sea level equiv conversion
-##    sle.append(sleq)
-##cumul_sle_pernetwork = []
-##total_sle = []
-##for sl in sle:
-##    c = np.cumsum(sl)
-##    cumul_sle_pernetwork.append(c)
-##total_sle = np.cumsum(cumul_sle_pernetwork, axis=0)
-#
-### Cold persistence fluxes for plot
-#Kanger_multibranch_flux_CP = [np.nan_to_num(CP_100a_output['Kangerlussuaq'][j]['Terminus_flux']) for j in range(len(CP_100a_output['Kangerlussuaq']))]
-#Kanger_total_flux_CP = sum(Kanger_multibranch_flux_CP, axis = 0) #note that Kanger_multibranch_flux is multidimensional, needs care in summing
-#Helheim_multibranch_flux_CP = [np.absolute(CP_100a_output['Helheim'][j]['Terminus_flux']) for j in range(len(CP_100a_output['Helheim']))]
-#Helheim_total_flux_CP = sum(Helheim_multibranch_flux_CP, axis=0)
-#total_fluxes_split_CP = [CP_100a_output['Sermeq Kujalleq [main]'][0]['Terminus_flux'], CP_100a_output['Sermeq Kujalleq [central]'][0]['Terminus_flux'], CP_100a_output['Sermeq Kujalleq [north]'][0]['Terminus_flux'], CP_100a_output['Koge Bugt'][0]['Terminus_flux'], Helheim_total_flux_CP, Kanger_total_flux_CP] #totals from all termini, with Jak split by branch (network)
-#
-#fluxes_cleaned = []
-#sle = [] #will be array of annual sea level contributions
-#for flux in total_fluxes_split_CP:
-#    flux_c = np.nan_to_num(flux)
-#    #flux_abs = np.absolute(flux_c) #quick fix 9 Jun for some lines that have negative width upstream.  Fix more substantially later.
-#    fluxes_cleaned.append(flux_c)
-#    sleq = (1E-12)*np.array(flux_c)/(361.8) #Gt ice / mm sea level equiv conversion
-#    sle.append(sleq)
-#cumul_sle_pernetwork = []
-#total_sle = []
-#for sl in sle:
-#    c = np.cumsum(sl)
-#    cumul_sle_pernetwork.append(c)
-#total_sle = np.cumsum(cumul_sle_pernetwork, axis=0)
-#
-#
+
 ##projections_WB = [Jak_main_warmbaseline.model_output, Jak_sec_warmbaseline.model_output, Jak_tert_warmbaseline.model_output, KogeBugt_warmbaseline.model_output, Helheim_warmbaseline.model_output, Kanger_warmbaseline.model_output]
 ##projections_CB = [Jak_main_coldbaseline.model_output, Jak_sec_coldbaseline.model_output, Jak_tert_coldbaseline.model_output, KogeBugt_coldbaseline.model_output, Helheim_coldbaseline.model_output, Kanger_coldbaseline.model_output]
 #
 #
-###terminus
+####terminus
 plt.figure()
 for j, gid in enumerate(glaciers_simulated):
     print gid
-    plt.plot(testyears, -0.001*np.array(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]), linewidth=4, color=colors[j], linestyle=styles[j], label='{}'.format(gid))
-    plt.plot(testyears[::4], -0.001*np.array(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::])[::4], linewidth=0, marker=markers[j], ms=10, color=colors[j])
+    ms_selection = mod(j, len(styles))
+    plt.plot(testyears, -0.001*np.array(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]), linewidth=4, color=colors[j], linestyle=styles[ms_selection], label='{}'.format(gid))
+    plt.plot(testyears[::4], -0.001*np.array(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::])[::4], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[j])
 plt.legend(loc='lower left')
 plt.axes().set_xlabel('Year of simulation', size=20)
 plt.axes().set_ylabel('Terminus change [km]', size=20)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 #plt.axes().set_ylim(-100, 1)
 #plt.axes().set_yticks([-75, -50, -25, 0])
-plt.title('20 a (dt=0.25 a) climate persistence - Gaussian sigma=2 - A=3.7E-26', fontsize=20)
+plt.title('50 a (dt=0.25 a) climate persistence, T=-10 C', fontsize=20)
 plt.show()
 #
 ##
-##SINGLE NETWORK - splitting termini
-single_network_output = full_output_dicts['persistence']['GID9']
+####SINGLE NETWORK - splitting termini
+single_network_output = full_output_dicts['persistence']['GID10']
 plt.figure('Single network terminus change')
 for k in range(len(single_network_output)): #for each branch j
     #colork = alt_colors[mod(k, len(colors))]
@@ -326,43 +171,45 @@ plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 #plt.axes().set_ylim(-50, 1)
 #plt.axes().set_yticks([-50, -25, 0])
 plt.show()
-##
+#
 #####Flux
-##plt.figure()
-##for j in range(len(names)):
-##    plt.plot(testyears, 1E-12*np.array(fluxes[j]), linewidth=4, linestyle=styles[j], color=colors[j], label=names[j])
-##    plt.plot(testyears[::50], 1E-12*np.array(fluxes[j][::50]), linewidth=0, marker=markers[j], ms=10, color=colors[j])
-##    plt.fill_between(testyears, y1=1E-12*np.array(fluxes[j]), y2=0, color=colors[j], alpha=0.5)    
-##plt.legend(loc='upper right')
-##plt.axes().set_xlabel('Year of simulation', size=20)
-##plt.axes().set_ylabel('Terminus ice flux [Gt/a]', size=20)
-##plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-##plt.axes().set_xlim(0,50)
-##plt.axes().set_xticks([0,10,20, 30, 40, 50])
-##plt.axes().set_ylim(0, 401)
-##plt.axes().set_yticks([0, 50, 100, 150, 200, 250, 300, 350, 400])
-##plt.show()
-##
+#for j, gid in enumerate(glaciers_simulated):
+#    plt.figure('GID{}'.format(gid))
+#    ms_selection = mod(gid, len(styles))
+#    plt.plot(testyears, 1E-12*np.array(pernetwork_cumul_fx[j]), linewidth=4, label=str(gid), color=colors[ms_selection], linestyle = styles[ms_selection])
+#    plt.plot(testyears[::20], 1E-12*np.array(pernetwork_cumul_fx[j][::20]), linewidth=0, ms=10, marker=markers[ms_selection])
+#    plt.fill_between(testyears, y1=1E-12*np.array(pernetwork_cumul_fx[j]), y2=0, alpha=0.5)
+#    plt.axes().set_xlabel('Year of simulation', size=20)
+#    plt.axes().set_ylabel('Cumulative ice flux [Gt]', size=20)
+#    plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+#    plt.axes().set_xlim(0,50)
+#    plt.axes().set_xticks([0,10,20, 30, 40, 50])
+#    #plt.axes().set_ylim(0, 401)
+#    #plt.axes().set_yticks([0, 50, 100, 150, 200, 250, 300, 350, 400])
+#    plt.show()
+    ##
 ######Sea level equivalent
-#plt.figure(figsize=(12,8))
-#for j in range(len(names)):
-#    plt.plot(1+ty_100a[::], total_sle[j], linewidth=4, color=colors[::][j], label=names[j])
-#    plt.plot(1+ty_100a[::5], total_sle[j][::5], linewidth=0, marker=markers[j], ms=10, color=colors[::][j])
-#    if j==0:
-#        plt.fill_between(1+ty_100a[::], y1=total_sle[j], y2=0, color=colors[::][j], alpha=0.7)  
-#    else:
-#        plt.fill_between(1+ty_100a[::], y1=total_sle[j], y2=total_sle[j-1], color=colors[::][j], alpha=0.7)     
+plt.figure(figsize=(12,8))
+for j, gid in enumerate(glaciers_simulated):
+    #if gid!=10:
+    ms_selection = mod(gid, len(styles))
+    plt.plot(testyears[::], scenario_sle[j], linewidth=4, color=colors[ms_selection], label=gid)
+    plt.plot(testyears[::5], scenario_sle[j][::5], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[ms_selection])
+    if j==0:
+        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=0, color=colors[ms_selection], alpha=0.7)  
+    else:
+        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=scenario_sle[j-1], color=colors[ms_selection], alpha=0.7)     
 #plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
 #rect = mpatches.Rectangle((98,8.5), width=2, height=4.6, color='k', alpha=0.7) # Nick et al total projection for 2100, A1B
 #rect2 = mpatches.Rectangle((98,11.3), width=2, height=6.2, color='k', alpha=0.7) # Nick et al total projection for 2100, RCP8.5 
 #plt.axes().add_patch(rect)
 #plt.axes().add_patch(rect2)
-#plt.legend(loc='upper left')
-#plt.axes().set_xlabel('Year of simulation', size=20)
-#plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
-#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+plt.legend(loc='upper left')
+plt.axes().set_xlabel('Year of simulation', size=20)
+plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 #plt.axes().set_xlim(0, 100)
 #plt.axes().set_xticks([0, 25, 50, 75, 100])
 #plt.axes().set_ylim(0, 12)
 #plt.axes().set_yticks([0, 2, 4, 6, 8, 10, 12])
-#plt.show()
+plt.show()
