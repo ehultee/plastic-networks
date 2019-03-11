@@ -24,52 +24,52 @@ from flowline_class_hierarchy import *
 ##   READING IN & PROCESSING DATA
 ##-------------------------------
 
-##Reading in velocities -- function lifted from Greenland-vel-compositing.py
-##Function to read MEaSUREs velocity GeoTIFFs
-def read_velocities(filename, return_grid=True, return_proj=False):
-    """Extract x, y, v from a MEaSUREs GeoTIFF"""
-    ds = gdal.Open(filename)
-    #Get dimensions
-    nc = ds.RasterXSize
-    nr = ds.RasterYSize
-    
-    geotransform = ds.GetGeoTransform()
-    xOrigin = geotransform[0]
-    xPix = geotransform[1] #pixel width in x-direction
-    yOrigin = geotransform[3]
-    yPix = geotransform[5] #pixel height in y-direction
-    
-    lons = xOrigin + np.arange(0, nc)*xPix
-    lats = yOrigin + np.arange(0, nr)*yPix
-    
-    x, y = np.meshgrid(lons, lats)
-    
-    vband = ds.GetRasterBand(1)
-    varr = vband.ReadAsArray()
-    
-    #if return_grid and return_proj:
-    #    return x, y, varr, ds.GetProjection()
-    #elif return_grid:
-    if return_grid:
-        return x, y, varr
-    else: 
-        return varr
-
-## Read in MEaSUREs velocity composite
-print 'Reading MEaSUREs velocities'
-x_comp, y_comp, v_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-velocity-composite.tif')
-vx_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-x_velocity-composite.tif', return_grid=False)
-vy_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-y_velocity-composite.tif', return_grid=False)
-v_comp = np.ma.masked_invalid(v_comp_raw)
-vx_comp = np.ma.masked_invalid(vx_comp_raw)
-vy_comp = np.ma.masked_invalid(vy_comp_raw)
-v_excludemasked = np.ma.filled(v_comp, fill_value=0)
-vx_excludemasked = np.ma.filled(vx_comp, fill_value=0)
-vy_excludemasked = np.ma.filled(vy_comp, fill_value=0)
-days_per_annum = 365.242 #need to convert units of MEaSUREs velocity to align with what we used from Sentinel before
-v_a2d = np.array(v_excludemasked) / days_per_annum
-vx_a2d = np.array(vx_excludemasked) / days_per_annum
-vy_a2d = np.array(vy_excludemasked) / days_per_annum
+###Reading in velocities -- function lifted from Greenland-vel-compositing.py
+###Function to read MEaSUREs velocity GeoTIFFs
+#def read_velocities(filename, return_grid=True, return_proj=False):
+#    """Extract x, y, v from a MEaSUREs GeoTIFF"""
+#    ds = gdal.Open(filename)
+#    #Get dimensions
+#    nc = ds.RasterXSize
+#    nr = ds.RasterYSize
+#    
+#    geotransform = ds.GetGeoTransform()
+#    xOrigin = geotransform[0]
+#    xPix = geotransform[1] #pixel width in x-direction
+#    yOrigin = geotransform[3]
+#    yPix = geotransform[5] #pixel height in y-direction
+#    
+#    lons = xOrigin + np.arange(0, nc)*xPix
+#    lats = yOrigin + np.arange(0, nr)*yPix
+#    
+#    x, y = np.meshgrid(lons, lats)
+#    
+#    vband = ds.GetRasterBand(1)
+#    varr = vband.ReadAsArray()
+#    
+#    #if return_grid and return_proj:
+#    #    return x, y, varr, ds.GetProjection()
+#    #elif return_grid:
+#    if return_grid:
+#        return x, y, varr
+#    else: 
+#        return varr
+#
+### Read in MEaSUREs velocity composite
+#print 'Reading MEaSUREs velocities'
+#x_comp, y_comp, v_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-velocity-composite.tif')
+#vx_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-x_velocity-composite.tif', return_grid=False)
+#vy_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-y_velocity-composite.tif', return_grid=False)
+#v_comp = np.ma.masked_invalid(v_comp_raw)
+#vx_comp = np.ma.masked_invalid(vx_comp_raw)
+#vy_comp = np.ma.masked_invalid(vy_comp_raw)
+#v_excludemasked = np.ma.filled(v_comp, fill_value=0)
+#vx_excludemasked = np.ma.filled(vx_comp, fill_value=0)
+#vy_excludemasked = np.ma.filled(vy_comp, fill_value=0)
+#days_per_annum = 365.242 #need to convert units of MEaSUREs velocity to align with what we used from Sentinel before
+#v_a2d = np.array(v_excludemasked) / days_per_annum
+#vx_a2d = np.array(vx_excludemasked) / days_per_annum
+#vy_a2d = np.array(vy_excludemasked) / days_per_annum
 
 ## Read in BedMachine topography
 print 'Reading in surface topography'
@@ -99,14 +99,15 @@ M = thick_mask[::2,::2]
 fh.close()
 
 unsmoothB = B
-smoothB = gaussian_filter(B, 2)
+smoothing_sigma = 2 #chooses how much smoothing to apply
+smoothB = gaussian_filter(B, smoothing_sigma)
 
 S_new = np.add(B, H) #alternative surface elevation: bed elevation + ice thickness
 
 S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S.T[::, ::-1]) #interpolating surface elevation provided
 #S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S_new.T[::, ::-1]) #interpolating bed + thickness
 H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
-B_interp = interpolate.RectBivariateSpline(X, Y[::-1], unsmoothB.T[::, ::-1])
+B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 
 
 
@@ -182,17 +183,21 @@ def read_optimization_analysis(filename, read_yieldtype=False):
     
     return data
 
-analysis_fn = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/bestfit_taus-fromdate_2018-11-02.csv'
+analysis_fn = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/bestfit_taus-B_S_smoothing-fromdate_2019-01-17.csv'
 opt_data = read_optimization_analysis(analysis_fn)
-IDs_neg_termini = [g for i,g in enumerate(opt_data['Glacier_IDs']) if opt_data['Terminal_SE'][i]<0]
-IDs_thin_termini = [g for i,g in enumerate(opt_data['Glacier_IDs']) if opt_data['Terminal_H'][i]<10]
-taus_neg_termini = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Terminal_SE'][i]<0]   
-SEs_neg_termini = [se for i, se in enumerate(opt_data['Terminal_SE']) if opt_data['Terminal_SE'][i]<0]
+#IDs_neg_termini = [g for i,g in enumerate(opt_data['Glacier_IDs']) if opt_data['Terminal_SE'][i]<0]
+#IDs_thin_termini = [g for i,g in enumerate(opt_data['Glacier_IDs']) if opt_data['Terminal_H'][i]<10]
+#taus_neg_termini = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Terminal_SE'][i]<0]   
+#SEs_neg_termini = [se for i, se in enumerate(opt_data['Terminal_SE']) if opt_data['Terminal_SE'][i]<0]
+
+IDs_foranalysis = (9,)
+taus_foranalysis = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Glacier_IDs'][i] in IDs_foranalysis]
 
 ## Read in the networks of glaciers with problematic termini--based on Greenland-network_processing_routine.py
 base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
 flowlines_foranalysis = []
-for j, gid in enumerate(IDs_neg_termini):
+load_all = True #decide whether to analyse all flowlines of a network or only the central branch
+for j, gid in enumerate(IDs_foranalysis):
     print 'Reading in glacier ID: '+str(gid)
     if gid<160:
         filename = base_fpath+str(gid)+'-date_2018-10-03.csv'
@@ -203,6 +208,12 @@ for j, gid in enumerate(IDs_neg_termini):
     nlines = len(coords_list)
     branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
     branch_list = [branch_0]
+    if load_all:
+        for k in range(1, nlines):
+            branch = Branch(coords=coords_list[k], index=k)
+            branch_list.append(branch)
+    else:
+        pass
     nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
     #fl = Flowline(coords=coords_list[0], name='GID'+str(gid), index=0) #saving central branch as main
     print 'Now processing glacier ID: '+str(gid)
@@ -211,7 +222,7 @@ for j, gid in enumerate(IDs_neg_termini):
     nw.remove_floating()
     nw.make_full_lines()
     nw.process_full_lines(B_interp, S_interp, H_interp)
-    nw.optimal_tau = taus_neg_termini[j]
+    nw.optimal_tau = taus_foranalysis[j]
     flowlines_foranalysis.append(nw)
     
 
@@ -220,7 +231,7 @@ for j, gid in enumerate(IDs_neg_termini):
 ##-------------------------------
 
 ## How far away are the MEaSUREs termini of networks stored empty from a valid MEaSUREs velocity composite value?
-IDs_stored_empty = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+#IDs_stored_empty = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
 #def find_nearest_edge(masked_field, xgrid, ygrid, point, searchbuffer = 3):
 #    '''Edge detection for masked quantities, e.g. surface, velocity
 #    Default arg:
@@ -253,13 +264,34 @@ IDs_stored_empty = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
 
 ## Do the surface profiles of glaciers with small/negative terminus elevation look wonky in other ways?
 #IDs_neg_termini = (3, 9, 13, 19, 20, 22, 29, 30, ) #Glacier IDs with negative terminus elevation according to bestfit_taus-fromdate_2018-11-02.csv (extracted surface elevation from interpolation of B+H)
-for nw in flowlines_foranalysis: 
-    fl = nw.flowlines[0]
-    xarr = linspace(0, fl.length, num=1000)   
-    plt.figure()
-    plt.title('Glacier ID: {}.  Yield strength: {} kPa. Terminal SE: {} m'.format(nw.name, 0.001*nw.optimal_tau, fl.surface_function(0)))
-    plt.plot(10*xarr, fl.bed_function(xarr), color='Chocolate')
-    plt.plot(10*xarr, fl.surface_function(xarr), color='Gainsboro')
-    plt.axes().set_xlim(left=10*xarr[-1], right=0)
-    plt.show()
+#for nw in flowlines_foranalysis: 
+#    fl = nw.flowlines[0]
+#    xarr = linspace(0, fl.length, num=1000)   
+#    plt.figure()
+#    plt.title('Glacier ID: {}.  Yield strength: {} kPa. Terminal SE: {} m'.format(nw.name, 0.001*nw.optimal_tau, fl.surface_function(0)))
+#    plt.plot(10*xarr, fl.bed_function(xarr), color='Chocolate')
+#    plt.plot(10*xarr, fl.surface_function(xarr), color='Gainsboro')
+#    plt.axes().set_xlim(left=10*xarr[-1], right=0)
+#    plt.show()
 ## Yes, many do look wonky.  Many also report a thickness (from fl.thickness_function) different from their surface-bed. More structured analysis to come.
+
+
+## Do glaciers with surprisingly large sea level contributions have bed features that affect their stability?
+for nw in flowlines_foranalysis:
+    for j in range(len(nw.flowlines)): 
+        fl = nw.flowlines[j]
+        xarr = linspace(0, fl.length, num=1000)   
+        plt.figure('GID{}, flowline {}'.format(nw.name, j))
+        plt.title('Glacier ID: {}.  Terminal SE: {} m.  Bed smoothing sigma = {}'.format(nw.name, fl.surface_function(0), smoothing_sigma))
+        plt.plot(10*xarr, fl.bed_function(xarr), color='Chocolate')
+        plt.plot(10*xarr, fl.surface_function(xarr), color='Gainsboro')
+        plt.fill_between(10*xarr, y1=fl.surface_function(xarr), y2 = fl.bed_function(xarr), color='Gainsboro', alpha=0.7)
+        plt.fill_between(10*xarr, y1=fl.bed_function(xarr), y2=plt.axes().get_ylim()[0], color='Chocolate', alpha=0.7)
+        plt.axes().set_xlim(left=10*xarr[-1], right=0)
+        plt.axes().set_aspect(0.01)
+        plt.axes().set_xlabel('Along-flowline distance [km]', fontsize=18)
+        plt.axes().set_ylabel('Elevation [m a.s.l.]', fontsize=18)
+        plt.tick_params(axis='both', labelsize=16)
+        plt.show()
+## On GID9, some prominent lumps that are much steeper on downstream side; retrograde bed far upstream
+## GID10 shows retrograde bed as well, very thin nose sitting in water
