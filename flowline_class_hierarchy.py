@@ -372,14 +372,14 @@ class Flowline(Ice):
             dM, ice mass change at the terminus (due to calving flux) between profile 1 and profile 2, in kg
         """
         try:
-            interpolated_func1 = interpolate.interp1d(profile1[0], np.asarray(profile1[1]).squeeze(), kind='linear', copy=True, bounds_error=False) #Creating interpolated surface elevation profile
+            interpolated_func1 = interpolate.interp1d(profile1[0], np.asarray(profile1[1]).squeeze(axis=-1), kind='linear', copy=True, bounds_error=False) #Creating interpolated surface elevation profile
             bed_function1 = interpolate.interp1d(profile1[0], profile1[2]) #useful to calculate full-thickness volume change from retreat/advance
         except ValueError: #this happens when terminus retreats past upstream forcing point
             print 'There has been a ValueError calculating the old interpolated surface profile.'
             interpolated_func1 = lambda x: np.nan
             bed_function1 = lambda x: np.nan
         try:
-            interpolated_func2 = interpolate.interp1d(profile2[0], np.asarray(profile2[1]).squeeze(), kind='linear', copy=True, bounds_error=False) #Creating interpolated profile if needed
+            interpolated_func2 = interpolate.interp1d(profile2[0], np.asarray(profile2[1]).squeeze(axis=-1), kind='linear', copy=True, bounds_error=False) #Creating interpolated profile if needed
         except ValueError: #this happens when terminus retreats past upstream forcing point
             print 'There has been a ValueError calculating the new interpolated surface profile.'
             interpolated_func2 = lambda x: np.nan #return NaN once no longer calculating meaningful changes
