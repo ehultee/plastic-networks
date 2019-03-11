@@ -44,12 +44,13 @@ B = bb[::2, ::2]
 #S = ss
 fh.close()
 
-#Smoothing bed to check effect on dLdt
+#Smoothing bed
 unsmoothB = B
 smoothB = gaussian_filter(B, 2)
+smoothS = gaussian_filter(S, 2) #17 Jan 19 - smoothing S as well for consistency with auto-selected networks
 #B_processed = np.ma.masked_where(thick_mask !=2, smoothB)
 
-S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S.T[::, ::-1])
+S_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothS.T[::, ::-1])
 H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
 B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 
@@ -147,13 +148,13 @@ glacier_networks = (Jakobshavn_main, Jakobshavn_sec, Jakobshavn_tert, KogeBugt, 
 for gl in glacier_networks:
     print gl.name
     gl.process_full_lines(B_interp, S_interp, H_interp)
-    #if gl in (KogeBugt, Kanger): # Add more sophisticated code to catch warnings?
-    #    gl.remove_floating()
-    #    if gl in (Kanger,):
-    #        gl.make_full_lines()
-    #    else:
-    #        pass
-        #gl.process_full_lines(B_interp, S_interp, H_interp)
+    if gl in (KogeBugt, Kanger): # Add more sophisticated code to catch warnings?
+        gl.remove_floating()
+        if gl in (Kanger,):
+            gl.make_full_lines()
+        else:
+            pass
+        gl.process_full_lines(B_interp, S_interp, H_interp)
     #gl.optimize_network_yield(check_all=False)
     for fln in gl.flowlines:
         fln.yield_type  = gl.network_yield_type
@@ -165,22 +166,22 @@ for gl in glacier_networks:
 ##### FORWARD PROJECTION--FORCING FROM TERMINUS
 ####-------------------
 ##
-#testyears = arange(100, step=0.25)
-#db=False
-###
+testyears = arange(20, step=0.25)
+db=False
+##
 #testglac = (Jakobshavn_main,)
-##testglac = glacier_networks #to test all
+testglac = glacier_networks #to test all
 ###testglac = (Kanger,)
 ##
-##Finding SEC rates and making persistence projection
-#for gl in testglac:
-#    print gl.name
-#    gl.sec_mainline = np.asarray([SEC_i(gl.flowlines[0].coords[i,0], gl.flowlines[0].coords[i,1]) for i in range(len(gl.flowlines[0].coords))])
-#    away_from_edge = np.argmin(gl.sec_mainline)
-#    gl.sec_alphadot = np.mean(gl.sec_mainline[away_from_edge::])
-#    variable_forcing = linspace(start=gl.sec_alphadot, stop=2*gl.sec_alphadot, num=len(testyears))
-#    gl.terminus_sec = float(min(gl.sec_mainline.flatten()))#using min because values close to edge get disrupted by mask interpolation
-#    gl.terminus_time_evolve(testyears=testyears, alpha_dot=gl.sec_alphadot, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=gl.terminus_sec, submarine_melt = 0, debug_mode=db, rate_factor=3.7E-26) 
+#Finding SEC rates and making persistence projection
+for gl in testglac:
+    print gl.name
+    gl.sec_mainline = np.asarray([SEC_i(gl.flowlines[0].coords[i,0], gl.flowlines[0].coords[i,1]) for i in range(len(gl.flowlines[0].coords))])
+    away_from_edge = np.argmin(gl.sec_mainline)
+    gl.sec_alphadot = np.mean(gl.sec_mainline[away_from_edge::])
+    variable_forcing = linspace(start=gl.sec_alphadot, stop=2*gl.sec_alphadot, num=len(testyears))
+    gl.terminus_sec = float(min(gl.sec_mainline.flatten()))#using min because values close to edge get disrupted by mask interpolation
+    gl.terminus_time_evolve(testyears=testyears, alpha_dot=gl.sec_alphadot, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=gl.terminus_sec, submarine_melt = 0, debug_mode=db, rate_factor=3.7E-26) 
 #    
 #    print 'Saving output for {}'.format(gl.name)
 #    fn = str(gl.name)
@@ -191,45 +192,45 @@ for gl in glacier_networks:
 #    fn5 = fn4+'-2Jul18-persistence-coldice-100a_dt025a.pickle'
 #    gl.save_network(filename=fn5)
 
-#Kanger_multibranch_flux = [Kanger.model_output[j]['Terminus_flux'] for j in range(len(Kanger.flowlines))]
-#Kanger_total_flux = sum(Kanger_multibranch_flux, axis = 0) #note that Kanger_multibranch_flux is multidimensional, needs care in summing
-#Helheim_multibranch_flux = [Helheim.model_output[j]['Terminus_flux'] for j in range(len(Helheim.flowlines))]
-#Helheim_total_flux = sum(Helheim_multibranch_flux, axis=0)
-#Jakobshavn_multibranch_flux = [Jakobshavn_main.model_output[0]['Terminus_flux'], Jakobshavn_sec.model_output[0]['Terminus_flux'], Jakobshavn_tert.model_output[0]['Terminus_flux']]
-#Jakobshavn_total_flux = sum(Jakobshavn_multibranch_flux, axis=0)
-#main_fluxes = [Jakobshavn_main.model_output[0]['Terminus_flux'], Jakobshavn_sec.model_output[0]['Terminus_flux'], Jakobshavn_tert.model_output[0]['Terminus_flux'], KogeBugt.model_output[0]['Terminus_flux'], Helheim.model_output[0]['Terminus_flux'], Kanger.model_output[0]['Terminus_flux']] #main calving termini only
-#total_fluxes = [Jakobshavn_total_flux, KogeBugt.model_output[0]['Terminus_flux'], Helheim_total_flux, Kanger_total_flux]
-#total_fluxes_split = [Jakobshavn_main.model_output[0]['Terminus_flux'], Jakobshavn_sec.model_output[0]['Terminus_flux'], Jakobshavn_tert.model_output[0]['Terminus_flux'], KogeBugt.model_output[0]['Terminus_flux'], Helheim_total_flux, Kanger_total_flux] #totals from all termini, with Jak split by branch (network)
-#
-#fluxes_cleaned = []
-#sle = [] #will be array of annual sea level contributions
-#for flux in total_fluxes_split:
-#    flux_c = np.nan_to_num(flux)
-#    #flux_a = np.absolute(flux_c)
-#    fluxes_cleaned.append(flux_c)
-#    sleq = (1E-12)*np.array(flux_c)/(361.8) #Gt ice / mm sea level equiv conversion
-#    sle.append(sleq)
-#cumul_sle_pernetwork = []
-##total_sle = []
-#for sl in sle:
-#    c = np.cumsum(sl)
-#    cumul_sle_pernetwork.append(c)
-#total_sle = np.cumsum(cumul_sle_pernetwork, axis=0)
-#
-##### Splitting by branch for Jakobshavn
-###fluxes_cleaned = []
-###sle = []
-###for flux in total_fluxes_split:
-###    flux_c = np.nan_to_num(flux)
-###    flux_a = np.absolute(flux_c)
-###    fluxes_cleaned.append(flux_a)
-###    sleq = (1E-12)*np.array(flux_a)/(361.8)
-###    sle.append(sleq)
-###cumul_sle_split = []
-###for sl in sle:
-###    c = np.cumsum(sl)
-###    cumul_sle_split.append(c)
-###total_sle_split = np.cumsum(cumul_sle_split, axis=0)
+Kanger_multibranch_flux = [Kanger.model_output[j]['Terminus_flux'] for j in range(len(Kanger.flowlines))]
+Kanger_total_flux = sum(Kanger_multibranch_flux, axis = 0) #note that Kanger_multibranch_flux is multidimensional, needs care in summing
+Helheim_multibranch_flux = [Helheim.model_output[j]['Terminus_flux'] for j in range(len(Helheim.flowlines))]
+Helheim_total_flux = sum(Helheim_multibranch_flux, axis=0)
+Jakobshavn_multibranch_flux = [Jakobshavn_main.model_output[0]['Terminus_flux'], Jakobshavn_sec.model_output[0]['Terminus_flux'], Jakobshavn_tert.model_output[0]['Terminus_flux']]
+Jakobshavn_total_flux = sum(Jakobshavn_multibranch_flux, axis=0)
+main_fluxes = [Jakobshavn_main.model_output[0]['Terminus_flux'], Jakobshavn_sec.model_output[0]['Terminus_flux'], Jakobshavn_tert.model_output[0]['Terminus_flux'], KogeBugt.model_output[0]['Terminus_flux'], Helheim.model_output[0]['Terminus_flux'], Kanger.model_output[0]['Terminus_flux']] #main calving termini only
+total_fluxes = [Jakobshavn_total_flux, KogeBugt.model_output[0]['Terminus_flux'], Helheim_total_flux, Kanger_total_flux]
+total_fluxes_split = [Jakobshavn_main.model_output[0]['Terminus_flux'], Jakobshavn_sec.model_output[0]['Terminus_flux'], Jakobshavn_tert.model_output[0]['Terminus_flux'], KogeBugt.model_output[0]['Terminus_flux'], Helheim_total_flux, Kanger_total_flux] #totals from all termini, with Jak split by branch (network)
+
+fluxes_cleaned = []
+sle = [] #will be array of annual sea level contributions
+for flux in total_fluxes_split:
+    flux_c = np.nan_to_num(flux)
+    #flux_a = np.absolute(flux_c)
+    fluxes_cleaned.append(flux_c)
+    sleq = (1E-12)*np.array(flux_c)/(361.8) #Gt ice / mm sea level equiv conversion
+    sle.append(sleq)
+cumul_sle_pernetwork = []
+#total_sle = []
+for sl in sle:
+    c = np.cumsum(sl)
+    cumul_sle_pernetwork.append(c)
+total_sle = np.cumsum(cumul_sle_pernetwork, axis=0)
+
+#### Splitting by branch for Jakobshavn
+##fluxes_cleaned = []
+##sle = []
+##for flux in total_fluxes_split:
+##    flux_c = np.nan_to_num(flux)
+##    flux_a = np.absolute(flux_c)
+##    fluxes_cleaned.append(flux_a)
+##    sleq = (1E-12)*np.array(flux_a)/(361.8)
+##    sle.append(sleq)
+##cumul_sle_split = []
+##for sl in sle:
+##    c = np.cumsum(sl)
+##    cumul_sle_split.append(c)
+##total_sle_split = np.cumsum(cumul_sle_split, axis=0)
 ###
 #######-------------------
 ######## SUMMARY PLOTTING
