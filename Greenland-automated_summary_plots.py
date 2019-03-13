@@ -54,8 +54,19 @@ def lightload(filename, glacier_name, output_dictionary):
 
 #glaciers_simulated = (4, 8, 11, 12, 13, 14, 15, 16, 17, 50) #list MEaSUREs glacier IDs
 #glaciers_simulated = (3,)
-glaciers_simulated = (9,10) #study problematic ones
-testyears = arange(20, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
+#glaciers_simulated = (9,10) #study problematic ones
+glacier_ids = range(1,195) #tell the function which MEaSUREs glacier IDs you want to process.
+not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
+added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+errors = (5, 18, 19, 29, 71, 92, 95, 97, 101, 107, 108, 120, 134) #glacier IDs that crashed in hindcasting 12 Mar 2019
+rmv = np.concatenate((not_present, errors))
+for n in rmv:
+    try:
+        glacier_ids.remove(n)
+    except ValueError:
+        pass
+
+testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence', 
 #'RCP4pt5', 
 #'RCP8pt5'
@@ -63,14 +74,14 @@ scenarios = ('persistence',
 
 #datemarker = '2019-02-08' #markers on filename to indicate date run
 tempmarker = 'min10Cice' #and temperature of ice
-timestepmarker = '19a_dt025a' #and total time and timestep
+timestepmarker = '8a_dt025a' #and total time and timestep
 
 full_output_dicts = {}
 
 for s in scenarios:
     scenario_output = {'Testyears': testyears}
     for gid in glaciers_simulated:
-        fn = glob.glob('GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0]
+        fn = glob.glob('GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     #for i, gid in enumerate(glaciers_simulated):
     #    fn = 'GID{}-{}-{}-{}-{}.pickle'.format(gid, datemarker, s, tempmarker, timestepmarker)
@@ -151,26 +162,26 @@ plt.axes().set_ylabel('Terminus change [km]', size=20)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 #plt.axes().set_ylim(-100, 1)
 #plt.axes().set_yticks([-75, -50, -25, 0])
-plt.title('50 a (dt=0.25 a) climate persistence, T=-10 C', fontsize=20)
+plt.title('2006-2014 ERA-Interim climate, Tice=-10 C', fontsize=20)
 plt.show()
 #
 ##
-####SINGLE NETWORK - splitting termini
-single_network_output = full_output_dicts['persistence']['GID10']
-plt.figure('Single network terminus change')
-for k in range(len(single_network_output)): #for each branch j
-    #colork = alt_colors[mod(k, len(colors))]
-    branch_termini = single_network_output[k]['Termini'] #for some reason enumerate doesn't work with loaded-in output, so we're stuck with this
-    #markerk = (k+2, mod(k+1, 3), 0)
-    plt.plot(testyears, -0.001*np.array(branch_termini[0:-1:]), linewidth=4, label='Branch {}'.format(k))
-    #plt.plot(testyears[::10], -0.001*np.array(branch_termini[0:-1:])[::10], linewidth=0, color=colork, marker=markerk, ms=10)
-plt.legend(loc='lower left')
-plt.axes().set_xlabel('Year of simulation', size=30)
-plt.axes().set_ylabel('Terminus change [km]', size=30)
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-#plt.axes().set_ylim(-50, 1)
-#plt.axes().set_yticks([-50, -25, 0])
-plt.show()
+#####SINGLE NETWORK - splitting termini
+#single_network_output = full_output_dicts['persistence']['GID10']
+#plt.figure('Single network terminus change')
+#for k in range(len(single_network_output)): #for each branch j
+#    #colork = alt_colors[mod(k, len(colors))]
+#    branch_termini = single_network_output[k]['Termini'] #for some reason enumerate doesn't work with loaded-in output, so we're stuck with this
+#    #markerk = (k+2, mod(k+1, 3), 0)
+#    plt.plot(testyears, -0.001*np.array(branch_termini[0:-1:]), linewidth=4, label='Branch {}'.format(k))
+#    #plt.plot(testyears[::10], -0.001*np.array(branch_termini[0:-1:])[::10], linewidth=0, color=colork, marker=markerk, ms=10)
+#plt.legend(loc='lower left')
+#plt.axes().set_xlabel('Year of simulation', size=30)
+#plt.axes().set_ylabel('Terminus change [km]', size=30)
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+##plt.axes().set_ylim(-50, 1)
+##plt.axes().set_yticks([-50, -25, 0])
+#plt.show()
 #
 #####Flux
 #for j, gid in enumerate(glaciers_simulated):
