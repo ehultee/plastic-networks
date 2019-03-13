@@ -85,7 +85,7 @@ fh2.close()
 
 print 'Now transforming coordinate system of SMB'
 wgs84 = pyproj.Proj("+init=EPSG:4326") # LatLon with WGS84 datum used by GPS units and Google Earth
-psn_gl = pyproj.Proj("+init=epsg:3413") # Polar Stereographic North used by BedMachine (as stated in NetDCF header)
+psn_gl = pyproj.Proj("+init=epsg:3413") # Polar Stereographic North used by BedMachine (as stated in NetCDF header)
 xs, ys = pyproj.transform(wgs84, psn_gl, x_lon, y_lat)
 Xmat, Ymat = np.meshgrid(X, Y)
 
@@ -154,11 +154,12 @@ scenario = 'persistence'
 #scenario, SMB_i, SMB_l = 'RCP4pt5', SMB_2014, SMB_2100_RCP4pt5 #or RCP 4.5
 #scenario, SMB_i, SMB_l = 'RCP8pt5', SMB_2014, SMB_2100_RCP8pt5 #or RCP 8.5
 
-#gids_totest = glacier_ids #test all
+gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
-gids_totest = (3,) #test a geographically distributed subset
+#gids_totest = (3,) #test a geographically distributed subset
 #gids_totest = (9, 10) #test specific glaciers
 network_output = []
+bad_gids = []
 
 for gid in gids_totest:
     print 'Reading in glacier ID: '+str(gid)
@@ -186,13 +187,13 @@ for gid in gids_totest:
     nw.make_full_lines()
     nw.process_full_lines(B_interp, S_interp, H_interp)
 
-    print 'Now finding BedMachine terminus'
-    idx, term_bm = next((i,c) for i,c in enumerate(nw.flowlines[0].coords) if NearestMaskVal(c[0], c[1])==2) #need to do error handling in case this is nowhere satisfied
-    print 'BedMachine terminus is at index {}, coords {}'.format(idx, term_bm)
-    #idx, term_bm = next((i, c) for i, c in enumerate(nw.flowlines[0].coords) if S_interp(c[0], c[1])>2.0) #testing with surface cutoff (2m) for now instead of retrieving mask
-    term_arcval = ArcArray(nw.flowlines[0].coords)[idx]
-    term_bed = nw.flowlines[0].bed_function(term_arcval)
-    term_surface = nw.flowlines[0].surface_function(term_arcval)
+    #print 'Now finding BedMachine terminus'
+    #idx, term_bm = next((i,c) for i,c in enumerate(nw.flowlines[0].coords) if NearestMaskVal(c[0], c[1])==2) #need to do error handling in case this is nowhere satisfied
+    #print 'BedMachine terminus is at index {}, coords {}'.format(idx, term_bm)
+    ##idx, term_bm = next((i, c) for i, c in enumerate(nw.flowlines[0].coords) if S_interp(c[0], c[1])>2.0) #testing with surface cutoff (2m) for now instead of retrieving mask
+    #term_arcval = ArcArray(nw.flowlines[0].coords)[idx]
+    #term_bed = nw.flowlines[0].bed_function(term_arcval)
+    #term_surface = nw.flowlines[0].surface_function(term_arcval)
     
     nw.network_tau = optimal_taus[gid][0]
     nw.network_yield_type = optimal_taus[gid][1]
@@ -207,8 +208,12 @@ for gid in gids_totest:
     print 'a_dot from SMB: {}'.format(nw.smb_alphadot)
     nw.terminus_adot = time_varying_smb[0][0]
     print 'Terminus a_dot: {}'.format(nw.terminus_adot)
-    nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=catchment_smb_vals, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=False)
-
+    try:
+        nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=catchment_smb_vals, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=False)
+    except:
+        bad_gids.append(gid)   
+        continue 
+    
     print 'Saving output for {}'.format(nw.name)
     fn = str(nw.name)
     fn1 = fn.replace(" ", "")
@@ -217,5 +222,9 @@ for gid in gids_totest:
     fn4 = fn3.replace("]", "")
     fn5 = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/'+fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
     nw.save_network(filename=fn5)
-    
+
     #network_output.append(nw.model_output)
+
+##Output errors to csv file
+error_fn = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/error_gids-{}.csv'.format(datetime.date.today())
+np.savetxt(error_fn, np.asarray(bad_gids), delimiter=',')
