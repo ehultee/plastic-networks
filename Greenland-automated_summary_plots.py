@@ -22,8 +22,6 @@ from flowline_class_hierarchy import *
 ###-------------------
 #### DEFINING NECESSARY FUNCTIONS
 ###-------------------
-ty_50a = arange(50, step=0.25)
-ty_100a = arange(100, step=0.25)
 
 ### Load-in functionality to use only terminus position and flux
 def lightload(filename, glacier_name, output_dictionary):
@@ -65,6 +63,7 @@ for n in rmv:
         glacier_ids.remove(n)
     except ValueError:
         pass
+glaciers_simulated = glacier_ids #to plot all
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence', 
@@ -81,7 +80,7 @@ full_output_dicts = {}
 for s in scenarios:
     scenario_output = {'Testyears': testyears}
     for gid in glaciers_simulated:
-        fn = glob.glob('GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
+        fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     #for i, gid in enumerate(glaciers_simulated):
     #    fn = 'GID{}-{}-{}-{}-{}.pickle'.format(gid, datemarker, s, tempmarker, timestepmarker)
@@ -125,20 +124,20 @@ scenario_colors = cm.get_cmap('Blues')([0.1, 0.3, 0.5, 0.7, 0.9])
 colors = cmap(linspace(0.1, 0.9, num=len(glaciers_simulated)))
 alt_colors = cm.get_cmap('Greys')([0.2, 0.3, 0.5, 0.7, 0.9])
 
-plt.figure()
-for j in range(len(perscenario_SLE)):
-    plt.plot(testyears, perscenario_SLE[j], color=alt_colors[j+2], label=scenarios[j])
-#for k in range(len(coarser_SLE)):
-#    plt.plot(arange(100, step=0.5), coarser_SLE[k], color=scenario_colors[k+3], label=scenarios[k+3])
-plt.legend(loc='upper left')
-plt.axes().set_xlabel('Year of simulation', size=20)
-plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-#plt.axes().set_xlim(0, 100)
-#plt.axes().set_xticks([0, 25, 50, 75, 100])
-##plt.axes().set_ylim(-16, 1)
-##plt.axes().set_yticks([0, 1, 2, 3, 4])
-plt.show()
+#plt.figure()
+#for j in range(len(perscenario_SLE)):
+#    plt.plot(testyears, perscenario_SLE[j], color=alt_colors[j+2], label=scenarios[j])
+##for k in range(len(coarser_SLE)):
+##    plt.plot(arange(100, step=0.5), coarser_SLE[k], color=scenario_colors[k+3], label=scenarios[k+3])
+#plt.legend(loc='upper left')
+#plt.axes().set_xlabel('Year of simulation', size=20)
+#plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+##plt.axes().set_xlim(0, 100)
+##plt.axes().set_xticks([0, 25, 50, 75, 100])
+###plt.axes().set_ylim(-16, 1)
+###plt.axes().set_yticks([0, 1, 2, 3, 4])
+#plt.show()
 
 
 ####-------------------
@@ -153,9 +152,13 @@ plt.show()
 plt.figure()
 for j, gid in enumerate(glaciers_simulated):
     print gid
+    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
     ms_selection = mod(j, len(styles))
-    plt.plot(testyears, -0.001*np.array(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]), linewidth=4, color=colors[j], linestyle=styles[ms_selection], label='{}'.format(gid))
-    plt.plot(testyears[::4], -0.001*np.array(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::])[::4], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[j])
+    if max(term_positions)>20000:
+        plt.plot(testyears, -0.001*np.array(term_positions), linewidth=2, color='r', linestyle=styles[ms_selection], label='{}'.format(gid))
+    else:
+        plt.plot(testyears, -0.001*np.array(term_positions), linewidth=2, color='Gainsboro', linestyle=styles[ms_selection])
+    #plt.plot(testyears[::4], -0.001*np.array(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::])[::4], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[j])
 plt.legend(loc='lower left')
 plt.axes().set_xlabel('Year of simulation', size=20)
 plt.axes().set_ylabel('Terminus change [km]', size=20)
@@ -199,28 +202,28 @@ plt.show()
 #    #plt.axes().set_yticks([0, 50, 100, 150, 200, 250, 300, 350, 400])
 #    plt.show()
     ##
-######Sea level equivalent
-plt.figure(figsize=(12,8))
-for j, gid in enumerate(glaciers_simulated):
-    #if gid!=10:
-    ms_selection = mod(gid, len(styles))
-    plt.plot(testyears[::], scenario_sle[j], linewidth=4, color=colors[ms_selection], label=gid)
-    plt.plot(testyears[::5], scenario_sle[j][::5], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[ms_selection])
-    if j==0:
-        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=0, color=colors[ms_selection], alpha=0.7)  
-    else:
-        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=scenario_sle[j-1], color=colors[ms_selection], alpha=0.7)     
-#plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
-#rect = mpatches.Rectangle((98,8.5), width=2, height=4.6, color='k', alpha=0.7) # Nick et al total projection for 2100, A1B
-#rect2 = mpatches.Rectangle((98,11.3), width=2, height=6.2, color='k', alpha=0.7) # Nick et al total projection for 2100, RCP8.5 
-#plt.axes().add_patch(rect)
-#plt.axes().add_patch(rect2)
-plt.legend(loc='upper left')
-plt.axes().set_xlabel('Year of simulation', size=20)
-plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-#plt.axes().set_xlim(0, 100)
-#plt.axes().set_xticks([0, 25, 50, 75, 100])
-#plt.axes().set_ylim(0, 12)
-#plt.axes().set_yticks([0, 2, 4, 6, 8, 10, 12])
-plt.show()
+#######Sea level equivalent
+#plt.figure(figsize=(12,8))
+#for j, gid in enumerate(glaciers_simulated):
+#    #if gid!=10:
+#    ms_selection = mod(gid, len(styles))
+#    plt.plot(testyears[::], scenario_sle[j], linewidth=4, color=colors[ms_selection], label=gid)
+#    plt.plot(testyears[::5], scenario_sle[j][::5], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[ms_selection])
+#    if j==0:
+#        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=0, color=colors[ms_selection], alpha=0.7)  
+#    else:
+#        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=scenario_sle[j-1], color=colors[ms_selection], alpha=0.7)     
+##plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
+##rect = mpatches.Rectangle((98,8.5), width=2, height=4.6, color='k', alpha=0.7) # Nick et al total projection for 2100, A1B
+##rect2 = mpatches.Rectangle((98,11.3), width=2, height=6.2, color='k', alpha=0.7) # Nick et al total projection for 2100, RCP8.5 
+##plt.axes().add_patch(rect)
+##plt.axes().add_patch(rect2)
+#plt.legend(loc='upper left')
+#plt.axes().set_xlabel('Year of simulation', size=20)
+#plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+##plt.axes().set_xlim(0, 100)
+##plt.axes().set_xticks([0, 25, 50, 75, 100])
+##plt.axes().set_ylim(0, 12)
+##plt.axes().set_yticks([0, 2, 4, 6, 8, 10, 12])
+#plt.show()
