@@ -13,6 +13,7 @@ from matplotlib import cm
 #from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
+import shapely.geometry as geom
 from plastic_utilities_v2 import *
 from GL_model_tools import *
 from flowline_class_hierarchy import *
@@ -168,3 +169,31 @@ for i,b in enumerate(basefiles):
 #print 'Reading in MEaSUREs terminus positions for year 2015'
 #sf_termpos_1516 = shapefile.Reader(gl_termpos_fldr+'/termini_1516_v01_2') #Specify the base filename of the group of files that makes up a shapefile
 
+
+## Find centroid rates of retreat for observed period 2006-2014
+def Centroid_dLdt(termpts1, termpts2, time_interval):
+    """Given two arrays of terminus-spanning coordinates, finds the distance between their centroids and converts to a retreat rate in the given time_interval.
+    Returns retreat rate in distance per annum - check that termpts are in units of km (UTM) and time_interval in anni
+    """
+    term1 = geom.LineString(termpts1)
+    term1_centr = term1.centroid
+    term2 = geom.LineString(termpts2)
+    term2_centr = term2.centroid
+    
+    termchange = term2_centr.distance(term1_centr) #may need to project onto flowlines to ensure correct signs (retreat/advance)
+    
+    dLdt = termchange / time_interval
+    
+    return dLdt
+    
+retreat_rates = {yr:{} for yr in years[1::]}
+for i in range(1, len(years)):
+    current_termini = termini[years[i]]
+    previous_termini = termini[years[i-1]]
+    for gid in current_termini.keys():
+        try:
+            term1 = current_termini[gid]
+            term2 = previous_termini[gid]
+            retreat_rates[years[i]][gid] = Centroid_dLdt(term1, term2, time_interval=years[i]-years[i-1]) #calculate retreat rate at each glacier for each year 
+        except KeyError:
+            print 'No terminus found in year {} for glacier {}'.format(years[i], gid) # happens when glacier terminus is recorded in one year but not the previous
