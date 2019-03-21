@@ -77,20 +77,68 @@ from flowline_class_hierarchy import *
 #vf_y = interpolate.interp2d(xv, yv[::-1], vy_upper[::-1,::])
 #vf = interpolate.interp2d(xv, yv[::-1], v_upper[::-1, ::])
 #
-#print 'Reading in 5-year surface elevation change'
-#gl_sec_path ='Documents/GitHub/Data_unsynced/CS2-SEC_5yr.nc'
-##gl_sec_path ='Documents/GitHub/Data_unsynced/CS2-SEC_2yr.nc'
-#fh3 = Dataset(gl_sec_path, mode='r')
-#x_sec = fh3.variables['x'][:].copy() #x-coord (polar stereo)
-#y_sec = fh3.variables['y'][:].copy() #y-coord (polar stereo)
-#t_sec = fh3.variables['t'][:].copy() #average time of slice (days since 1 JAN 2000)
-#sec_raw = fh3.variables['SEC'][:].copy()
-#fh3.close()
-#
-#sec_i_masked = np.ma.masked_greater(sec_raw[:,:,0], 9000)
-#sec_i_excludemasked = np.ma.filled(sec_i_masked, fill_value=np.mean(sec_i_masked))
-##sec_i_regrid = interpolate.griddata((x_sec.ravel(), y_sec.ravel()), sec_i_masked.ravel(), (Xmat, Ymat), method='nearest')
-#SEC_i = interpolate.RectBivariateSpline(x_sec, y_sec, sec_i_excludemasked.T)
+
+## Read in MEaSUREs velocity composite
+##Reading in velocities -- function lifted from Greenland-vel-compositing.py
+##Function to read MEaSUREs velocity GeoTIFFs
+def read_velocities(filename, return_grid=True, return_proj=False):
+    """Extract x, y, v from a MEaSUREs GeoTIFF"""
+    ds = gdal.Open(filename)
+    #Get dimensions
+    nc = ds.RasterXSize
+    nr = ds.RasterYSize
+    
+    geotransform = ds.GetGeoTransform()
+    xOrigin = geotransform[0]
+    xPix = geotransform[1] #pixel width in x-direction
+    yOrigin = geotransform[3]
+    yPix = geotransform[5] #pixel height in y-direction
+    
+    lons = xOrigin + np.arange(0, nc)*xPix
+    lats = yOrigin + np.arange(0, nr)*yPix
+    
+    x, y = np.meshgrid(lons, lats)
+    
+    vband = ds.GetRasterBand(1)
+    varr = vband.ReadAsArray()
+    
+    #if return_grid and return_proj:
+    #    return x, y, varr, ds.GetProjection()
+    #elif return_grid:
+    if return_grid:
+        return x, y, varr
+    else: 
+        return varr
+
+print 'Reading MEaSUREs velocities'
+x_comp, y_comp, v_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-velocity-composite-10Jan19.tif')
+vx_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-x_velocity-composite-10Jan19.tif', return_grid=False)
+vy_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-y_velocity-composite-10Jan19.tif', return_grid=False)
+v_comp = np.ma.masked_invalid(v_comp_raw)
+vx_comp = np.ma.masked_invalid(vx_comp_raw)
+vy_comp = np.ma.masked_invalid(vy_comp_raw)
+v_excludemasked = np.ma.filled(v_comp, fill_value=0)
+vx_excludemasked = np.ma.filled(vx_comp, fill_value=0)
+vy_excludemasked = np.ma.filled(vy_comp, fill_value=0)
+days_per_annum = 365.242 #need to convert units of MEaSUREs velocity to align with what we used from Sentinel before
+v_a2d = np.array(v_excludemasked) / days_per_annum
+vx_a2d = np.array(vx_excludemasked) / days_per_annum
+vy_a2d = np.array(vy_excludemasked) / days_per_annum
+
+
+##Make 2D-interpolated function of velocity field for tracing
+print 'Interpolating MEaSUREs velocity composites for tracing'
+x_flat = x_comp[0,:]
+y_flat = y_comp[:,0]
+func_vxcomp = interpolate.interp2d(x_flat, y_flat[::-1], vx_a2d) #these need to be flipped along y-axis
+func_vycomp = interpolate.interp2d(x_flat, y_flat[::-1], vy_a2d)
+func_vcomp = interpolate.interp2d(x_flat, y_flat[::-1], v_a2d)
+
+#xtest = np.linspace(min(x_flat), max(x_flat), 1000)
+#ytest = np.linspace(min(y_flat), max(y_flat), 500)
+#plt.figure()
+#plt.contour(xtest, ytest, func_vcomp(xtest, ytest))
+#plt.show()
 
 
 print 'Reading in MEaSUREs reference file' 
@@ -171,20 +219,32 @@ for i,b in enumerate(basefiles):
 
 
 ## Find centroid rates of retreat for observed period 2006-2014
-def Centroid_dLdt(termpts1, termpts2, time_interval):
+def Centroid_dLdt(termpts1, termpts2, time_interval, vx_func, vy_func):
     """Given two arrays of terminus-spanning coordinates, finds the distance between their centroids and converts to a retreat rate in the given time_interval.
     Returns retreat rate in distance per annum - check that termpts are in units of km (UTM) and time_interval in anni
+    Inputs:
+        termpts1 - points describing terminus at time t1
+        termpts2 - points describing terminus at time t2
+        time_interval - interval in anna, t2-t1
+        vx_func - a 2D interpolated function for the x-component of ice velocity, used to determine sign of dL/dt
+        vy_func - a 2D interpolated function for the y-component of ice velocity
     """
     term1 = geom.LineString(termpts1)
     term1_centr = term1.centroid
+    centr1_coords = np.squeeze(list(term1_centr.coords))
     term2 = geom.LineString(termpts2)
     term2_centr = term2.centroid
+    centr2_coords = np.squeeze(list(term2_centr.coords))
     
-    termchange = term2_centr.distance(term1_centr) #may need to project onto flowlines to ensure correct signs (retreat/advance)
+    disp_vector = centr1_coords - centr2_coords
+    termchange = np.linalg.norm(disp_vector)
+    dLdt_abs = termchange / time_interval
     
-    dLdt = termchange / time_interval
+    v_vector = (vx_func(centr1_coords[0], centr1_coords[1]), vy_func(centr1_coords[0], centr1_coords[1]))
+    dotprod = np.vdot(disp_vector, v_vector)
+    sgn_dL = sign(dotprod) #sign of dot product indicates whether displacement of termini is parallel to velocity (advance) or antiparallel (retreat)
     
-    return dLdt
+    return dLdt_abs*sgn_dL
     
 retreat_rates = {yr:{} for yr in years[1::]}
 for i in range(1, len(years)):
@@ -194,6 +254,7 @@ for i in range(1, len(years)):
         try:
             term1 = current_termini[gid]
             term2 = previous_termini[gid]
-            retreat_rates[years[i]][gid] = Centroid_dLdt(term1, term2, time_interval=years[i]-years[i-1]) #calculate retreat rate at each glacier for each year 
+            retreat_rates[years[i]][gid] = Centroid_dLdt(term1, term2, time_interval=years[i]-years[i-1], vx_func=func_vxcomp, vy_func=func_vycomp) #calculate retreat rate at each glacier for each year 
         except KeyError:
             print 'No terminus found in year {} for glacier {}'.format(years[i], gid) # happens when glacier terminus is recorded in one year but not the previous
+
