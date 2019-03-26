@@ -8,75 +8,21 @@ import matplotlib.pyplot as plt
 import csv
 import collections
 import shapefile
+import glob
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
 #from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
+from osgeo import gdal
 import shapely.geometry as geom
 from plastic_utilities_v2 import *
 from GL_model_tools import *
 from flowline_class_hierarchy import *
 
 ##-------------------
-### READING IN BED, VELOCITY, SURFACE CHANGE ETC.
-### COMMENT OUT IF DATA IS ALREADY READ IN TO YOUR SESSION
+### READING IN OBS
 ##-------------------
-
-#print 'Reading in surface topography'
-#gl_bed_path ='Documents/1. Research/2. Flowline networks/Model/Data/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
-#fh = Dataset(gl_bed_path, mode='r')
-#xx = fh.variables['x'][:].copy() #x-coord (polar stereo (70, 45))
-#yy = fh.variables['y'][:].copy() #y-coord
-#s_raw = fh.variables['surface'][:].copy() #surface elevation
-#h_raw=fh.variables['thickness'][:].copy() # Gridded thickness
-#b_raw = fh.variables['bed'][:].copy() # bed topo
-#thick_mask = fh.variables['mask'][:].copy()
-#ss = np.ma.masked_where(thick_mask !=2, s_raw)#mask values: 0=ocean, 1=ice-free land, 2=grounded ice, 3=floating ice, 4=non-Greenland land
-#hh = np.ma.masked_where(thick_mask !=2, h_raw) 
-#bb = np.ma.masked_where(thick_mask !=2, b_raw)
-### Down-sampling
-#X = xx[::2]
-#Y = yy[::2]
-#S = ss[::2, ::2]
-#H = hh[::2, ::2] 
-#B = bb[::2, ::2]
-### Not down-sampling
-##X = xx
-##Y = yy
-##S = ss
-#fh.close()
-#
-##Smoothing bed to check effect on dLdt
-#unsmoothB = B
-#smoothB = gaussian_filter(B, 2)
-##B_processed = np.ma.masked_where(thick_mask !=2, smoothB)
-#
-#S_interp = interpolate.RectBivariateSpline(X, Y[::-1], S.T[::, ::-1])
-#H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
-#B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
-
-### Reading in SENTINEL velocity map
-#print 'Now reading in (vector) velocity map'
-#v_path = 'Documents/1. Research/2. Flowline networks/Model/Data/ESA-Greenland/greenland_iv_500m_s1_20161223_20170227_v1_0.nc'
-#fh2 = Dataset(v_path, mode='r')
-#xv = fh2.variables['x'][:].copy()
-#yv = fh2.variables['y'][:].copy()
-##yv = yv_flipped[::-1]
-#v_raw = fh2.variables['land_ice_surface_velocity_magnitude'][:].copy() #this is v(y, x)
-#vx_raw = fh2.variables['land_ice_surface_easting_velocity'][:].copy()
-#vy_raw =fh2.variables['land_ice_surface_northing_velocity'][:].copy()
-#v_upper = np.ma.masked_greater(v_raw, 10000)
-#vx_upper = np.ma.masked_greater(vx_raw, 10000)
-#vy_upper = np.ma.masked_greater(vy_raw, 10000)
-#fh2.close()
-#
-### Interpolate SENTINEL and sample at BedMachine points
-#print 'Now interpolating to same grid'
-#vf_x = interpolate.interp2d(xv, yv[::-1], vx_upper[::-1,::])
-#vf_y = interpolate.interp2d(xv, yv[::-1], vy_upper[::-1,::])
-#vf = interpolate.interp2d(xv, yv[::-1], v_upper[::-1, ::])
-#
 
 ## Read in MEaSUREs velocity composite
 ##Reading in velocities -- function lifted from Greenland-vel-compositing.py
@@ -133,13 +79,6 @@ y_flat = y_comp[:,0]
 func_vxcomp = interpolate.interp2d(x_flat, y_flat[::-1], vx_a2d) #these need to be flipped along y-axis
 func_vycomp = interpolate.interp2d(x_flat, y_flat[::-1], vy_a2d)
 func_vcomp = interpolate.interp2d(x_flat, y_flat[::-1], v_a2d)
-
-#xtest = np.linspace(min(x_flat), max(x_flat), 1000)
-#ytest = np.linspace(min(y_flat), max(y_flat), 500)
-#plt.figure()
-#plt.contour(xtest, ytest, func_vcomp(xtest, ytest))
-#plt.show()
-
 
 print 'Reading in MEaSUREs reference file' 
 gl_gid_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-GlacierIDs'
@@ -246,7 +185,7 @@ def Centroid_dLdt(termpts1, termpts2, time_interval, vx_func, vy_func):
     
     return dLdt_abs*sgn_dL
     
-retreat_rates = {yr:{} for yr in years[1::]}
+obs_retreat_rates = {yr:{} for yr in years[1::]}
 for i in range(1, len(years)):
     current_termini = termini[years[i]]
     previous_termini = termini[years[i-1]]
@@ -254,7 +193,102 @@ for i in range(1, len(years)):
         try:
             term1 = current_termini[gid]
             term2 = previous_termini[gid]
-            retreat_rates[years[i]][gid] = Centroid_dLdt(term1, term2, time_interval=years[i]-years[i-1], vx_func=func_vxcomp, vy_func=func_vycomp) #calculate retreat rate at each glacier for each year 
+            obs_retreat_rates[years[i]][gid] = Centroid_dLdt(term1, term2, time_interval=years[i]-years[i-1], vx_func=func_vxcomp, vy_func=func_vycomp) #calculate retreat rate at each glacier for each year 
         except KeyError:
             print 'No terminus found in year {} for glacier {}'.format(years[i], gid) # happens when glacier terminus is recorded in one year but not the previous
 
+##-------------------
+### READING IN SIMS
+##-------------------
+
+### Load-in functionality to read only terminus position and flux, lifted from Greenland-automated_summary_plots.py
+def lightload(filename, glacier_name, output_dictionary):
+    output_dictionary[glacier_name] = {}
+    
+    with open(filename, 'rb') as handle:
+        loadin = pickle.load(handle)
+    
+    N_Flowlines = loadin['N_Flowlines']
+    mainline_termini = loadin['mainline_model_output']['Termini']
+    mainline_flux = loadin['mainline_model_output']['Terminus_flux']
+    output_dictionary[glacier_name][0] ={'Termini': mainline_termini, 'Terminus_flux': mainline_flux}
+    
+    if N_Flowlines >1:
+        for n in range(N_Flowlines)[1::]:
+            key_n = 'model_output_'+str(n)
+            termini_n = loadin[key_n]['Termini']
+            termflux_n = loadin[key_n]['Terminus_flux']
+            output_dictionary[glacier_name][n] = {'Termini': termini_n, 'Terminus_flux': termflux_n}
+    else:
+        pass
+        
+    return output_dictionary
+
+testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
+scenarios = ('persistence', 
+#'RCP4pt5', 
+#'RCP8pt5'
+)
+
+#datemarker = '2019-02-08' #markers on filename to indicate date run
+tempmarker = 'min10Cice' #and temperature of ice
+timestepmarker = '8a_dt025a' #and total time and timestep
+
+## Define which glaciers are in the simulated set
+glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
+not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
+added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+errors = (5, 18, 19, 29, 71, 92, 95, 97, 101, 107, 108, 120, 134) #glacier IDs that crashed in hindcasting 12 Mar 2019
+rmv = np.concatenate((not_present, errors))
+for n in rmv:
+    try:
+        glacier_ids.remove(n)
+    except ValueError:
+        pass
+glaciers_simulated = glacier_ids #adjust this to reflect whether you want to examine the whole set or a subset
+
+
+full_output_dicts = {}
+for s in scenarios:
+    scenario_output = {'Testyears': testyears}
+    for gid in glaciers_simulated:
+        fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
+        lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
+    full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
+
+
+##-------------------
+### COMPARE OBS-SIMS
+##-------------------
+avg_obs_rates = [] #aggregating observations to plot distribution
+for gid in glaciers_simulated:
+    obsrates = []
+    for yr in years[1::]:
+        try:
+            obsrates.append(obs_retreat_rates[yr][gid])
+        except KeyError: #if no observation exists for this year on this glacier
+            pass
+    avg_obs = np.mean(obsrates)
+    avg_obs_rates.append(avg_obs)
+
+avg_sim_rates = []
+for gid in glaciers_simulated:
+    sim_termini = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
+    cumulative_dL = -1*float(sim_termini[-1]) #terminus positions given in arclength upglacier from initial terminus, so negative final terminus position corresponds to positive dL and vice versa
+    cumulative_dt = float(testyears[-1])
+    avg_dLdt = cumulative_dL/cumulative_dt
+    avg_sim_rates.append(avg_dLdt)
+
+##Make histogram of observed rates dLdt and plot side-by-side with simulated
+plotting_bins = (-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500)
+obs_weights = np.ones_like(avg_obs_rates)/float(len(avg_obs_rates))
+sim_weights = np.ones_like(avg_sim_rates)/float(len(avg_sim_rates))
+plt.figure()
+plt.hist([avg_obs_rates, avg_sim_rates], bins=plotting_bins, weights=[obs_weights, sim_weights], color=['Aqua', 'Indigo'], alpha=0.5, label=['MEaSUREs observed', 'Simulated'])
+plt.xlabel('Average dL/dt [m/a]', fontsize=18)
+plt.ylabel('Density', fontsize=18)
+plt.legend(loc='upper left')
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fontsize=20)
+plt.show()

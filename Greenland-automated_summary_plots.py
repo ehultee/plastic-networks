@@ -165,7 +165,7 @@ plt.axes().set_ylabel('Terminus change [km]', size=20)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 #plt.axes().set_ylim(-100, 1)
 #plt.axes().set_yticks([-75, -50, -25, 0])
-plt.title('2006-2014 ERA-Interim climate, Tice=-10 C', fontsize=20)
+plt.title('Terminus retreat of {} Greenland outlet glaciers 2006-2014 ERA-I, Tice=-10 C'.format(len(glaciers_simulated)), fontsize=20)
 plt.show()
 #
 ##
