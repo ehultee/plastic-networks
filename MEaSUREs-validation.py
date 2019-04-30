@@ -292,3 +292,45 @@ plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fontsize=20)
 plt.show()
+
+## Histogram of difference
+diff_bins = arange(-2000, 13000, 150)
+plt.figure()
+plt.hist(np.array(avg_obs_rates)-np.array(avg_sim_rates), bins=diff_bins, weights=obs_weights, color='Blue')
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+#plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+plt.axes().set_yticks([0, 0.1, 0.2])
+plt.xlabel('$\Delta dL/dt$ [m/a]', fontsize=18)
+plt.ylabel('Density', fontsize=18)
+plt.title('Difference observed - simulated retreat rates, Greenland outlets 2006-2014', fontsize=20)
+plt.show()
+
+
+## Map of total retreat (scales linearly with avg rate as calculated above)
+## Use greenland-outlets-map as basis -- some things initialized there first
+gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=3413, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
+plt.figure()
+gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+for i, gid in enumerate(glaciers_simulated):
+    pt = all_coords_latlon[gid][0]
+    markerscale = abs(avg_sim_rates[i]/np.mean(avg_sim_rates))
+    advret_color = cm.get_cmap('coolwarm')(sign(avg_sim_rates[i]))
+    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color='b', edgecolors='DarkViolet', latlon=True)
+    #    term_marker = gld_backdrop(pt[0], pt[1])
+    #    #offset = 100 * np.mod(k,2)
+    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+plt.show()
+
+## Map of obs-sim difference
+plt.figure()
+gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+for i, gid in enumerate(glaciers_simulated):
+    pt = all_coords_latlon[gid][0]
+    diff = avg_obs_rates[i] - avg_sim_rates[i]
+    markerscale = abs(diff/np.mean(avg_obs_rates))
+    advret_color = cm.get_cmap('coolwarm')(sign(diff))
+    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color='b', edgecolors='DarkViolet', latlon=True)
+    #    term_marker = gld_backdrop(pt[0], pt[1])
+    #    #offset = 100 * np.mod(k,2)
+    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+plt.show()
