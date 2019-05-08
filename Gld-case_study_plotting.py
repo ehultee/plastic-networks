@@ -53,10 +53,10 @@ def lightload(filename, glacier_name, output_dictionary):
 gids_by_name = ((3, 'Jakobshavn/SK'), 
 (175, 'Helheim'), 
 (153, 'Kangerlussuaq'),
-(9, 'Store'),
+(10, 'Store'),
 ) #array pairing glacier IDs with their recognized  names
 
-glaciers_to_plot = [g[0] for g in gids_by_name if g[1] in ('Jakobshavn/SK', 'Helheim', 'Kangerlussuaq')] # select gids of glaciers to plot as case studies
+glaciers_to_plot = [g[0] for g in gids_by_name if g[1] in ('Jakobshavn/SK', 'Helheim', 'Kangerlussuaq', 'Store')] # select gids of glaciers to plot as case studies
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence', 
@@ -223,22 +223,23 @@ plt.title('Terminus retreat of {} Greenland outlet glaciers 2006-2014 ERA-I, Tic
 plt.show()
 
 ####SINGLE NETWORK - termini vs obs
-sim_termini = full_output_dicts['persistence']['GID3'][0]['Termini'][1::]
-obs_termini = np.asarray(projected_termini[3]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-obs_term_centr = obs_termini[:,1]
-e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-plt.figure('Single network terminus change')
-plt.plot(plot_years, -0.001*np.array(sim_termini), linewidth=2, color='k', linestyle='--', label='Modelled')
-plt.errorbar(obs_years, -1*obs_term_centr, yerr = e, fmt='D')
-plt.axes().set_xlabel('Year', size=30)
-plt.axes().set_ylabel('Terminus change [km]', size=30)
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-plt.axes().set_xlim(2006, 2014.5)
-plt.axes().set_xticks([2006, 2008, 2010, 2012, 2014])
-plt.axes().set_xticklabels(['2006', '2008', '2010', '2012', '2014'])
-#plt.axes().set_ylim(-50, 1)
-#plt.axes().set_yticks([-50, -25, 0])
-plt.show()
+for j, gid in enumerate(glaciers_to_plot):
+    sim_termini = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
+    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    obs_term_centr = obs_termini[:,1]
+    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+    plt.figure('Main line terminus change, GID{}'.format(gid))
+    plt.plot(plot_years, -0.001*np.array(sim_termini), linewidth=2, color='k', linestyle='-', label='Modelled')
+    plt.errorbar(obs_years, -1*obs_term_centr, yerr = e, fmt='D')
+    plt.axes().set_xlabel('Year', size=30)
+    plt.axes().set_ylabel('Terminus change [km]', size=30)
+    plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+    plt.axes().set_xlim(2006, 2014.5)
+    plt.axes().set_xticks([2006, 2008, 2010, 2012, 2014])
+    plt.axes().set_xticklabels(['2006', '2008', '2010', '2012', '2014'])
+    #plt.axes().set_ylim(-50, 1)
+    #plt.axes().set_yticks([-50, -25, 0])
+    plt.show()
 
 
 ##
