@@ -308,12 +308,35 @@ plt.show()
 
 
 ## Density plot of obs vs simulated rates
-os = np.vstack([avg_sim_rates, avg_obs_rates])
+avsim = 0.001*np.array(avg_sim_rates)
+avobs = 0.001*np.array(avg_obs_rates)
+os = np.vstack([avsim, avobs])
 z = gaussian_kde(os)(os) #density scale of obs vs. simulated rates
 #srt = z.argsort() #sort so that densest will be plotted on top
-#avg_obs_rates, avg_sim_rates, z = avg_obs_rates[srt], avg_sim_rates[srt], z[srt]
+#avg_obs_rates, avg_sim_rates, z = avg_obs_rates[srt], avg_sim_rates[srt], z[srt]  #returns an error, revisit if needed
 plt.figure()
-plt.scatter(avg_sim_rates, avg_obs_rates, c=z, s=50, edgecolor='')
+plt.scatter(avsim, avobs, c=cm.get_cmap('Greys')(z), s=50, edgecolor='')
+plt.axes().set_xlabel('Simulated dL/dt [km/a]', size=20)
+plt.axes().set_ylabel('Observed dL/dt [km/a]', size=20)
+plt.show()
+
+## Plotting terminus change history colored by density of similar histories
+retreat_density = gaussian_kde(avg_sim_rates)(avg_sim_rates) #will code retreat histories by number of retreats that end up nearby during simulation
+density_colors = cm.get_cmap('Blues')(2000*np.array(retreat_density)) #make an array of colors coded to the density calculated above, scaled by 2000 so they show up
+plt.figure()
+for j, gid in enumerate(glaciers_simulated):
+    print gid
+    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
+    dc = density_colors[j]
+    plt.plot(testyears, -0.001*np.array(term_positions), linewidth=2, color=dc)
+#plt.legend(loc='lower left')
+plt.axes().set_xlabel('Year', size=20)
+plt.axes().set_xticklabels(['2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014'])
+plt.axes().set_ylabel('Terminus change [km]', size=20)
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+#plt.axes().set_ylim(-100, 1)
+#plt.axes().set_yticks([-75, -50, -25, 0])
+plt.title('Simulated terminus retreat of {} Greenland outlet glaciers 2006-2014 ERA-I, Tice=-10 C'.format(len(glaciers_simulated)), fontsize=20)
 plt.show()
 
 
