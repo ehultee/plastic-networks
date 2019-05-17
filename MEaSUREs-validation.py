@@ -14,6 +14,7 @@ from matplotlib import cm
 #from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
+from scipy.stats import gaussian_kde
 from osgeo import gdal
 import shapely.geometry as geom
 from plastic_utilities_v2 import *
@@ -303,6 +304,16 @@ plt.axes().set_yticks([0, 0.1, 0.2])
 plt.xlabel('$\Delta dL/dt$ [m/a]', fontsize=18)
 plt.ylabel('Density', fontsize=18)
 plt.title('Difference observed - simulated retreat rates, Greenland outlets 2006-2014', fontsize=20)
+plt.show()
+
+
+## Density plot of obs vs simulated rates
+os = np.vstack([avg_sim_rates, avg_obs_rates])
+z = gaussian_kde(os)(os) #density scale of obs vs. simulated rates
+#srt = z.argsort() #sort so that densest will be plotted on top
+#avg_obs_rates, avg_sim_rates, z = avg_obs_rates[srt], avg_sim_rates[srt], z[srt]
+plt.figure()
+plt.scatter(avg_sim_rates, avg_obs_rates, c=z, s=50, edgecolor='')
 plt.show()
 
 
