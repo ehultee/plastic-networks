@@ -16,6 +16,8 @@ from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 from scipy.stats import gaussian_kde
 from osgeo import gdal
+from mpl_toolkits.basemap import Basemap
+import mpl_toolkits.basemap.pyproj as pyproj
 import shapely.geometry as geom
 from plastic_utilities_v2 import *
 from GL_model_tools import *
@@ -239,7 +241,7 @@ timestepmarker = '8a_dt025a' #and total time and timestep
 glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
 not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
 added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
-errors = (5, 18, 19, 29, 71, 92, 95, 97, 101, 107, 108, 120, 134) #glacier IDs that crashed in hindcasting 12 Mar 2019
+errors = (5, 18, 19, 29, 71, 92, 95, 97, 100, 101, 102, 106, 107, 108, 110, 113, 117, 120, 121, 134, 168, 171) #glacier IDs that crashed in hindcasting 12 Mar 2019 *or* showed network problems 21 May 2019
 rmv = np.concatenate((not_present, errors))
 for n in rmv:
     try:
@@ -281,7 +283,7 @@ for gid in glaciers_simulated:
     avg_sim_rates.append(avg_dLdt)
 
 ##Make histogram of observed rates dLdt and plot side-by-side with simulated
-plotting_bins = (-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500)
+plotting_bins = (-3500, -3000, -2500, -2000, -1500, -1000, -500, 0.1, 500)
 obs_weights = np.ones_like(avg_obs_rates)/float(len(avg_obs_rates))
 sim_weights = np.ones_like(avg_sim_rates)/float(len(avg_sim_rates))
 plt.figure()
@@ -295,7 +297,7 @@ plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fo
 plt.show()
 
 ## Histogram of difference
-diff_bins = arange(-2000, 13000, 150)
+diff_bins = arange(-2000, 3000, 150)
 plt.figure()
 plt.hist(np.array(avg_obs_rates)-np.array(avg_sim_rates), bins=diff_bins, weights=obs_weights, color='Blue')
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
@@ -314,10 +316,18 @@ os = np.vstack([avsim, avobs])
 z = gaussian_kde(os)(os) #density scale of obs vs. simulated rates
 #srt = z.argsort() #sort so that densest will be plotted on top
 #avg_obs_rates, avg_sim_rates, z = avg_obs_rates[srt], avg_sim_rates[srt], z[srt]  #returns an error, revisit if needed
+xeqy_x = range(-3,2)
+xeqy_y = range(-3,2)
 plt.figure()
-plt.scatter(avsim, avobs, c=cm.get_cmap('Greys')(z), s=50, edgecolor='')
-plt.axes().set_xlabel('Simulated dL/dt [km/a]', size=20)
-plt.axes().set_ylabel('Observed dL/dt [km/a]', size=20)
+plt.scatter(avobs, avsim, c=cm.get_cmap('Greys')(z), s=50, edgecolor='')
+plt.plot(xeqy_x, xeqy_y, c='b', ls='-.')
+plt.axes().set_xlabel('Observed dL/dt [km/a]', size=20)
+plt.axes().set_ylabel('Simulated dL/dt [km/a]', size=20)
+plt.axes().set_xlim(-1, 0.5)
+plt.axes().set_ylim(-3, 0.5)
+plt.axes().set_xticks([-1, -0.5, 0, 0.5])
+plt.axes().set_yticks([-3, -2, -1, 0])
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 plt.show()
 
 ## Plotting terminus change history colored by density of similar histories
@@ -332,6 +342,7 @@ for j, gid in enumerate(glaciers_simulated):
 #plt.legend(loc='lower left')
 plt.axes().set_xlabel('Year', size=20)
 plt.axes().set_xticklabels(['2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014'])
+plt.axes().set_xlim(0, 8.75)
 plt.axes().set_ylabel('Terminus change [km]', size=20)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 #plt.axes().set_ylim(-100, 1)
@@ -342,20 +353,27 @@ plt.show()
 
 ## Map of total retreat (scales linearly with avg rate as calculated above)
 ## Use greenland-outlets-map as basis -- some things initialized there first
+retreat_bins = [-3000, -2500, -2000, -1500, -1000, -500, 0, 500] #bins for average retreat rate
+marker_bins = [abs(r/500)+1 for r in retreat_bins]
 gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=3413, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
 plt.figure()
 gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
 for i, gid in enumerate(glaciers_simulated):
     pt = all_coords_latlon[gid][0]
-    markerscale = abs(avg_sim_rates[i]/np.mean(avg_sim_rates))
+    retreat_rate = avg_sim_rates[i]
+    #markerscale = abs(retreat_rate/np.mean(avg_sim_rates)) #continuous scale
+    retreatscale = np.digitize(retreat_rate, bins=retreat_bins) 
+    markerscale = marker_bins[retreatscale] #discrete scale
     advret_color = cm.get_cmap('coolwarm')(sign(avg_sim_rates[i]))
-    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color='b', edgecolors='DarkViolet', latlon=True)
+    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color=advret_color, edgecolors='DarkViolet', latlon=True)
     #    term_marker = gld_backdrop(pt[0], pt[1])
     #    #offset = 100 * np.mod(k,2)
     #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
 plt.show()
 
 ## Map of obs-sim difference
+
+
 plt.figure()
 gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
 for i, gid in enumerate(glaciers_simulated):
