@@ -49,14 +49,27 @@ def lightload(filename, glacier_name, output_dictionary):
 ###--------------------------------------
 #### GLACIERS TO PLOT
 ###--------------------------------------
+## Which glaciers are available
+glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
+not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
+#added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+errors = (5, 18, 19, 29, 71, 92, 95, 97, 101, 107, 108, 120, 134) #glacier IDs that crashed in hindcasting 12 Mar 2019
+rmv = np.concatenate((not_present, errors))
+for n in rmv:
+    try:
+        glacier_ids.remove(n)
+    except ValueError:
+        pass
 
-gids_by_name = ((3, 'Jakobshavn/SK'), 
-(175, 'Helheim'), 
-(153, 'Kangerlussuaq'),
-(10, 'Store'),
-) #array pairing glacier IDs with their recognized  names
+#gids_by_name = ((3, 'Jakobshavn/SK'), 
+#(175, 'Helheim'), 
+#(153, 'Kangerlussuaq'),
+#(10, 'Store'),
+#) #array pairing glacier IDs with their recognized  names
+#
+#glaciers_to_plot = [g[0] for g in gids_by_name if g[1] in ('Jakobshavn/SK', 'Helheim', 'Kangerlussuaq', 'Store')] # select gids of glaciers to plot as case studies
+glaciers_to_plot = [g for g in glacier_ids if g in (109,)]
 
-glaciers_to_plot = [g[0] for g in gids_by_name if g[1] in ('Jakobshavn/SK', 'Helheim', 'Kangerlussuaq', 'Store')] # select gids of glaciers to plot as case studies
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence', 
@@ -193,7 +206,8 @@ for gid in glaciers_to_plot:
 ###--------------------------------------   
   
 ## Settings for plots   
-labels = [str(g[1]) for g in gids_by_name if g[0] in glaciers_to_plot] #set what the glaciers will be called in plotting.  Default is simply their MEaSUREs ID
+#labels = [str(g[1]) for g in gids_by_name if g[0] in glaciers_to_plot] #set what the glaciers will be called in plotting.  Default is simply their MEaSUREs ID
+labels = [str(g) for g in glaciers_to_plot]
 markers = ['o', '.', ',', '^', 'd', '*']
 styles = ['-', ':', '-.', '-', '-', '-']
 cmap = cm.get_cmap('winter')
@@ -205,22 +219,22 @@ plot_years = 2006+np.array(testyears)
 
 
 #
-####terminus
-plt.figure()
-for j, gid in enumerate(glaciers_to_plot):
-    print gid
-    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
-    ms_selection = mod(j, len(styles))
-    plt.plot(testyears, -0.001*np.array(term_positions), linewidth=2, color='Gainsboro', linestyle=styles[ms_selection], label=labels[j])
-    #plt.plot(testyears[::4], -0.001*np.array(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::])[::4], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[j])
-plt.legend(loc='lower left')
-plt.axes().set_xlabel('Year of simulation', size=20)
-plt.axes().set_ylabel('Terminus change [km]', size=20)
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-#plt.axes().set_ylim(-100, 1)
-#plt.axes().set_yticks([-75, -50, -25, 0])
-plt.title('Terminus retreat of {} Greenland outlet glaciers 2006-2014 ERA-I, Tice=-10 C'.format(len(glaciers_to_plot)), fontsize=20)
-plt.show()
+#####terminus
+#plt.figure()
+#for j, gid in enumerate(glaciers_to_plot):
+#    print gid
+#    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
+#    ms_selection = mod(j, len(styles))
+#    plt.plot(testyears, -0.001*np.array(term_positions), linewidth=2, color='Gainsboro', linestyle=styles[ms_selection], label=labels[j])
+#    #plt.plot(testyears[::4], -0.001*np.array(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::])[::4], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[j])
+#plt.legend(loc='lower left')
+#plt.axes().set_xlabel('Year of simulation', size=20)
+#plt.axes().set_ylabel('Terminus change [km]', size=20)
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+##plt.axes().set_ylim(-100, 1)
+##plt.axes().set_yticks([-75, -50, -25, 0])
+#plt.title('Terminus retreat of {} Greenland outlet glaciers 2006-2014 ERA-I, Tice=-10 C'.format(len(glaciers_to_plot)), fontsize=20)
+#plt.show()
 
 ####SINGLE NETWORK - termini vs obs
 for j, gid in enumerate(glaciers_to_plot):
