@@ -1,6 +1,7 @@
 ## Investigating problems in empty network tracing from MEaSUREs termini
 ## 6 Nov 2018  EHU
 ## Edited 2 Jan 2019 - investigating networks that claim very small or negative terminus elevation
+## Edited 21 May 2019 - investigating networks that retreat >20 km in hindcasted period
 import numpy as np
 from scipy import interpolate, ndimage, misc
 from scipy.ndimage import gaussian_filter
@@ -190,7 +191,7 @@ opt_data = read_optimization_analysis(analysis_fn)
 #taus_neg_termini = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Terminal_SE'][i]<0]   
 #SEs_neg_termini = [se for i, se in enumerate(opt_data['Terminal_SE']) if opt_data['Terminal_SE'][i]<0]
 
-IDs_foranalysis = (9,)
+IDs_foranalysis = (17, 51, 168, 171)
 taus_foranalysis = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Glacier_IDs'][i] in IDs_foranalysis]
 
 ## Read in the networks of glaciers with problematic termini--based on Greenland-network_processing_routine.py
@@ -279,6 +280,7 @@ for j, gid in enumerate(IDs_foranalysis):
 ## Do glaciers with surprisingly large sea level contributions have bed features that affect their stability?
 for nw in flowlines_foranalysis:
     for j in range(len(nw.flowlines)): 
+    #for j in range(1): #plot only mainline
         fl = nw.flowlines[j]
         xarr = linspace(0, fl.length, num=1000)   
         plt.figure('GID{}, flowline {}'.format(nw.name, j))
