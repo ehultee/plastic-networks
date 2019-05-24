@@ -296,22 +296,31 @@ plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fontsize=20)
 plt.show()
 
-## Compare probability density functions
-obs_dens = gaussian_kde(0.001*np.array(avg_obs_rates)) #estimate density of rates with units of km/a rather than m/a
-sim_dens = gaussian_kde(0.001*np.array(avg_sim_rates))
-xs1 = np.linspace(-3.5, 5, 200)
+## Compare probability density functions & plot histograms over
+rescale_factor = 0.0035
+obs_dens = gaussian_kde(rescale_factor*np.array(avg_obs_rates)) #estimate density of rates and scale to be visible with histogram
+sim_dens = gaussian_kde(rescale_factor*np.array(avg_sim_rates))
+xs1 = rescale_factor*np.linspace(-3500, 500, 200)
 plt.figure()
-plt.plot(xs1, obs_dens(xs1), color='Aqua')
-plt.plot(xs1, sim_dens(xs1), color='Indigo')
+plt.hist(avg_obs_rates, bins = plotting_bins, weights = obs_weights, color='SeaGreen', alpha=0.3)
+plt.hist(avg_sim_rates, bins=plotting_bins, weights = sim_weights, color='Indigo', alpha=0.3)
+plt.plot((1/rescale_factor)*xs1, obs_dens(xs1), color='SeaGreen', lw=3.0, label= 'MEaSUREs')
+plt.plot((1/rescale_factor)*xs1, sim_dens(xs1), color='Indigo', lw=3.0, label='SERMIA')
+plt.xlabel('Annual mean dL/dt [m/a]', fontsize=18)
+plt.ylabel('Density', fontsize=18)
+plt.legend(loc='upper left')
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+plt.axes().set_ylim(0, 1)
 plt.show()
 
 ## Histogram of difference
 diff_bins = arange(-2000, 3000, 150)
-diff_dens = gaussian_kde(avg_obs_rates-avg_sim_rates)
-xs2 = np.linspace(-2000, 3000, 50)
+diff_dens = gaussian_kde(rescale_factor*(np.array(avg_obs_rates)-np.array(avg_sim_rates)))
+xs2 = rescale_factor*np.linspace(-2000, 3000, 200)
 plt.figure()
-plt.hist(np.array(avg_obs_rates)-np.array(avg_sim_rates), bins=diff_bins, weights=obs_weights, color='Blue')
-plt.plot(xs2, diff_dens(xs2))
+plt.hist(np.array(avg_obs_rates)-np.array(avg_sim_rates), bins=diff_bins, weights=obs_weights, color='DarkBlue', alpha=0.5)
+plt.plot((1/rescale_factor)*xs2, diff_dens(xs2), lw=3.0, color='DarkBlue')
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 #plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.axes().set_yticks([0, 0.1, 0.2])
