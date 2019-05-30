@@ -68,7 +68,7 @@ for n in rmv:
 #) #array pairing glacier IDs with their recognized  names
 #
 #glaciers_to_plot = [g[0] for g in gids_by_name if g[1] in ('Jakobshavn/SK', 'Helheim', 'Kangerlussuaq', 'Store')] # select gids of glaciers to plot as case studies
-glaciers_to_plot = [g for g in glacier_ids if g in (109,)]
+glaciers_to_plot = [g for g in glacier_ids if g in (19, 37, 54, 60, 67, 91, 116, 119, 128, 137, 155)]
 
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
