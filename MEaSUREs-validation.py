@@ -266,7 +266,7 @@ for s in scenarios:
 avg_obs_rates = [] #aggregating observations to plot distribution
 for gid in glaciers_simulated:
     obsrates = []
-    for yr in years[1::]:
+    for yr in years[2::]:
         try:
             obsrates.append(obs_retreat_rates[yr][gid])
         except KeyError: #if no observation exists for this year on this glacier
@@ -282,6 +282,9 @@ for gid in glaciers_simulated:
     avg_dLdt = cumulative_dL/cumulative_dt
     avg_sim_rates.append(avg_dLdt)
 
+obs_total = 0.00875*np.array(avg_obs_rates) #converting from rates to total retreat in 8.75 yr period, expressed in km rather than m
+sim_total = 0.00875*np.array(avg_sim_rates)
+
 ##Make histogram of observed rates dLdt and plot side-by-side with simulated
 plotting_bins = (-3500, -3000, -2500, -2000, -1500, -1000, -500, 0.1, 500)
 obs_weights = np.ones_like(avg_obs_rates)/float(len(avg_obs_rates))
@@ -296,22 +299,24 @@ plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fontsize=20)
 plt.show()
 
-## Compare probability density functions & plot histograms over
+## Compare probability density functions of total retreat & plot histograms over
 rescale_factor = 0.0035
 obs_dens = gaussian_kde(rescale_factor*np.array(avg_obs_rates)) #estimate density of rates and scale to be visible with histogram
 sim_dens = gaussian_kde(rescale_factor*np.array(avg_sim_rates))
 xs1 = rescale_factor*np.linspace(-3500, 500, 200)
 plt.figure()
-plt.hist(avg_obs_rates, bins = plotting_bins, weights = obs_weights, color='SeaGreen', alpha=0.3)
-plt.hist(avg_sim_rates, bins=plotting_bins, weights = sim_weights, color='Indigo', alpha=0.3)
+plt.hist(avg_obs_rates, weights = obs_weights, color='SeaGreen', alpha=0.3)
+plt.hist(avg_sim_rates, weights = sim_weights, color='Indigo', alpha=0.3)
 plt.plot((1/rescale_factor)*xs1, obs_dens(xs1), color='SeaGreen', lw=3.0, label= 'MEaSUREs')
 plt.plot((1/rescale_factor)*xs1, sim_dens(xs1), color='Indigo', lw=3.0, label='SERMIA')
-plt.xlabel('Annual mean dL/dt [m/a]', fontsize=18)
+plt.xlabel('Total $\Delta$L [km]', fontsize=18)
 plt.ylabel('Density', fontsize=18)
 plt.legend(loc='upper left')
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.axes().set_ylim(0, 1)
+plt.axes().set_xticks([-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500])
+plt.axes().set_xticklabels([-35, -30, -25, -20, -15, -10, -5, 0, 5]) #labelling by km total retreat in 10 yr rather than m/a average
 plt.show()
 
 ## Histogram of difference
@@ -371,39 +376,49 @@ plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 plt.title('Simulated terminus retreat of {} Greenland outlet glaciers 2006-2014 ERA-I, Tice=-10 C'.format(len(glaciers_simulated)), fontsize=20)
 plt.show()
 
-
-## Map of total retreat (scales linearly with avg rate as calculated above)
-## Use greenland-outlets-map as basis -- some things initialized there first
-retreat_bins = [-3000, -2500, -2000, -1500, -1000, -500, 0, 500] #bins for average retreat rate
-marker_bins = [abs(r/500)+1 for r in retreat_bins]
-gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=3413, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
+## Plot total retreat versus latitude (N/S) or longitude (W/E).  Initialize all_coords_latlon with greendland-outlets-map first.
 plt.figure()
-gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
-for i, gid in enumerate(glaciers_simulated):
-    pt = all_coords_latlon[gid][0]
-    retreat_rate = avg_sim_rates[i]
-    #markerscale = abs(retreat_rate/np.mean(avg_sim_rates)) #continuous scale
-    retreatscale = np.digitize(retreat_rate, bins=retreat_bins) 
-    markerscale = marker_bins[retreatscale] #discrete scale
-    advret_color = cm.get_cmap('coolwarm')(sign(avg_sim_rates[i]))
-    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color=advret_color, edgecolors='DarkViolet', latlon=True)
-    #    term_marker = gld_backdrop(pt[0], pt[1])
-    #    #offset = 100 * np.mod(k,2)
-    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+for j, gid in enumerate(glaciers_simulated):
+    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
+    lngtd = all_coords_latlon[gid][0][0]
+    lttd = all_coords_latlon[gid][0][1]
+    plt.scatter(lttd, term_positions[-1])
+plt.title('Total retreat by outlet glacier latitude', fontsize=20)
 plt.show()
 
-## Map of obs-sim difference
 
-
-plt.figure()
-gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
-for i, gid in enumerate(glaciers_simulated):
-    pt = all_coords_latlon[gid][0]
-    diff = avg_obs_rates[i] - avg_sim_rates[i]
-    markerscale = abs(diff/np.mean(avg_obs_rates))
-    advret_color = cm.get_cmap('coolwarm')(sign(diff))
-    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color='b', edgecolors='DarkViolet', latlon=True)
-    #    term_marker = gld_backdrop(pt[0], pt[1])
-    #    #offset = 100 * np.mod(k,2)
-    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
-plt.show()
+### Map of total retreat (scales linearly with avg rate as calculated above)
+### Use greenland-outlets-map as basis -- some things initialized there first
+#retreat_bins = [-3000, -2500, -2000, -1500, -1000, -500, 0, 500] #bins for average retreat rate
+#marker_bins = [abs(r/500)+1 for r in retreat_bins]
+#gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=3413, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
+#plt.figure()
+#gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+#for i, gid in enumerate(glaciers_simulated):
+#    pt = all_coords_latlon[gid][0]
+#    retreat_rate = avg_sim_rates[i]
+#    #markerscale = abs(retreat_rate/np.mean(avg_sim_rates)) #continuous scale
+#    retreatscale = np.digitize(retreat_rate, bins=retreat_bins) 
+#    markerscale = marker_bins[retreatscale] #discrete scale
+#    advret_color = cm.get_cmap('coolwarm')(sign(avg_sim_rates[i]))
+#    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color=advret_color, edgecolors='DarkViolet', latlon=True)
+#    #    term_marker = gld_backdrop(pt[0], pt[1])
+#    #    #offset = 100 * np.mod(k,2)
+#    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+#plt.show()
+#
+### Map of obs-sim difference
+#
+#
+#plt.figure()
+#gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+#for i, gid in enumerate(glaciers_simulated):
+#    pt = all_coords_latlon[gid][0]
+#    diff = avg_obs_rates[i] - avg_sim_rates[i]
+#    markerscale = abs(diff/np.mean(avg_obs_rates))
+#    advret_color = cm.get_cmap('coolwarm')(sign(diff))
+#    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color='b', edgecolors='DarkViolet', latlon=True)
+#    #    term_marker = gld_backdrop(pt[0], pt[1])
+#    #    #offset = 100 * np.mod(k,2)
+#    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+#plt.show()
