@@ -299,25 +299,45 @@ plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fontsize=20)
 plt.show()
 
-## Compare probability density functions of total retreat & plot histograms over
-rescale_factor = 0.0035
-obs_dens = gaussian_kde(rescale_factor*np.array(avg_obs_rates)) #estimate density of rates and scale to be visible with histogram
-sim_dens = gaussian_kde(rescale_factor*np.array(avg_sim_rates))
-xs1 = rescale_factor*np.linspace(-3500, 500, 200)
+## Compare probability density functions of retreat rates & plot normalized histograms over
+obs_dens = gaussian_kde(0.001*np.array(avg_obs_rates)) #estimate density of rates in km/a
+sim_dens = gaussian_kde(0.001*np.array(avg_sim_rates))
+xs1 = np.linspace(-3.5, 0.5, 200) #space of dL/dt in km/a
 plt.figure()
-plt.hist(avg_obs_rates, weights = obs_weights, color='SeaGreen', alpha=0.3)
-plt.hist(avg_sim_rates, weights = sim_weights, color='Indigo', alpha=0.3)
-plt.plot((1/rescale_factor)*xs1, obs_dens(xs1), color='SeaGreen', lw=3.0, label= 'MEaSUREs')
-plt.plot((1/rescale_factor)*xs1, sim_dens(xs1), color='Indigo', lw=3.0, label='SERMIA')
+plt.hist(0.001*np.array(avg_obs_rates), weights = obs_weights, color='SeaGreen', alpha=0.3)
+plt.hist(0.001*np.array(avg_sim_rates), weights = sim_weights, color='Indigo', alpha=0.3)
+plt.plot(xs1, obs_dens(xs1), color='SeaGreen', lw=3.0, label= 'MEaSUREs')
+plt.plot(xs1, sim_dens(xs1), color='Indigo', lw=3.0, label='SERMeQ')
+plt.xlabel('dL/dt [km/a]', fontsize=18)
+plt.ylabel('Density', fontsize=18)
+plt.legend(loc='upper left')
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+plt.axes().set_ylim(0, 1)
+#plt.axes().set_xticks([-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500])
+#plt.axes().set_xticklabels([-35, -30, -25, -20, -15, -10, -5, 0, 5]) #labelling by km total retreat in 10 yr rather than m/a average
+plt.show()
+
+## Compare PDFs of total retreat & plot normalized histograms over
+obs_dL_dens = gaussian_kde(obs_total) #estimate density of total observed retreat
+sim_dL_dens = gaussian_kde(sim_total)
+xs2 = np.linspace(-25, 5, 200) #space of dL/dt in km/a
+dL_plotting_bins = (-25, -22.5, -20, -17.5, -15, -12.5, -10, -7.5, -5, -2.5, 0.01, 2.5)
+plt.figure()
+plt.hist(obs_total, weights = obs_weights, bins=dL_plotting_bins, color='SeaGreen', alpha=0.3)
+plt.hist(sim_total, weights = sim_weights, bins=dL_plotting_bins, color='Indigo', alpha=0.3)
+plt.plot(xs2, obs_dL_dens(xs2), color='SeaGreen', lw=3.0, label= 'MEaSUREs')
+plt.plot(xs2, sim_dL_dens(xs2), color='Indigo', lw=3.0, label='SERMeQ')
 plt.xlabel('Total $\Delta$L [km]', fontsize=18)
 plt.ylabel('Density', fontsize=18)
 plt.legend(loc='upper left')
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.axes().set_ylim(0, 1)
-plt.axes().set_xticks([-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500])
-plt.axes().set_xticklabels([-35, -30, -25, -20, -15, -10, -5, 0, 5]) #labelling by km total retreat in 10 yr rather than m/a average
+#plt.axes().set_xticks([-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500])
+#plt.axes().set_xticklabels([-35, -30, -25, -20, -15, -10, -5, 0, 5]) #labelling by km total retreat in 10 yr rather than m/a average
 plt.show()
+
 
 ## Histogram of difference
 diff_bins = arange(-2000, 3000, 150)
