@@ -341,11 +341,11 @@ plt.show()
 
 ## Histogram of difference
 diff_bins = arange(-2000, 3000, 150)
-diff_dens = gaussian_kde(rescale_factor*(np.array(avg_obs_rates)-np.array(avg_sim_rates)))
-xs2 = rescale_factor*np.linspace(-2000, 3000, 200)
+diff_dens = gaussian_kde((np.array(avg_obs_rates)-np.array(avg_sim_rates)))
+xs2 = np.linspace(-2000, 3000, 200)
 plt.figure()
 plt.hist(np.array(avg_obs_rates)-np.array(avg_sim_rates), bins=diff_bins, weights=obs_weights, color='DarkBlue', alpha=0.5)
-plt.plot((1/rescale_factor)*xs2, diff_dens(xs2), lw=3.0, color='DarkBlue')
+plt.plot(xs2, diff_dens(xs2), lw=3.0, color='DarkBlue')
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 #plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.axes().set_yticks([0, 0.1, 0.2])
@@ -381,11 +381,14 @@ retreat_density = gaussian_kde(avg_sim_rates)(avg_sim_rates) #will code retreat 
 density_colors = cm.get_cmap('Blues')(2000*np.array(retreat_density)) #make an array of colors coded to the density calculated above, scaled by 2000 so they show up
 plt.figure()
 for j, gid in enumerate(glaciers_simulated):
-    print gid
     term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
-    dc = density_colors[j]
-    plt.plot(testyears, -0.001*np.array(term_positions), linewidth=2, color=dc)
-#plt.legend(loc='lower left')
+    if np.all(np.diff(term_positions)>0) or np.all(np.diff(term_positions)<0) or np.all(np.diff(term_positions)==0): #if monotonic retreat
+        pass
+    else:
+        print gid
+        #dc = density_colors[j]
+        plt.plot(testyears, -0.001*np.array(term_positions), linewidth=2, label=str(gid))
+plt.legend(loc='lower left')
 plt.axes().set_xlabel('Year', size=20)
 plt.axes().set_xticklabels(['2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014'])
 plt.axes().set_xlim(0, 8.75)
