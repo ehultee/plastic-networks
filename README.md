@@ -5,14 +5,19 @@ This repository will store code associated with our plastic network model for ca
 
 As of 21 June 2018:
 -All functions associated with the network approach are implemented in a set of classes in "flowline_class_hierarchy.py".
+
     -Class "Ice" stores useful constants e.g. density of ice, characteristic lengths for nondimensionalization
+    
     -Class "Branch" stores some functions applicable to portions of glacier networks that do not necessarily reach the terminus.  Branch allows networks to be initialized with partial flowlines that are then connected by KDTree search.
+    
     -Class "Flowline" stores many of the functions that must be computed separately for each flowline in a network, including the creation of snapshot profiles and the calculation of net volume change between successive profiles
+    
     -Class "Network" stores functions that apply to collections of interacting flowlines.  In particular, time evolution is always done from the network class, even if the network consists of a single flowline.
 
 -"Greenland-flux_projections.py" stores code used to generate and plot simulations associated with EHU's dissertation and presentation at POLAR2018.
 
 -"Greenland-summary_plotting.py" stores function to quickly read in model output from saved simulations (saved as pickle files with Network.save_network) and display it together for multi-scenario analysis.
+
 
 
 
