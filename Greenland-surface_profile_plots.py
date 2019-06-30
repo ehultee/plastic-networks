@@ -62,7 +62,7 @@ def ReadPlasticProfiles(gid, load_all=False):
         gid: MEaSUREs glacier ID that identifies all related data
     Returns a fully-loaded plastic network from storage
     """
-    flowlines_fn = glob.glob(flowlines_fpath+'Gld_autonetwork-GID{}-*.csv'.format(gid))[0] #using glob * to select files of any save date--there should be only one CSV of flowlines per GID
+    flowlines_fn = glob.glob(flowlines_fpath+'Gld-autonetwork-GID{}-*.csv'.format(gid))[0] #using glob * to select files of any save date--there should be only one CSV of flowlines per GID
     output_fn = glob.glob(model_output_fpath+'GID{}-*.pickle'.format(gid))[0] #note that this will load anything of this GID - only one in hindcasted, but revisit in forward scenario projection
     
     if load_all: #load all the flowlines
@@ -87,6 +87,7 @@ def ReadPlasticProfiles(gid, load_all=False):
 ###---------------------------------------
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
+plotsize = (12,7)
 
 def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
     """create snapshot for each year requested, only for 'main' flowline for now"""
@@ -113,7 +114,7 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
             bed_arr = profile_array[2]
 
             
-        plt.figure(year, figsize=(12,7))
+        plt.figure(year, figsize=plotsize)
         plt.plot()
         plt.title('Glacier ID: {}, year {}'.format(network.name, year))
         plt.plot(10*xarr, bed_arr, color='Chocolate')
@@ -126,4 +127,11 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
         plt.axes().set_ylabel('Elevation [m a.s.l.]', fontsize=18)
         plt.tick_params(axis='both', labelsize=16)
         plt.show()
-    
+
+
+###---------------------------------------
+#### GENERATE PLOTS
+###---------------------------------------   
+
+gid185 = ReadPlasticProfiles(185)
+PlotSnapshots(gid185, (0, 2, 4, 6))
