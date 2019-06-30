@@ -86,8 +86,9 @@ def ReadPlasticProfiles(gid, load_all=False):
 #### DEFINE PLOTTING DEFAULTS
 ###---------------------------------------
 
+testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 
-def PlotSnapshots(network, years, plot_all=False, stored_profiles=False)
+def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
     """create snapshot for each year requested, only for 'main' flowline for now"""
     for year in years:
         if stored_profiles: #if model was run with output_heavy=True, profiles are already stored and don't need to be reconstructed
@@ -101,11 +102,12 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False)
             network.remove_floating()
             network.make_full_lines()
             network.process_full_lines(B_interp, S_interp, H_interp)
-            output_dict = network.model_output[0]
-            idx = # identify from year
+            output_dict = network.model_output[0] #output of line 0, the 'main' flowline
+            idx = (np.abs(testyears - year)).argmin() # identify index of year requested
             terminus_position = output_dict['Termini'][idx]
-            ## bingham_num (of flowline?)
-            profile_array = network.plastic_profile(endpoint=terminus_position, hinit=BalanceThick(bed, Bingham_num))        
+            terminal_bed = network.flowlines[0].bed_function(terminus_position)
+            Bingham_num = network.flowlines[0].Bingham_num(elev=0, thick=0) #ignore elevation/thickness dependence of Bingham number for this reconstruction
+            profile_array = network.plastic_profile(endpoint=terminus_position, hinit=BalanceThick(terminal_bed, Bingham_num))        
             xarr = profile_array[0]
             SE_arr = profile_array[1]
             bed_arr = profile_array[2]
