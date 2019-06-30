@@ -55,6 +55,54 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 ###---------------------------------------
 flowlines_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/'
 model_output_fpath = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/'
+yield_strength_fn = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/bestfit_taus-B_S_smoothing-fromdate_2019-01-17.csv'
+
+#function modified from Greenland-network-troubleshooting to read CSV of yield strengths
+def read_optimization_analysis(filename, read_yieldtype=False):
+    """Read a CSV file listing optimal values of yield strength for auto-selected Greenland glaciers
+    Input: 
+        filename
+    Default arg: 
+        read_yieldtype=False: determines whether we want to read and save the yield type (constant vs. Coulomb variable)
+    Output: 
+        Dictionary of lists including
+        -Glacier ID (referenced to MEaSUREs Greenland outlets)
+        -Optimal tau_y
+        -Terminal bed
+        -Terminal surface elevation
+    """
+    
+    f = open(filename, 'r')
+    
+    header = f.readline() #header line
+    #hdr = header.strip('\r\n')
+    #keys = hdr.split(',') #get names of columns
+    #data = {k: [] for k in keys}
+    data = {'Glacier_IDs': [], #shorter keys than the names stored in CSV header
+    'Optimal_taus': [],
+    'Yieldtype': [],
+    'Terminal_bed': [],
+    'Terminal_SE': [],
+    'Terminal_H': []} #adding field for ice thickness
+    
+    lines = f.readlines()
+    f.close
+    
+    for i, l in enumerate(lines):
+        linstrip = l.strip('\r\n')
+        parts = linstrip.split(',')
+        
+        data['Glacier_IDs'].append(int(parts[0]))
+        data['Optimal_taus'].append(float(parts[1]))
+        if read_yieldtype: #generally won't need this
+            data['Yieldtype'].append(parts[2])
+        else:
+            pass
+    
+    return data
+
+taudata = read_optimization_analysis(yield_strength_fn, read_yieldtype=True)
+
 
 def ReadPlasticProfiles(gid, load_all=False):
     """Reads in data and model output related to a given glacier, and supplies a dictionary of surface profiles for plotting
@@ -64,6 +112,7 @@ def ReadPlasticProfiles(gid, load_all=False):
     """
     flowlines_fn = glob.glob(flowlines_fpath+'Gld-autonetwork-GID{}-*.csv'.format(gid))[0] #using glob * to select files of any save date--there should be only one CSV of flowlines per GID
     output_fn = glob.glob(model_output_fpath+'GID{}-*.pickle'.format(gid))[0] #note that this will load anything of this GID - only one in hindcasted, but revisit in forward scenario projection
+    tau_idx = (np.abs(np.asarray(taudata['Glacier_IDs']) - gid)).argmin()
     
     if load_all: #load all the flowlines
         coords = Flowline_CSV(flowlines_fn, has_width=True, flip_order=False)
@@ -76,10 +125,14 @@ def ReadPlasticProfiles(gid, load_all=False):
     else: #load only one
         coords = Flowline_CSV(flowlines_fn, has_width=True, flip_order=False)[0]
         line = Flowline(coords=coords, index=0, name='GID {} line 0', has_width=True)
-        lines = (line,)
-        nw = PlasticNetwork(name='GID{}'.format(gid), init_type='Flowline', branches=lines, main_terminus=coords[0])
+        nw = PlasticNetwork(name='GID{}'.format(gid), init_type='Flowline', branches=(line), main_terminus=coords[0])
         nw.load_network(filename=output_fn, load_mainline_output=True, load_tributary_output=False)
     
+    nw.network_tau = taudata['Optimal_taus'][tau_idx]
+    nw.network_yield_type = taudata['Yieldtype'][tau_idx]
+    for fl in nw.flowlines:
+        fl.optimal_tau = nw.network_tau
+        fl.yield_type = nw.network_yield_type
     return nw
     
 ###---------------------------------------
@@ -98,17 +151,17 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
             SE_arr = profile_dict[1]
             bed_arr = profile_dict[2]
         else:
-            network.make_full_lines()
-            network.process_full_lines(B_interp, S_interp, H_interp)
-            network.remove_floating()
-            network.make_full_lines()
+            #network.make_full_lines()
+            #network.process_full_lines(B_interp, S_interp, H_interp)
+            #network.remove_floating()
+            #network.make_full_lines()
             network.process_full_lines(B_interp, S_interp, H_interp)
             output_dict = network.model_output[0] #output of line 0, the 'main' flowline
             idx = (np.abs(testyears - year)).argmin() # identify index of year requested
             terminus_position = output_dict['Termini'][idx]
             terminal_bed = network.flowlines[0].bed_function(terminus_position)
             Bingham_num = network.flowlines[0].Bingham_num(elev=0, thick=0) #ignore elevation/thickness dependence of Bingham number for this reconstruction
-            profile_array = network.plastic_profile(endpoint=terminus_position, hinit=BalanceThick(terminal_bed, Bingham_num))        
+            profile_array = network.flowlines[0].plastic_profile(endpoint=terminus_position, hinit=BalanceThick(terminal_bed, Bingham_num))        
             xarr = profile_array[0]
             SE_arr = profile_array[1]
             bed_arr = profile_array[2]
