@@ -147,9 +147,9 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
     for year in years:
         if stored_profiles: #if model was run with output_heavy=True, profiles are already stored and don't need to be reconstructed
             profile_dict = network.model_output[0][year]
-            xarr = 10*np.array(profile_dict[0])
-            SE_arr = 1000*np.array(profile_dict[1])
-            bed_arr = 1000*np.array(profile_dict[2])
+            xarr = 10*np.squeeze(profile_dict[0])
+            SE_arr = 1000*np.squeeze(profile_dict[1])
+            bed_arr = 1000*np.squeeze(profile_dict[2]).astype('float64')
         else:
             #network.make_full_lines()
             #network.process_full_lines(B_interp, S_interp, H_interp)
@@ -162,20 +162,17 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
             terminal_bed = network.flowlines[0].bed_function(terminus_position)
             bingham_num = network.flowlines[0].Bingham_num(elev=0, thick=0) #ignore elevation/thickness dependence of Bingham number for this reconstruction
             terminus_height = BalanceThick(terminal_bed, bingham_num)+terminal_bed
-            profile_array = network.flowlines[0].plastic_profile(endpoint=terminus_position, hinit=terminus_height)
-            print type(profile_array)
-            print np.shape(profile_array)        
-            xarr = 10*np.array(profile_array[0])
-            SE_arr = 1000*np.array(profile_array[1])
-            bed_arr = 1000*np.array(profile_array[2])
+            profile_array = network.flowlines[0].plastic_profile(endpoint=terminus_position, hinit=terminus_height)      
+            xarr = 10*np.squeeze(profile_array[0])
+            SE_arr = 1000*np.squeeze(profile_array[1])
+            bed_arr = 1000*np.squeeze(profile_array[2]).astype('float64')
 
             
         plt.figure(year, figsize=plotsize)
-        plt.plot()
         plt.title('Glacier ID: {}, year {}'.format(network.name, year))
         plt.plot(xarr, bed_arr, color='Chocolate')
         plt.plot(xarr, SE_arr, color='Gainsboro')
-        plt.fill_between(xarr, y1=SE_arr, y2=bed_arr, color='Gainsboro', alpha=0.7)
+        plt.fill_between(np.asarray(xarr), y1=np.asarray(SE_arr), y2=np.asarray(bed_arr), color='Gainsboro', alpha=0.7)
         plt.fill_between(xarr, y1=bed_arr, y2=plt.axes().get_ylim()[0], color='Chocolate', alpha=0.7)
         plt.axes().set_xlim(left=xarr[-1], right=0)
         plt.axes().set_aspect(0.01)
