@@ -54,7 +54,7 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 #### DEFINE WHERE THINGS LIVE, HOW TO READ
 ###---------------------------------------
 flowlines_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/'
-model_output_fpath = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/'
+model_output_fpath = 'Desktop/sandbox/hindcasts/'
 yield_strength_fn = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/bestfit_taus-B_S_smoothing-fromdate_2019-01-17.csv'
 
 #function modified from Greenland-network-troubleshooting to read CSV of yield strengths
@@ -147,9 +147,9 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
     for year in years:
         if stored_profiles: #if model was run with output_heavy=True, profiles are already stored and don't need to be reconstructed
             profile_dict = network.model_output[0][year]
-            xarr = profile_dict[0]
-            SE_arr = profile_dict[1]
-            bed_arr = profile_dict[2]
+            xarr = 10*np.array(profile_dict[0])
+            SE_arr = 1000*np.array(profile_dict[1])
+            bed_arr = 1000*np.array(profile_dict[2])
         else:
             #network.make_full_lines()
             #network.process_full_lines(B_interp, S_interp, H_interp)
@@ -160,21 +160,24 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
             idx = (np.abs(testyears - year)).argmin() # identify index of year requested
             terminus_position = output_dict['Termini'][idx]
             terminal_bed = network.flowlines[0].bed_function(terminus_position)
-            Bingham_num = network.flowlines[0].Bingham_num(elev=0, thick=0) #ignore elevation/thickness dependence of Bingham number for this reconstruction
-            profile_array = network.flowlines[0].plastic_profile(endpoint=terminus_position, hinit=BalanceThick(terminal_bed, Bingham_num))        
-            xarr = profile_array[0]
-            SE_arr = profile_array[1]
-            bed_arr = profile_array[2]
+            bingham_num = network.flowlines[0].Bingham_num(elev=0, thick=0) #ignore elevation/thickness dependence of Bingham number for this reconstruction
+            terminus_height = BalanceThick(terminal_bed, bingham_num)+terminal_bed
+            profile_array = network.flowlines[0].plastic_profile(endpoint=terminus_position, hinit=terminus_height)
+            print type(profile_array)
+            print np.shape(profile_array)        
+            xarr = 10*np.array(profile_array[0])
+            SE_arr = 1000*np.array(profile_array[1])
+            bed_arr = 1000*np.array(profile_array[2])
 
             
         plt.figure(year, figsize=plotsize)
         plt.plot()
         plt.title('Glacier ID: {}, year {}'.format(network.name, year))
-        plt.plot(10*xarr, bed_arr, color='Chocolate')
-        plt.plot(10*xarr, SE_arr, color='Gainsboro')
-        plt.fill_between(10*xarr, y1=SE_arr, y2 = bed_arr, color='Gainsboro', alpha=0.7)
-        plt.fill_between(10*xarr, y1=bed_arr, y2=plt.axes().get_ylim()[0], color='Chocolate', alpha=0.7)
-        plt.axes().set_xlim(left=10*xarr[-1], right=0)
+        plt.plot(xarr, bed_arr, color='Chocolate')
+        plt.plot(xarr, SE_arr, color='Gainsboro')
+        plt.fill_between(xarr, y1=SE_arr, y2=bed_arr, color='Gainsboro', alpha=0.7)
+        plt.fill_between(xarr, y1=bed_arr, y2=plt.axes().get_ylim()[0], color='Chocolate', alpha=0.7)
+        plt.axes().set_xlim(left=xarr[-1], right=0)
         plt.axes().set_aspect(0.01)
         plt.axes().set_xlabel('Along-flowline distance [km]', fontsize=18)
         plt.axes().set_ylabel('Elevation [m a.s.l.]', fontsize=18)
@@ -186,5 +189,5 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
 #### GENERATE PLOTS
 ###---------------------------------------   
 
-gid185 = ReadPlasticProfiles(185)
-PlotSnapshots(gid185, (0, 2, 4, 6))
+gid3 = ReadPlasticProfiles(3)
+PlotSnapshots(gid3, (0, 2, 4, 6), stored_profiles=True)
