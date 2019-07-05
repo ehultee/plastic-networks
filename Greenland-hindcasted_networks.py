@@ -1,5 +1,6 @@
 # Hindcast simulations with calving flux on Greenland glaciers, forced by historical surface mass balance
 # 4 Mar 2019  EHU
+# 5 Jul 2019 use: run with output_heavy to generate surface profile snapshots
 
 from netCDF4 import Dataset
 import numpy as np
@@ -154,10 +155,11 @@ scenario = 'persistence'
 #scenario, SMB_i, SMB_l = 'RCP4pt5', SMB_2014, SMB_2100_RCP4pt5 #or RCP 4.5
 #scenario, SMB_i, SMB_l = 'RCP8pt5', SMB_2014, SMB_2100_RCP8pt5 #or RCP 8.5
 
-gids_totest = glacier_ids #test all
+#gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
-#gids_totest = (3,) #test a geographically distributed subset
-#gids_totest = (9, 10) #test specific glaciers
+#gids_totest = (3, 153, 175) #test the biggies: Jakobshavn, Kanger, Helheim
+gids_totest = (3, 87, 131, 185) #test specific glaciers
+output_heavy = True #pref for output--should be False for efficient running, True for saving full surface profiles
 network_output = []
 bad_gids = []
 
@@ -209,7 +211,7 @@ for gid in gids_totest:
     nw.terminus_adot = time_varying_smb[0][0]
     print 'Terminus a_dot: {}'.format(nw.terminus_adot)
     try:
-        nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=catchment_smb_vals, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=False)
+        nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=catchment_smb_vals, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=output_heavy)
     except:
         bad_gids.append(gid)   
         continue 
