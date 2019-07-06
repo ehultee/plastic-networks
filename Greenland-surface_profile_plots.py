@@ -144,6 +144,26 @@ plotsize = (12,7)
 
 def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
     """create snapshot for each year requested, only for 'main' flowline for now"""
+    
+    ## First get the bed topography from year 0 output
+    if stored_profiles:
+        initial_xs = 10*np.squeeze(network.model_output[0][0][0])
+        initial_bed = 1000*np.squeeze(network.model_output[0][0][2]).astype('float64') #allows to plot the profiles on full bed topography for each year instead of truncating at new termini
+    else:
+        #network.make_full_lines()
+        #network.process_full_lines(B_interp, S_interp, H_interp)
+        #network.remove_floating()
+        #network.make_full_lines()
+        network.process_full_lines(B_interp, S_interp, H_interp)
+        initial_termpos = network.model_output[0]['Termini'][0]
+        initial_termbed = network.flowlines[0].bed_function(initial_termpos)
+        bingham_num = network.flowlines[0].Bingham_num(elev=0, thick=0) #ignore elevation/thickness dependence of Bingham number for this reconstruction
+        initial_termheight = BalanceThick(initial_termbed, bingham_num)+initial_termbed
+        initial_prof = network.flowlines[0].plastic_profile(endpoint=initial_termpos, hinit=initial_termheight)      
+        initial_xs = 10*np.squeeze(initial_prof[0])
+        initial_bed = 1000*np.squeeze(initial_prof[2]).astype('float64')
+
+    
     for year in years:
         if stored_profiles: #if model was run with output_heavy=True, profiles are already stored and don't need to be reconstructed
             profile_dict = network.model_output[0][year]
@@ -151,16 +171,10 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
             SE_arr = 1000*np.squeeze(profile_dict[1])
             bed_arr = 1000*np.squeeze(profile_dict[2]).astype('float64')
         else:
-            #network.make_full_lines()
-            #network.process_full_lines(B_interp, S_interp, H_interp)
-            #network.remove_floating()
-            #network.make_full_lines()
-            network.process_full_lines(B_interp, S_interp, H_interp)
             output_dict = network.model_output[0] #output of line 0, the 'main' flowline
             idx = (np.abs(testyears - year)).argmin() # identify index of year requested
             terminus_position = output_dict['Termini'][idx]
             terminal_bed = network.flowlines[0].bed_function(terminus_position)
-            bingham_num = network.flowlines[0].Bingham_num(elev=0, thick=0) #ignore elevation/thickness dependence of Bingham number for this reconstruction
             terminus_height = BalanceThick(terminal_bed, bingham_num)+terminal_bed
             profile_array = network.flowlines[0].plastic_profile(endpoint=terminus_position, hinit=terminus_height)      
             xarr = 10*np.squeeze(profile_array[0])
@@ -170,10 +184,10 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
             
         plt.figure(year, figsize=plotsize)
         plt.title('Glacier ID: {}, year {}'.format(network.name, year))
-        plt.plot(xarr, bed_arr, color='Chocolate')
+        plt.plot(initial_xs, initial_bed, color='Chocolate')
         plt.plot(xarr, SE_arr, color='Gainsboro')
         plt.fill_between(np.asarray(xarr), y1=np.asarray(SE_arr), y2=np.asarray(bed_arr), color='Gainsboro', alpha=0.7)
-        plt.fill_between(xarr, y1=bed_arr, y2=plt.axes().get_ylim()[0], color='Chocolate', alpha=0.7)
+        plt.fill_between(initial_xs, y1=initial_bed, y2=plt.axes().get_ylim()[0], color='Chocolate', alpha=0.7)
         plt.axes().set_xlim(left=xarr[-1], right=0)
         plt.axes().set_aspect(0.01)
         plt.axes().set_xlabel('Along-flowline distance [km]', fontsize=18)
