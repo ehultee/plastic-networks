@@ -3,14 +3,13 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import csv
-import shapefile
+#import csv
+#import shapefile
 #import collections
 import glob
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
 import matplotlib.patches as mpatches
-from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 from plastic_utilities_v2 import *
@@ -142,8 +141,15 @@ def ReadPlasticProfiles(gid, load_all=False):
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 plotsize = (12,7)
 
-def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
-    """create snapshot for each year requested, only for 'main' flowline for now"""
+def PlotSnapshots(network, years, plot_all=False, stored_profiles=False, scalebar_length=10, scalebar_elev=500):
+    """create snapshot for each year requested, only for 'main' flowline for now
+    network: which glacier to plot
+    years: which years of the simulation to plot.  Choose from range(0, max(testyears), step=dt)
+    plot_all: whether to plot all tributaries (True) or only main branch (False)
+    stored_profiles: whether the network has been read in with stored full surface profiles
+    scalebar_length: length of horizontal scalebar to display, in km
+    scalebar_elev: height of vertical scalebar to display, in m
+    """
     
     ## First get the bed topography from year 0 output
     if stored_profiles:
@@ -181,18 +187,20 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
             SE_arr = 1000*np.squeeze(profile_array[1])
             bed_arr = 1000*np.squeeze(profile_array[2]).astype('float64')
                     
-        plt.figure(year, figsize=plotsize)
-        plt.title('Glacier ID: {}, year {}'.format(network.name, year))
+        plt.figure('Glacier ID: {}, year {}'.format(network.name, year), figsize=plotsize)
+        #plt.title('Glacier ID: {}, year {}'.format(network.name, year)) # turn off visible title, for compositing
         plt.plot(initial_xs, initial_bed, color='Chocolate')
         plt.plot(xarr, SE_arr, color='Gainsboro')
         plt.fill_between(np.asarray(xarr), y1=np.asarray(SE_arr), y2=np.asarray(bed_arr), color='Gainsboro', alpha=0.7)
         plt.fill_between(initial_xs, y1=initial_bed, y2=plt.axes().get_ylim()[0], color='Chocolate', alpha=0.7, hatch='/')
         plt.fill_between(initial_xs, y1=0, y2=initial_bed, color='CornflowerBlue', alpha=0.7, where=[x<min(xarr) for x in initial_xs])
         plt.axes().set_xlim(left=xarr[-1], right=0)
+        plt.axes().add_patch(mpatches.Rectangle((plt.axes().get_xlim()[0], plt.axes().get_ylim()[0]), scalebar_length, scalebar_elev/10, facecolor='Black')) # horizontal scalebar
+        plt.axes().add_patch(mpatches.Rectangle((plt.axes().get_xlim()[0], plt.axes().get_ylim()[0]), scalebar_length/10, scalebar_elev, facecolor='Black')) # vertical scalebar
         plt.axes().set_aspect(0.01)
-        plt.axes().set_xlabel('Along-flowline distance [km]', fontsize=18)
-        plt.axes().set_ylabel('Elevation [m a.s.l.]', fontsize=18)
-        plt.tick_params(axis='both', labelsize=16)
+        #plt.axes().set_xlabel('Along-flowline distance [km]', fontsize=18)
+        #plt.axes().set_ylabel('Elevation [m a.s.l.]', fontsize=18)
+        plt.tick_params(axis='both', labelsize=0)
         plt.show()
 
 
