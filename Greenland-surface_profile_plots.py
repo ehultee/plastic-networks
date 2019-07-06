@@ -180,14 +180,14 @@ def PlotSnapshots(network, years, plot_all=False, stored_profiles=False):
             xarr = 10*np.squeeze(profile_array[0])
             SE_arr = 1000*np.squeeze(profile_array[1])
             bed_arr = 1000*np.squeeze(profile_array[2]).astype('float64')
-
-            
+                    
         plt.figure(year, figsize=plotsize)
         plt.title('Glacier ID: {}, year {}'.format(network.name, year))
         plt.plot(initial_xs, initial_bed, color='Chocolate')
         plt.plot(xarr, SE_arr, color='Gainsboro')
         plt.fill_between(np.asarray(xarr), y1=np.asarray(SE_arr), y2=np.asarray(bed_arr), color='Gainsboro', alpha=0.7)
-        plt.fill_between(initial_xs, y1=initial_bed, y2=plt.axes().get_ylim()[0], color='Chocolate', alpha=0.7)
+        plt.fill_between(initial_xs, y1=initial_bed, y2=plt.axes().get_ylim()[0], color='Chocolate', alpha=0.7, hatch='/')
+        plt.fill_between(initial_xs, y1=0, y2=initial_bed, color='CornflowerBlue', alpha=0.7, where=[x<min(xarr) for x in initial_xs])
         plt.axes().set_xlim(left=xarr[-1], right=0)
         plt.axes().set_aspect(0.01)
         plt.axes().set_xlabel('Along-flowline distance [km]', fontsize=18)
