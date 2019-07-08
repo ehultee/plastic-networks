@@ -299,24 +299,24 @@ plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fontsize=20)
 plt.show()
 
-## Compare probability density functions of retreat rates & plot normalized histograms over
-obs_dens = gaussian_kde(0.001*np.array(avg_obs_rates)) #estimate density of rates in km/a
-sim_dens = gaussian_kde(0.001*np.array(avg_sim_rates))
-xs1 = np.linspace(-3.5, 0.5, 200) #space of dL/dt in km/a
-plt.figure()
-plt.hist(0.001*np.array(avg_obs_rates), weights = obs_weights, color='SeaGreen', alpha=0.3)
-plt.hist(0.001*np.array(avg_sim_rates), weights = sim_weights, color='Indigo', alpha=0.3)
-plt.plot(xs1, obs_dens(xs1), color='SeaGreen', lw=3.0, label= 'MEaSUREs')
-plt.plot(xs1, sim_dens(xs1), color='Indigo', lw=3.0, label='SERMeQ')
-plt.xlabel('dL/dt [km/a]', fontsize=18)
-plt.ylabel('Density', fontsize=18)
-plt.legend(loc='upper left')
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
-plt.axes().set_ylim(0, 1)
-#plt.axes().set_xticks([-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500])
-#plt.axes().set_xticklabels([-35, -30, -25, -20, -15, -10, -5, 0, 5]) #labelling by km total retreat in 10 yr rather than m/a average
-plt.show()
+### Compare probability density functions of retreat rates & plot normalized histograms over
+#obs_dens = gaussian_kde(0.001*np.array(avg_obs_rates)) #estimate density of rates in km/a
+#sim_dens = gaussian_kde(0.001*np.array(avg_sim_rates))
+#xs1 = np.linspace(-3.5, 0.5, 200) #space of dL/dt in km/a
+#plt.figure()
+#plt.hist(0.001*np.array(avg_obs_rates), weights = obs_weights, color='SeaGreen', alpha=0.3)
+#plt.hist(0.001*np.array(avg_sim_rates), weights = sim_weights, color='Indigo', alpha=0.3)
+#plt.plot(xs1, obs_dens(xs1), color='SeaGreen', lw=3.0, label= 'MEaSUREs')
+#plt.plot(xs1, sim_dens(xs1), color='Indigo', lw=3.0, label='SERMeQ')
+#plt.xlabel('dL/dt [km/a]', fontsize=18)
+#plt.ylabel('Density', fontsize=18)
+#plt.legend(loc='upper left')
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+#plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+#plt.axes().set_ylim(0, 1)
+##plt.axes().set_xticks([-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500])
+##plt.axes().set_xticklabels([-35, -30, -25, -20, -15, -10, -5, 0, 5]) #labelling by km total retreat in 10 yr rather than m/a average
+#plt.show()
 
 ## Compare PDFs of total retreat & plot normalized histograms over
 obs_dL_dens = gaussian_kde(obs_total) #estimate density of total observed retreat
@@ -340,18 +340,24 @@ plt.show()
 
 
 ## Histogram of difference
-diff_bins = arange(-2000, 3000, 150)
-diff_dens = gaussian_kde((np.array(avg_obs_rates)-np.array(avg_sim_rates)))
-xs2 = np.linspace(-2000, 3000, 200)
+diff_bins = np.linspace(-2000, 3000, num=34)
 plt.figure()
 plt.hist(np.array(avg_obs_rates)-np.array(avg_sim_rates), bins=diff_bins, weights=obs_weights, color='DarkBlue', alpha=0.5)
-plt.plot(xs2, diff_dens(xs2), lw=3.0, color='DarkBlue')
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 #plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.axes().set_yticks([0, 0.1, 0.2])
 plt.xlabel('$\Delta dL/dt$ [m/a]', fontsize=18)
 plt.ylabel('Density', fontsize=18)
 plt.title('Difference observed - simulated retreat rates, Greenland outlets 2006-2014', fontsize=20)
+plt.show()
+## generate figure for inset with smoothed distribution
+diff_dens = gaussian_kde((np.array(avg_obs_rates)-np.array(avg_sim_rates))) # calculate in km/a
+xs2 = np.linspace(-2000, 3000, 200)
+plt.figure('dLdt density inset')
+plt.plot(xs2, diff_dens(xs2), lw=3.0, color='DarkBlue') 
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.axes().set_xticks([-2000, 0, 3000])
+plt.axes().set_yticks([0, 0.001])
 plt.show()
 
 
@@ -399,16 +405,16 @@ plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 plt.title('Simulated terminus retreat of {} Greenland outlet glaciers 2006-2014 ERA-I, Tice=-10 C'.format(len(glaciers_simulated)), fontsize=20)
 plt.show()
 
-## Plot total retreat versus latitude (N/S) or longitude (W/E).  Initialize all_coords_latlon with greendland-outlets-map first.
-plt.figure()
-for j, gid in enumerate(glaciers_simulated):
-    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
-    lngtd = all_coords_latlon[gid][0][0]
-    lttd = all_coords_latlon[gid][0][1]
-    plt.scatter(lttd, term_positions[-1])
-plt.title('Total retreat by outlet glacier latitude', fontsize=20)
-plt.show()
-
+### Plot total retreat versus latitude (N/S) or longitude (W/E).  Initialize all_coords_latlon with greendland-outlets-map first.
+#plt.figure()
+#for j, gid in enumerate(glaciers_simulated):
+#    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
+#    lngtd = all_coords_latlon[gid][0][0]
+#    lttd = all_coords_latlon[gid][0][1]
+#    plt.scatter(lttd, term_positions[-1])
+#plt.title('Total retreat by outlet glacier latitude', fontsize=20)
+#plt.show()
+#
 
 ### Map of total retreat (scales linearly with avg rate as calculated above)
 ### Use greenland-outlets-map as basis -- some things initialized there first
