@@ -77,23 +77,16 @@ for gid in termini_init.keys():
 
 gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=3413, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
 
-#plt.figure()
-#gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
-##for k in termini_init.keys():
-##    pt = all_coords_latlon[k][0]
-##    gld_backdrop.scatter(pt[0], pt[1], s=60, marker='*', color='LightCyan', edgecolors='b', latlon=True)
-##    term_marker = gld_backdrop(pt[0], pt[1])
-##    #offset = 100 * np.mod(k,2)
-##    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
-#plt.show()
-
 plt.figure()
 gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
 for k in termini_init.keys():
     pt = all_coords_latlon[k][0]
-    size = k #testing variable size
-    gld_backdrop.scatter(pt[0], pt[1], s=size, marker='*', color='b', edgecolors='DarkViolet', latlon=True)
-    #    term_marker = gld_backdrop(pt[0], pt[1])
-    #    #offset = 100 * np.mod(k,2)
-    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+    gld_backdrop.scatter(pt[0], pt[1], s=40, marker='o', color='Blue', edgecolors='DarkViolet', latlon=True)
+    #term_marker = gld_backdrop(pt[0], pt[1])
+    #offset = 100 * np.mod(k,2)
+    #plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+# Now plot the case study glaciers on top
+for k in (3, 109, 137):
+    pt = all_coords_latlon[k][0]
+    gld_backdrop.scatter(pt[0], pt[1], s=180, marker='*', color='Yellow', edgecolors='Gold', latlon=True)
 plt.show()
