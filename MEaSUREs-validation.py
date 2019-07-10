@@ -338,12 +338,23 @@ plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 plt.title('Simulated terminus retreat of {} Greenland outlet glaciers 2006-2014 ERA-I, Tice=-10 C'.format(len(glaciers_simulated)), fontsize=20)
 plt.show()
 
-### Plot total retreat versus latitude (N/S) or longitude (W/E).  Initialize all_coords_latlon with greendland-outlets-map first.
+
+##-------------------
+### MAP VISUALISATIONS
+##-------------------
+termini_toplot = termini[2014]
+
+outlet_locations_latlon = {}
+for gid in termini_toplot.keys():
+    latlon_coords = flowline_latlon(termini_toplot[gid])
+    outlet_locations_latlon[gid] = np.asarray(latlon_coords)
+
+### Plot total retreat versus latitude (N/S) or longitude (W/E). 
 #plt.figure()
 #for j, gid in enumerate(glaciers_simulated):
 #    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
-#    lngtd = all_coords_latlon[gid][0][0]
-#    lttd = all_coords_latlon[gid][0][1]
+#    lngtd = outlet_locations_latlon[gid][0][0]
+#    lttd = outlet_locations_latlon[gid][0][1]
 #    plt.scatter(lttd, term_positions[-1])
 #plt.title('Total retreat by outlet glacier latitude', fontsize=20)
 #plt.show()
@@ -357,7 +368,7 @@ plt.show()
 #plt.figure()
 #gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
 #for i, gid in enumerate(glaciers_simulated):
-#    pt = all_coords_latlon[gid][0]
+#    pt = outlet_locations_latlon[gid][0]
 #    retreat_rate = avg_sim_rates[i]
 #    #markerscale = abs(retreat_rate/np.mean(avg_sim_rates)) #continuous scale
 #    retreatscale = np.digitize(retreat_rate, bins=retreat_bins) 
@@ -375,7 +386,7 @@ plt.show()
 #plt.figure()
 #gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
 #for i, gid in enumerate(glaciers_simulated):
-#    pt = all_coords_latlon[gid][0]
+#    pt = outlet_locations_latlon[gid][0]
 #    diff = avg_obs_rates[i] - avg_sim_rates[i]
 #    markerscale = abs(diff/np.mean(avg_obs_rates))
 #    advret_color = cm.get_cmap('coolwarm')(sign(diff))
