@@ -1,5 +1,6 @@
 ## Utilities file for Greenland modelling functions
-# 30 Nov 2017  EHU
+## 30 Nov 2017  EHU
+## 10 Jul 2019  Adding visualization tools
 
 from numpy import *
 #from netCDF4 import Dataset
@@ -318,75 +319,30 @@ def Network_CV_Optimise(networklist, taurange, glaciername='Glacier'):
     return bestfitarr
 
 ##-------------------------------
-##  TIME EVOLUTION MODELLING
+##  TIME EVOLUTION MODELLING - superseded by flowline_class_hierarchy code
 ##-------------------------------
-
-def ProcessDicts(linedicts, keys, fields, bestfit_tau):
-    """Processing list of flowline dicts to be ready for PlasticEvol"""
-    for d in linedicts:
-        for j,k in enumerate(keys):
-            d[k] = FlowProcess(d['line'], fields[j])
-    
-    for n,d in enumerate(linedicts):
-        tau_0 = bestfit_tau[n][0]
-        tau_y = bestfit_tau[n][1]
-        arcmax = ArcArray(d['line'])[-1]
-        modelprof = PlasticProfile(d['bed'], tau_0, B_var, 0, d['surface'](0)/H0, arcmax, 10000, d['surface'])
-        modelint = interpolate.interp1d(modelprof[0], modelprof[1], kind='linear', copy=True)
-        d['Modelled'] = modelprof
-        d['Ref-profile-func'] = modelint
-        d['Best tau_y'] = tau_y
-        d['Best tau_0'] = tau_0
-        
-    return linedicts
-
-
-def PlasticEvol(linedicts, testyears, upgl_ref=15000/L0, thinrate=10/H0, thinvalues=None):
-    """linedicts: a list of flowline dictionaries.  These should be already optimised and include reference profiles from a ref model run 
-    testyears: a range of years to test
-    upgl_ref: where to apply upglacier thinning.  Default is 15km upstream, or top of glacier if flowline <15km
-    thinrate: thinning rate (constant) to apply at reference point
-    thinfunc: the option to define thinning as a function fit to obs (e.g. sinusoid) or as extreme climate scenario (e.g. exponential increase in thinning)
-    
-    returns list of dictionaries with model output
-    """
-    if thinvalues is None:  
-        thinvals = np.full(len(testyears), thinrate)
-    else:
-        thinvals = thinvalues
-    
-    modeldicts = [{} for j in range(len(linedicts))]
-    for j,d in enumerate(linedicts):
-        print 'Currently running line {}'.format(j)
-        sarr = d['Modelled'][0] #calling list of master glacier dicts for initialization before getting into modeldicts...
-        amax = sarr[-1] #can change if want to model shorter profile
-        refpt = min(amax, upgl_ref)
-        refht = d['Ref-profile-func'](refpt)
-        
-        bedf = d['bed']
-        sef = d['surface']
-        
-        tau_j = d['Best tau_0']
-        
-        dmodel = modeldicts[j]
-        dmodel['Termini'] = [L0*min(sarr)]
-        dmodel['Termrates'] = []
-        
-        for j, yr in enumerate(testyears):
-            #thinning = yr*thinrate
-            thinning = np.sum(thinvals[:j])
-            fwdmodel = PlasticProfile(bedf, tau_j, B_var, refpt, refht-thinning, 0, 25000, sef)
-            bkmodel = PlasticProfile(bedf, tau_j, B_var, refpt, refht-thinning, amax, 25000, sef)
-            modelterm = L0*min(fwdmodel[0]) #in m
-            dL = modelterm - dmodel['Termini'][-1]
-            #dmodel[yr] = fwdmodel #showing profile downstream of refpt
-            dmodel['Termini'].append(modelterm)
-            dmodel['Termrates'].append(dL) #dt = 1 by definition
-    
-    return modeldicts
-
-
-#def PlasticFluxEvol(linedicts, testyears, upgl_ref=15000/L0, thinrate=10/H0, thinfunc=None):
+#
+#def ProcessDicts(linedicts, keys, fields, bestfit_tau):
+#    """Processing list of flowline dicts to be ready for PlasticEvol"""
+#    for d in linedicts:
+#        for j,k in enumerate(keys):
+#            d[k] = FlowProcess(d['line'], fields[j])
+#    
+#    for n,d in enumerate(linedicts):
+#        tau_0 = bestfit_tau[n][0]
+#        tau_y = bestfit_tau[n][1]
+#        arcmax = ArcArray(d['line'])[-1]
+#        modelprof = PlasticProfile(d['bed'], tau_0, B_var, 0, d['surface'](0)/H0, arcmax, 10000, d['surface'])
+#        modelint = interpolate.interp1d(modelprof[0], modelprof[1], kind='linear', copy=True)
+#        d['Modelled'] = modelprof
+#        d['Ref-profile-func'] = modelint
+#        d['Best tau_y'] = tau_y
+#        d['Best tau_0'] = tau_0
+#        
+#    return linedicts
+#
+#
+#def PlasticEvol(linedicts, testyears, upgl_ref=15000/L0, thinrate=10/H0, thinvalues=None):
 #    """linedicts: a list of flowline dictionaries.  These should be already optimised and include reference profiles from a ref model run 
 #    testyears: a range of years to test
 #    upgl_ref: where to apply upglacier thinning.  Default is 15km upstream, or top of glacier if flowline <15km
@@ -395,9 +351,86 @@ def PlasticEvol(linedicts, testyears, upgl_ref=15000/L0, thinrate=10/H0, thinval
 #    
 #    returns list of dictionaries with model output
 #    """
-#    lines = [ld['line'][:] for ld in linedicts]
-#    catchment = spatial.ConvexHull(lines)
+#    if thinvalues is None:  
+#        thinvals = np.full(len(testyears), thinrate)
+#    else:
+#        thinvals = thinvalues
 #    
-#    dt = mean(diff(testyears))
-#    bdot = #accumulation rate 
+#    modeldicts = [{} for j in range(len(linedicts))]
+#    for j,d in enumerate(linedicts):
+#        print 'Currently running line {}'.format(j)
+#        sarr = d['Modelled'][0] #calling list of master glacier dicts for initialization before getting into modeldicts...
+#        amax = sarr[-1] #can change if want to model shorter profile
+#        refpt = min(amax, upgl_ref)
+#        refht = d['Ref-profile-func'](refpt)
+#        
+#        bedf = d['bed']
+#        sef = d['surface']
+#        
+#        tau_j = d['Best tau_0']
+#        
+#        dmodel = modeldicts[j]
+#        dmodel['Termini'] = [L0*min(sarr)]
+#        dmodel['Termrates'] = []
+#        
+#        for j, yr in enumerate(testyears):
+#            #thinning = yr*thinrate
+#            thinning = np.sum(thinvals[:j])
+#            fwdmodel = PlasticProfile(bedf, tau_j, B_var, refpt, refht-thinning, 0, 25000, sef)
+#            bkmodel = PlasticProfile(bedf, tau_j, B_var, refpt, refht-thinning, amax, 25000, sef)
+#            modelterm = L0*min(fwdmodel[0]) #in m
+#            dL = modelterm - dmodel['Termini'][-1]
+#            #dmodel[yr] = fwdmodel #showing profile downstream of refpt
+#            dmodel['Termini'].append(modelterm)
+#            dmodel['Termrates'].append(dL) #dt = 1 by definition
 #    
+#    return modeldicts
+#
+#
+
+##--------------------------
+## VISUALIZATION - MAPPING
+##--------------------------
+
+def Greenland_map(service='ESRI_Imagery_World_2D', epsg=3413, xpixels=5000):
+    """Function using Basemap to plot map for all of Greenland.
+    Input:
+        service: map appearance selected from ['World_Physical_Map', 'World_Shaded_Relief', 'World_Topo_Map', 'NatGeo_World_Map', 'ESRI_Imagery_World_2D', 'World_Street_Map', 'World_Imagery', 'Ocean_Basemap']
+        epsg: identifier of specific map projection to use in plotting.  Default is 3413 (Polar Stereographic North).
+    """
+    m = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=epsg, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
+    
+    plt.figure()
+    m.arcgisimage(service=service, xpixels=xpixels)
+    plt.show()
+    return m
+
+##Convert coords into lat/lon so that Basemap can convert them back (don't know why this is necessary, but it works)
+def flowline_latlon(coords, fromproj=pyproj.Proj("+init=epsg:3413"), toproj=pyproj.Proj("+init=EPSG:4326")):
+    """Convert coords into lat/lon so that Basemap can convert them back for plotting (don't know why this is necessary, but it works)
+    Defaults:
+        fromproj = NSIDC Polar Stereographic North, EPSG 3413
+        toproj = WGS84 lat-lon, EPSG 4326
+    """
+    xs = coords[:,0]
+    ys = coords[:,1]
+    x_lon, y_lat = pyproj.transform(fromproj, toproj, xs, ys)
+    latlon_coords = np.asarray(zip(x_lon, y_lat))
+    return latlon_coords
+
+def read_termini(filename, year):
+    """Make and return a dictionary of terminus positions, indexed by MEaSUREs ID.  These can then be plotted on a Greenland_map instance
+    Input:
+        filename = name of MEaSUREs terminus position shapefile to read
+        year: year of the terminus position observations"""
+    print 'Reading in MEaSUREs terminus positions for year ' + str(year)
+    sf = shapefile.Reader(filename)
+    fields = sf.fields[1:] #excluding the mute "DeletionFlag"
+    field_names = [field[0] for field in fields]
+    term_recs = sf.shapeRecords()
+    termpts_dict = {}
+    for r in term_recs:
+        atr = dict(zip(field_names, r.record)) #dictionary of shapefile fields, so we can access GlacierID by name rather than index.  Index changes in later years.
+        key = atr['GlacierID'] #MEaSUREs ID number for the glacier, found by name rather than index
+        termpts_dict[key] = np.asarray(r.shape.points) #save points spanning terminus to dictionary
+    return termpts_dict

@@ -7,40 +7,11 @@ import mpl_toolkits.basemap.pyproj as pyproj
 import numpy as np
 import matplotlib.pyplot as plt
 import shapefile
+from GL_model_tools import Greenland_map, flowline_latlon, read_termini
  
-##--------------------------
-## SET UP MAP
-##--------------------------
-
-#selection of which map appearance you want, projection settings
-services = ['World_Physical_Map', 'World_Shaded_Relief', 'World_Topo_Map', 'NatGeo_World_Map', 'ESRI_Imagery_World_2D', 'World_Street_Map', 'World_Imagery', 'Ocean_Basemap']
-wgs84 = pyproj.Proj("+init=EPSG:4326") # LatLon with WGS84 datum used by GPS units and Google Earth
-psn_gl = pyproj.Proj("+init=epsg:3413") # Polar Stereographic North used by BedMachine 
 
 
 
-def Greenland_map(service='ESRI_Imagery_World_2D', epsg=3413, xpixels=5000):
-    """Function using Basemap to plot map for all of Greenland
-    """
-    m = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=epsg, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
-    
-    plt.figure()
-    m.arcgisimage(service=service, xpixels=xpixels)
-    plt.show()
-    return m
-
-##Convert coords into lat/lon so that Basemap can convert them back (don't know why this is necessary, but it works)
-def flowline_latlon(coords, fromproj=pyproj.Proj("+init=epsg:3413"), toproj=pyproj.Proj("+init=EPSG:4326")):
-    """Convert coords into lat/lon so that Basemap can convert them back for plotting (don't know why this is necessary, but it works)
-    Defaults:
-        fromproj = NSIDC Polar Stereographic North
-        toproj = WGS84 lat-lon
-    """
-    xs = coords[:,0]
-    ys = coords[:,1]
-    x_lon, y_lat = pyproj.transform(fromproj, toproj, xs, ys)
-    latlon_coords = np.asarray(zip(x_lon, y_lat))
-    return latlon_coords
     
 ##--------------------------
 ## SET UP OUTLET MARKERS
