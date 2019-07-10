@@ -8,6 +8,11 @@ import numpy as np
 #from scipy import interpolate
 from scipy import spatial
 #from scipy.ndimage import gaussian_filter
+from mpl_toolkits.basemap import Basemap
+import mpl_toolkits.basemap.pyproj as pyproj
+import shapefile
+from osgeo import gdal
+import cPickle as pickle
 from plastic_utilities_v2 import*
 import collections
 
