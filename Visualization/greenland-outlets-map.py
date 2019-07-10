@@ -10,26 +10,9 @@ import shapefile
 from GL_model_tools import Greenland_map, flowline_latlon, read_termini
  
 
-
-
-    
 ##--------------------------
 ## SET UP OUTLET MARKERS
 ##--------------------------
-
-def read_termini(filename, year):
-    """Make a dictionary of terminus positions, indexed by MEaSUREs ID. Outputs dictionary"""
-    print 'Reading in MEaSUREs terminus positions for year ' + str(year)
-    sf = shapefile.Reader(filename)
-    fields = sf.fields[1:] #excluding the mute "DeletionFlag"
-    field_names = [field[0] for field in fields]
-    term_recs = sf.shapeRecords()
-    termpts_dict = {}
-    for r in term_recs:
-        atr = dict(zip(field_names, r.record)) #dictionary of shapefile fields, so we can access GlacierID by name rather than index.  Index changes in later years.
-        key = atr['GlacierID'] #MEaSUREs ID number for the glacier, found by name rather than index
-        termpts_dict[key] = np.asarray(r.shape.points) #save points spanning terminus to dictionary
-    return termpts_dict
 
 gl_termpos_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-termini'
 terminus_basefile = '/termini_1415_v01_2'
