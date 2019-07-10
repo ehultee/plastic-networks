@@ -434,3 +434,37 @@ def read_termini(filename, year):
         key = atr['GlacierID'] #MEaSUREs ID number for the glacier, found by name rather than index
         termpts_dict[key] = np.asarray(r.shape.points) #save points spanning terminus to dictionary
     return termpts_dict
+
+##Function to read MEaSUREs velocity GeoTIFFs
+def read_velocities(filename, return_grid=True, return_proj=False):
+    """Extract x, y, v from a MEaSUREs GeoTIFF.
+    Input: 
+        filename = GeoTIFF to be read
+    Optional args:
+        return_grid = whether to return x-y grid (default True) or only the velocity field (False)
+        return_proj = whether to return the gdal projection parameters (default False)"""
+    ds = gdal.Open(filename)
+    #Get dimensions
+    nc = ds.RasterXSize
+    nr = ds.RasterYSize
+    
+    geotransform = ds.GetGeoTransform()
+    xOrigin = geotransform[0]
+    xPix = geotransform[1] #pixel width in x-direction
+    yOrigin = geotransform[3]
+    yPix = geotransform[5] #pixel height in y-direction
+    
+    lons = xOrigin + np.arange(0, nc)*xPix
+    lats = yOrigin + np.arange(0, nr)*yPix
+    
+    x, y = np.meshgrid(lons, lats)
+    
+    vband = ds.GetRasterBand(1)
+    varr = vband.ReadAsArray()
+    
+    if return_grid and return_proj:
+        return x, y, varr, ds.GetProjection()
+    elif return_grid:
+        return x, y, varr
+    else: 
+        return varr

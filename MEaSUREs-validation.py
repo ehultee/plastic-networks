@@ -29,35 +29,6 @@ from flowline_class_hierarchy import *
 
 ## Read in MEaSUREs velocity composite
 ##Reading in velocities -- function lifted from Greenland-vel-compositing.py
-##Function to read MEaSUREs velocity GeoTIFFs
-def read_velocities(filename, return_grid=True, return_proj=False):
-    """Extract x, y, v from a MEaSUREs GeoTIFF"""
-    ds = gdal.Open(filename)
-    #Get dimensions
-    nc = ds.RasterXSize
-    nr = ds.RasterYSize
-    
-    geotransform = ds.GetGeoTransform()
-    xOrigin = geotransform[0]
-    xPix = geotransform[1] #pixel width in x-direction
-    yOrigin = geotransform[3]
-    yPix = geotransform[5] #pixel height in y-direction
-    
-    lons = xOrigin + np.arange(0, nc)*xPix
-    lats = yOrigin + np.arange(0, nr)*yPix
-    
-    x, y = np.meshgrid(lons, lats)
-    
-    vband = ds.GetRasterBand(1)
-    varr = vband.ReadAsArray()
-    
-    #if return_grid and return_proj:
-    #    return x, y, varr, ds.GetProjection()
-    #elif return_grid:
-    if return_grid:
-        return x, y, varr
-    else: 
-        return varr
 
 print 'Reading MEaSUREs velocities'
 x_comp, y_comp, v_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-velocity-composite-10Jan19.tif')
@@ -88,20 +59,7 @@ gl_gid_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-GlacierIDs'
 sf_ref = shapefile.Reader(gl_gid_fldr+'/GlacierIDs_v01_2') #Specify the base filename of the group of files that makes up a shapefile
 
 
-## Reading terminus positions consistently
-def read_termini(filename, year):
-    """Make a dictionary of terminus positions, indexed by MEaSUREs ID. Outputs dictionary"""
-    print 'Reading in MEaSUREs terminus positions for year ' + str(year)
-    sf = shapefile.Reader(filename)
-    fields = sf.fields[1:] #excluding the mute "DeletionFlag"
-    field_names = [field[0] for field in fields]
-    term_recs = sf.shapeRecords()
-    termpts_dict = {}
-    for r in term_recs:
-        atr = dict(zip(field_names, r.record)) #dictionary of shapefile fields, so we can access GlacierID by name rather than index.  Index changes in later years.
-        key = atr['GlacierID'] #MEaSUREs ID number for the glacier, found by name rather than index
-        termpts_dict[key] = np.asarray(r.shape.points) #save points spanning terminus to dictionary
-    return termpts_dict
+
 
 gl_termpos_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-termini'
 basefiles = ['/termini_0001_v01_2', '/termini_0506_v01_2', '/termini_0607_v01_2', '/termini_0708_v01_2', '/termini_0809_v01_2', '/termini_1213_v01_2', '/termini_1415_v01_2', '/termini_1516_v01_2', '/termini_1617_v01_2']
