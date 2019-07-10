@@ -418,6 +418,10 @@ def flowline_latlon(coords, fromproj=pyproj.Proj("+init=epsg:3413"), toproj=pypr
     latlon_coords = np.asarray(zip(x_lon, y_lat))
     return latlon_coords
 
+##--------------------------
+## GREENLAND-SPECIFIC FILE I/O
+##--------------------------
+
 def read_termini(filename, year):
     """Make and return a dictionary of terminus positions, indexed by MEaSUREs ID.  These can then be plotted on a Greenland_map instance
     Input:
@@ -468,3 +472,34 @@ def read_velocities(filename, return_grid=True, return_proj=False):
         return x, y, varr
     else: 
         return varr
+
+### Load-in functionality to read only terminus position and flux, lifted from Greenland-automated_summary_plots.py
+def lightload(filename, glacier_name, output_dictionary):
+    """Function to read only terminus position and flux from stored plastic model output.
+    Input: 
+        filename = the name of a pickle file with stored model output
+        glacier_name = name or other identifier of the glacier to be read
+        output_dictionary = name of an existing dictionary where we should put this output.
+    Returns:
+        output_dictionary modified to add the requested model output
+    """
+    output_dictionary[glacier_name] = {}
+    
+    with open(filename, 'rb') as handle:
+        loadin = pickle.load(handle)
+    
+    N_Flowlines = loadin['N_Flowlines']
+    mainline_termini = loadin['mainline_model_output']['Termini']
+    mainline_flux = loadin['mainline_model_output']['Terminus_flux']
+    output_dictionary[glacier_name][0] ={'Termini': mainline_termini, 'Terminus_flux': mainline_flux}
+    
+    if N_Flowlines >1:
+        for n in range(N_Flowlines)[1::]:
+            key_n = 'model_output_'+str(n)
+            termini_n = loadin[key_n]['Termini']
+            termflux_n = loadin[key_n]['Terminus_flux']
+            output_dictionary[glacier_name][n] = {'Termini': termini_n, 'Terminus_flux': termflux_n}
+    else:
+        pass
+        
+    return output_dictionary

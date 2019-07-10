@@ -58,9 +58,6 @@ print 'Reading in MEaSUREs reference file'
 gl_gid_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-GlacierIDs'
 sf_ref = shapefile.Reader(gl_gid_fldr+'/GlacierIDs_v01_2') #Specify the base filename of the group of files that makes up a shapefile
 
-
-
-
 gl_termpos_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-termini'
 basefiles = ['/termini_0001_v01_2', '/termini_0506_v01_2', '/termini_0607_v01_2', '/termini_0708_v01_2', '/termini_0809_v01_2', '/termini_1213_v01_2', '/termini_1415_v01_2', '/termini_1516_v01_2', '/termini_1617_v01_2']
 years = [2000, 2005, 2006, 2007, 2008, 2012, 2014, 2015, 2016]
@@ -162,28 +159,6 @@ for i in range(1, len(years)):
 ### READING IN SIMS
 ##-------------------
 
-### Load-in functionality to read only terminus position and flux, lifted from Greenland-automated_summary_plots.py
-def lightload(filename, glacier_name, output_dictionary):
-    output_dictionary[glacier_name] = {}
-    
-    with open(filename, 'rb') as handle:
-        loadin = pickle.load(handle)
-    
-    N_Flowlines = loadin['N_Flowlines']
-    mainline_termini = loadin['mainline_model_output']['Termini']
-    mainline_flux = loadin['mainline_model_output']['Terminus_flux']
-    output_dictionary[glacier_name][0] ={'Termini': mainline_termini, 'Terminus_flux': mainline_flux}
-    
-    if N_Flowlines >1:
-        for n in range(N_Flowlines)[1::]:
-            key_n = 'model_output_'+str(n)
-            termini_n = loadin[key_n]['Termini']
-            termflux_n = loadin[key_n]['Terminus_flux']
-            output_dictionary[glacier_name][n] = {'Termini': termini_n, 'Terminus_flux': termflux_n}
-    else:
-        pass
-        
-    return output_dictionary
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence', 
