@@ -348,6 +348,9 @@ outlet_locations_latlon = {}
 for gid in termini_toplot.keys():
     latlon_coords = flowline_latlon(termini_toplot[gid])
     outlet_locations_latlon[gid] = np.asarray(latlon_coords)
+    
+gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=3413, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
+
 
 ### Plot total retreat versus latitude (N/S) or longitude (W/E). 
 #plt.figure()
@@ -381,8 +384,6 @@ for gid in termini_toplot.keys():
 #plt.show()
 #
 ### Map of obs-sim difference
-#
-#
 #plt.figure()
 #gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
 #for i, gid in enumerate(glaciers_simulated):
@@ -395,3 +396,22 @@ for gid in termini_toplot.keys():
 #    #    #offset = 100 * np.mod(k,2)
 #    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
 #plt.show()
+
+
+### Map highlighting case study glaciers
+plt.figure()
+gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+for k, gid in enumerate(glaciers_simulated):
+    pt = outlet_locations_latlon[gid][0]
+    diff = avg_obs_rates[k] - avg_sim_rates[k]
+    colorscale = diff/np.mean(avg_obs_rates)
+    advret_color = cm.get_cmap('coolwarm')(colorscale)
+    gld_backdrop.scatter(pt[0], pt[1], s=40, marker='o', color=advret_color, edgecolors='K', latlon=True)
+    #term_marker = gld_backdrop(pt[0], pt[1])
+    #offset = 100 * np.mod(k,2)
+    #plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+# Now plot the case study glaciers on top
+for j in (3, 109, 137):
+    pt = outlet_locations_latlon[j][0]
+    gld_backdrop.scatter(pt[0], pt[1], s=180, marker='*', color='Yellow', edgecolors='Gold', latlon=True)
+plt.show()
