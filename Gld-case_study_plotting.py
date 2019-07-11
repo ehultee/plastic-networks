@@ -40,7 +40,7 @@ for n in rmv:
 #) #array pairing glacier IDs with their recognized  names
 #
 #glaciers_to_plot = [g[0] for g in gids_by_name if g[1] in ('Jakobshavn/SK', 'Helheim', 'Kangerlussuaq', 'Store')] # select gids of glaciers to plot as case studies
-glaciers_to_plot = [g for g in glacier_ids if g in (3, 109, 137)]
+glaciers_to_plot = [g for g in glacier_ids if g in (3, 137, 175)]
 
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
@@ -167,14 +167,21 @@ for j, gid in enumerate(glaciers_to_plot):
     plt.figure('Main line terminus change, GID{}'.format(gid))
     plt.plot(plot_years, -0.001*np.array(sim_termini), linewidth=2, color='k', linestyle='-', label='Modelled')
     plt.errorbar(obs_years, -1*obs_term_centr, yerr = e, fmt='D')
-    plt.axes().set_xlabel('Year', size=30)
-    plt.axes().set_ylabel('Terminus change [km]', size=30)
     plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
     plt.axes().set_xlim(2006, 2014.5)
     plt.axes().set_xticks([2006, 2008, 2010, 2012, 2014])
-    plt.axes().set_xticklabels(['2006', '2008', '2010', '2012', '2014'])
-    #plt.axes().set_ylim(-50, 1)
-    #plt.axes().set_yticks([-50, -25, 0])
+    plt.axes().set_ylim(-20, 2)
+    plt.axes().set_yticks([-20, -15, -10, -5, 0])
+    if gid==175:
+        plt.axes().set_xticklabels(['2006', '2008', '2010', '2012', '2014'])
+        plt.axes().set_xlabel('Year', size=30)
+    else:
+        plt.axes().set_xticklabels([])
+    if gid==137:
+        plt.axes().set_yticklabels(['-20', '', '-10', '', '0'])
+        plt.axes().set_ylabel('Terminus change [km]', size=30)
+    else:
+        plt.axes().set_yticklabels([])
     plt.show()
 
 
