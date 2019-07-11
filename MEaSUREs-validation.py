@@ -399,19 +399,19 @@ gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=341
 
 
 ### Map highlighting case study glaciers
+## Color-code markers with model misfit
+diff_arr = np.array(avg_obs_rates)-np.array(avg_sim_rates)
+cm = cm.get_cmap('coolwarm')
+#markers
+terminus_pts = np.asarray([outlet_locations_latlon[gid][0] for gid in glaciers_simulated])
+
 plt.figure()
 gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
-for k, gid in enumerate(glaciers_simulated):
-    pt = outlet_locations_latlon[gid][0]
-    diff = avg_obs_rates[k] - avg_sim_rates[k]
-    colorscale = diff/np.mean(avg_obs_rates)
-    advret_color = cm.get_cmap('coolwarm')(colorscale)
-    gld_backdrop.scatter(pt[0], pt[1], s=40, marker='o', color=advret_color, edgecolors='K', latlon=True)
-    #term_marker = gld_backdrop(pt[0], pt[1])
-    #offset = 100 * np.mod(k,2)
-    #plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=diff_arr, edgecolors='K', cmap=cm, norm=MidpointNormalize(midpoint=0,vmin=-1500, vmax=2500))
 # Now plot the case study glaciers on top
-for j in (3, 109, 137):
+for j in (3, 137, 175):
     pt = outlet_locations_latlon[j][0]
-    gld_backdrop.scatter(pt[0], pt[1], s=180, marker='*', color='Yellow', edgecolors='Gold', latlon=True)
+    gld_backdrop.scatter(pt[0], pt[1], s=180, marker='*', color='Yellow', edgecolors='k', latlon=True)
+cbar = plt.colorbar(sc)
+cbar.ax.tick_params(labelsize=16)
 plt.show()
