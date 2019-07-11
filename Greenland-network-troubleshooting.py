@@ -191,7 +191,7 @@ opt_data = read_optimization_analysis(analysis_fn)
 #taus_neg_termini = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Terminal_SE'][i]<0]   
 #SEs_neg_termini = [se for i, se in enumerate(opt_data['Terminal_SE']) if opt_data['Terminal_SE'][i]<0]
 
-IDs_foranalysis = (17, 51, 168, 171)
+IDs_foranalysis = (17, 51, 109, 115)
 taus_foranalysis = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Glacier_IDs'][i] in IDs_foranalysis]
 
 ## Read in the networks of glaciers with problematic termini--based on Greenland-network_processing_routine.py
