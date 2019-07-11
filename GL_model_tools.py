@@ -462,6 +462,43 @@ def read_termini(filename, year):
         termpts_dict[key] = np.asarray(r.shape.points) #save points spanning terminus to dictionary
     return termpts_dict
 
+# Finding intersection of terminus points with mainline--modified from hubbard-mainline-advance-v2.py
+def projected_term_obs(termset, linestr):
+    '''Given a termset from file input and LineString representation of a flowline, termline constructs a Shapely LineString of the terminus and returns the intersection of the two'''
+    termarr = np.array(termset)
+    termline = LineString(termarr)
+    centrpt = termline.centroid
+    arcdist = linestr.project(centrpt)
+    if arcdist>0:
+        return arcdist/1000
+    else:
+        near = linestr.distance(termline)  #in case terminus listed in MEaSUREs is farther advanced than max seaward extent of saved flowline
+        return -near/1000
+    
+def advterm(termset, linestr):
+    '''Given termset and LineString representation of a flowline, advterm finds which terminus position projects most advanced along central flowline and returns its arclength position'''
+    x_term = termset[:, 0]  #Note need to change from [:, 1] to [:, 0] for x-coord, due to different data format for Hubbard
+    y_term = termset[:, 1]
+    projections = []
+    for i in xrange(len(x_term)):
+        proji = linestr.project(Point(x_term[i], y_term[i]))
+        projections.append(proji)
+    termmax = min(projections) #need minimum rather than max here because we are interested in the most advanced, i.e. lowest arc-length value projection of terminus
+    return termmax/1000
+
+def retterm(termset, linestr):
+    '''Given termset (from file input above), retterm finds which terminus position projects most retreated (rel. 2007 terminus) along central flowline and returns its arclength position'''
+    x_term = termset[:, 0]
+    y_term = termset[:, 1]
+    projections = []
+    for i in xrange(len(x_term)):
+        proji = linestr.project(Point(x_term[i], y_term[i]))
+        projections.append(proji)
+    termmin = max(projections) #max is the most retreated, i.e. highest arc-length value projection of terminus
+    return termmin/1000
+
+
+
 ##Function to read MEaSUREs velocity GeoTIFFs
 def read_velocities(filename, return_grid=True, return_proj=False):
     """Extract x, y, v from a MEaSUREs GeoTIFF.

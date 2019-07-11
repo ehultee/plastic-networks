@@ -18,34 +18,6 @@ from GL_model_tools import *
 from flowline_class_hierarchy import *
 
 
-
-###-------------------
-#### DEFINING NECESSARY FUNCTIONS
-###-------------------
-
-### Load-in functionality to use only terminus position and flux
-def lightload(filename, glacier_name, output_dictionary):
-    output_dictionary[glacier_name] = {}
-    
-    with open(filename, 'rb') as handle:
-        loadin = pickle.load(handle)
-    
-    N_Flowlines = loadin['N_Flowlines']
-    mainline_termini = loadin['mainline_model_output']['Termini']
-    mainline_flux = loadin['mainline_model_output']['Terminus_flux']
-    output_dictionary[glacier_name][0] ={'Termini': mainline_termini, 'Terminus_flux': mainline_flux}
-    
-    if N_Flowlines >1:
-        for n in range(N_Flowlines)[1::]:
-            key_n = 'model_output_'+str(n)
-            termini_n = loadin[key_n]['Termini']
-            termflux_n = loadin[key_n]['Terminus_flux']
-            output_dictionary[glacier_name][n] = {'Termini': termini_n, 'Terminus_flux': termflux_n}
-    else:
-        pass
-        
-    return output_dictionary
-
 ###--------------------------------------
 #### GLACIERS TO PLOT
 ###--------------------------------------
@@ -115,56 +87,6 @@ for s in full_output_dicts.keys():
     print max(scenario_sle[-1])
     print(scenario_sle[-1][-1])
     perscenario_SLE.append(scenario_sle[-1])
-
-## Reading in observed termini and saved networks, and projecting obs termini to see retreat history
-def read_termini(filename, year):
-    """Make a dictionary of terminus positions, indexed by MEaSUREs ID. Outputs dictionary"""
-    print 'Reading in MEaSUREs terminus positions for year ' + str(year)
-    sf = shapefile.Reader(filename)
-    fields = sf.fields[1:] #excluding the mute "DeletionFlag"
-    field_names = [field[0] for field in fields]
-    term_recs = sf.shapeRecords()
-    termpts_dict = {}
-    for r in term_recs:
-        atr = dict(zip(field_names, r.record)) #dictionary of shapefile fields, so we can access GlacierID by name rather than index.  Index changes in later years.
-        key = atr['GlacierID'] #MEaSUREs ID number for the glacier, found by name rather than index
-        termpts_dict[key] = np.asarray(r.shape.points) #save points spanning terminus to dictionary
-    return termpts_dict
-
-# Finding intersection of terminus points with mainline--modified from hubbard-mainline-advance-v2.py
-def projected_term_obs(termset, linestr):
-    '''Given a termset from file input and LineString representation of a flowline, termline constructs a Shapely LineString of the terminus and returns the intersection of the two'''
-    termarr = np.array(termset)
-    termline = LineString(termarr)
-    centrpt = termline.centroid
-    arcdist = linestr.project(centrpt)
-    if arcdist>0:
-        return arcdist/1000
-    else:
-        near = linestr.distance(termline)  #in case terminus listed in MEaSUREs is farther advanced than max seaward extent of saved flowline
-        return -near/1000
-    
-def advterm(termset, linestr):
-    '''Given termset and LineString representation of a flowline, advterm finds which terminus position projects most advanced along central flowline and returns its arclength position'''
-    x_term = termset[:, 0]  #Note need to change from [:, 1] to [:, 0] for x-coord, due to different data format for Hubbard
-    y_term = termset[:, 1]
-    projections = []
-    for i in xrange(len(x_term)):
-        proji = linestr.project(Point(x_term[i], y_term[i]))
-        projections.append(proji)
-    termmax = min(projections) #need minimum rather than max here because we are interested in the most advanced, i.e. lowest arc-length value projection of terminus
-    return termmax/1000
-
-def retterm(termset, linestr):
-    '''Given termset (from file input above), retterm finds which terminus position projects most retreated (rel. 2007 terminus) along central flowline and returns its arclength position'''
-    x_term = termset[:, 0]
-    y_term = termset[:, 1]
-    projections = []
-    for i in xrange(len(x_term)):
-        proji = linestr.project(Point(x_term[i], y_term[i]))
-        projections.append(proji)
-    termmin = max(projections) #max is the most retreated, i.e. highest arc-length value projection of terminus
-    return termmin/1000
 
 gl_termpos_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-termini'
 basefiles = ['/termini_0607_v01_2', '/termini_0708_v01_2', '/termini_0809_v01_2', '/termini_1213_v01_2', '/termini_1415_v01_2', '/termini_1516_v01_2']
