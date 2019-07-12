@@ -412,6 +412,6 @@ sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=6
 for j in (3, 137, 175):
     pt = outlet_locations_latlon[j][0]
     gld_backdrop.scatter(pt[0], pt[1], s=180, marker='*', color='Yellow', edgecolors='k', latlon=True)
-cbar = plt.colorbar(sc)
+cbar = plt.colorbar(sc, orientation='horizontal')
 cbar.ax.tick_params(labelsize=16)
 plt.show()
