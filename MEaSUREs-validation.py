@@ -415,7 +415,7 @@ gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
 #sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='K', cmap=cm1, norm=MidpointNormalize(midpoint=0,vmin=-1500, vmax=2500))
 #cbar = plt.colorbar(sc, orientation='horizontal')
 ## total retreat colors
-sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='K', cmap=cm1, vmin=-15.0, vmax=0.0)
+sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='face', cmap=cm1, vmin=-15.0, vmax=0.0)
 cbar = plt.colorbar(sc, orientation='horizontal', extend='min', ticks=[-15, -10, -5, 0])
 cbar.ax.set_xticklabels(['-15', '-10', '-5', '0'])
 # Now plot the case study glaciers on top
@@ -426,25 +426,32 @@ cbar.ax.tick_params(labelsize=16)
 plt.show()
 
 
-
+###-----------------------------
+###  REGIONAL PICTURE
+###-----------------------------
 ### Bin glaciers into regions
 r1_limits = (1, 18) # Disko GIDs - split with geq lower, less than upper
-r2_limits = (18, 92) # northwest
-r3_limits = (93, 121) # northeast
-r4_limits = (122, 143) # Geikie
-r5_limits = (144, 194) # southeast
+r2_limits = (18, 93) # northwest
+r3_limits = (93, 122) # northeast
+r4_limits = (122, 144) # Geikie
+r5_limits = (144, 195) # southeast
 limits = (r1_limits, r2_limits, r3_limits, r4_limits, r5_limits)
 
+region_ids = []
+region_termini = []
+region_dLs = []
 
 for k, rl in enumerate(limits):
     termini = np.asarray([outlet_locations_latlon[gid][0] for gid in glaciers_simulated if gid>=rl[0] and gid<rl[1]])
-    id_l = np.abs(np.array(glaciers_simulated) - rl[0]).argmin()
-    id_u = np.abs(np.array(glaciers_simulated) - rl[1]).argmin()
-    rcolors = colorscale_arr[id_l:id_u+1]
-    #region_termini.append(termini)
+    ids = np.asarray([gid for gid in glaciers_simulated if gid>=rl[0] and gid<rl[1]])
+    sim_dLs = [-0.001*full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][-1] for gid in ids] # net retreat over period, expressed in km
+    region_ids.append(ids)
+    region_termini.append(termini)
+    region_dLs.append(sim_dLs)
+
     plt.figure('Region {} outlets'.format(k))
     gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
-    sc = gld_backdrop.scatter(termini[:,0], termini[:,1], latlon=True, s=60, marker='o', color=rcolors, edgecolors='K', cmap=cm1, vmin=-15.0, vmax=0.0)
+    sc = gld_backdrop.scatter(termini[:,0], termini[:,1], latlon=True, s=200, marker='o', color=sim_dLs, edgecolors='K', cmap=cm1, vmin=-15.0, vmax=0.0)
     cbar = plt.colorbar(sc, orientation='horizontal', extend='min', ticks=[-15, -10, -5, 0])
     cbar.ax.set_xticklabels(['-15', '-10', '-5', '0'])
     plt.show()
