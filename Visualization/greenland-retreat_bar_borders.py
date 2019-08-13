@@ -93,41 +93,71 @@ topright = abs(np.array(glaciers_simulated) - breaks[1]).argmin()
 lowright = abs(np.array(glaciers_simulated) - breaks[2]).argmin()
 lowleft = abs(np.array(glaciers_simulated) - breaks[3]).argmin()
 
+border_color = 'DarkGrey'
+gid_tickspacing = 10
+
 ## Left border
 plt.figure(figsize=(0.5, 6))
-plt.barh(glaciers_simulated[0:topleft], width=binned_retreats[0:topleft]) # go up to glacier ID 80
+plt.barh(glaciers_simulated[0:topleft], width=binned_retreats[0:topleft], color=border_color) # go up to first break point
 plt.axes().set_xlim(4, 0) # use "outward normal" for retreat
-plt.axes().set_xticks([]) # no x-ticks
+plt.axes().set_xticks([4, 3, 2, 1, 0]) # x-ticks only on first border
+plt.axes().set_xticklabels([]) #no tick labels (will have legend)
 plt.axes().set_ylim(0, breaks[0])
+plt.axes().yaxis.set_ticks_position('right')
+plt.axes().set_yticks(np.arange(0, breaks[0], gid_tickspacing)) # apply consistent spacing
+plt.axes().patch.set_visible(False)
+plt.axes().spines['left'].set_visible(False)
+plt.axes().spines['top'].set_visible(False)
+plt.axes().tick_params(direction='out', width=2, top='off', left='off')
 plt.show()
 
 ## Top border
 plt.figure(figsize=(3.3, 0.5))
-plt.bar(glaciers_simulated[topleft+1:topright], height=binned_retreats[topleft+1:topright])
+plt.bar(glaciers_simulated[topleft+1:topright], height=binned_retreats[topleft+1:topright], color=border_color)
 plt.axes().set_ylim(0, 4)
 plt.axes().set_yticks([]) # no y-ticks
 plt.axes().set_xlim(breaks[0], breaks[1])
+plt.axes().set_xticks(np.arange(ceil(round(breaks[0])/gid_tickspacing)*gid_tickspacing, ceil(round(breaks[1])/gid_tickspacing)*gid_tickspacing, gid_tickspacing))
+plt.axes().patch.set_visible(False)
+plt.axes().spines['left'].set_visible(False)
+plt.axes().spines['right'].set_visible(False)
+plt.axes().spines['top'].set_visible(False)
+plt.axes().tick_params(direction='out', width=2, top='off', left='off', right='off')
 plt.show()
 
 ## Right border
 plt.figure(figsize=(0.5, 6))
-plt.barh(glaciers_simulated[topright+1:lowright], width=binned_retreats[topright+1:lowright]) # go up to glacier ID 80
+plt.barh(glaciers_simulated[topright+1:lowright], width=binned_retreats[topright+1:lowright], color=border_color)
 plt.axes().set_xlim(0, 4) # use "outward normal" for retreat
 plt.axes().set_xticks([]) # no x-ticks
 plt.axes().set_ylim(breaks[2], breaks[1]) #run from top downward
+plt.axes().set_yticks(np.arange(ceil(round(breaks[1])/gid_tickspacing)*gid_tickspacing, ceil(round(breaks[2])/gid_tickspacing)*gid_tickspacing, gid_tickspacing))
+plt.axes().patch.set_visible(False)
+plt.axes().spines['right'].set_visible(False)
+plt.axes().spines['top'].set_visible(False)
+plt.axes().spines['bottom'].set_visible(False)
+plt.axes().tick_params(direction='out', width=2, top='off', bottom='off', right='off')
 plt.show()
 
 ## Bottom border
 plt.figure(figsize=(3.3, 0.5))
-plt.bar(glaciers_simulated[lowright+1:lowleft], height=binned_retreats[lowright+1:lowleft])
+plt.bar(glaciers_simulated[lowright+1:lowleft], height=binned_retreats[lowright+1:lowleft], color=border_color)
 plt.axes().set_ylim(0, 4)
 plt.axes().set_yticks([]) #no y-ticks
 plt.axes().set_xlim(breaks[3], breaks[2])
+plt.axes().set_xticks(np.arange(ceil(round(breaks[2])/gid_tickspacing)*gid_tickspacing, ceil(round(breaks[3])/gid_tickspacing)*gid_tickspacing, gid_tickspacing))
+plt.axes().patch.set_visible(False)
+plt.axes().spines['right'].set_visible(False)
+plt.axes().spines['left'].set_visible(False)
+plt.axes().spines['top'].set_visible(False)
+plt.axes().tick_params(direction='out', width=2, top='off', left='off', right='off')
 plt.show()
 
 ## Legend
 plt.figure(figsize=(0.5, 1), frameon=False)
-plt.barh((1, 3, 5, 7), width=(4, 3, 2, 1))
+plt.barh((1, 3, 5, 7), width=(4, 3, 2, 1), color=border_color)
 plt.axes().set_xticks([])
 plt.axes().set_yticks([])
+#plt.axes().patch.set_visible(False)
+plt.axes().axis('off')
 plt.show()
