@@ -39,8 +39,8 @@ for k in termini_init.keys():
     #term_marker = gld_backdrop(pt[0], pt[1])
     #offset = 100 * np.mod(k,2)
     #plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
-# Now plot the case study glaciers on top
-for k in (3, 109, 137):
+# Now plot ticked glaciers on top
+for k in np.arange(10, 201, 10):
     pt = all_coords_latlon[k][0]
     gld_backdrop.scatter(pt[0], pt[1], s=180, marker='*', color='Yellow', edgecolors='Gold', latlon=True)
 plt.show()
