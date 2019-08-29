@@ -3,6 +3,12 @@
 
 This repository will store code associated with our plastic network model for calving glaciers.  
 
+As of 29 Aug 2019:
+-Core model code has been moved into SERMeQ subfolder for import.  If you are trying to run a script in another subfolder and you run into errors importing modules, this is probably why.
+All import commands for flowline\_class\_hierarchy, GL\_model\_tools, network\_selection, and plastic\_utilities\_v2 should be changed to:
+"from ..SERMeQ import [module name]".
+
+
 As of 21 June 2018:
 -All functions associated with the network approach are implemented in a set of classes in "flowline_class_hierarchy.py".
 
