@@ -5,15 +5,19 @@ from netCDF4 import Dataset
 import numpy as np
 import matplotlib.pyplot as plt
 import mpl_toolkits.basemap.pyproj as pyproj
-import csv
-import collections
 import datetime
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
 #from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
-from ..SERMeQ import plastic_utilities_v2, GL_model_tools, flowline_class_hierarchy
+## Special import for SERMeQ modules
+import sys
+sys.path.insert(0, 'Documents/GitHub/plastic-networks')
+from SERMeQ.plastic_utilities_v2 import *
+from SERMeQ.GL_model_tools import *
+from SERMeQ.flowline_class_hierarchy import *
+
 
 ##-------------------
 ### READING IN BED
