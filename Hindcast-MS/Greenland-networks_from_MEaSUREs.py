@@ -16,7 +16,10 @@ from matplotlib import cm
 #from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
-from network_selection import *
+## Special import for SERMeQ modules
+import sys
+sys.path.insert(0, 'Documents/GitHub/plastic-networks')
+from SERMeQ.network_selection import *
 
 
 ##Reading in velocities -- function lifted from Greenland-vel-compositing.py

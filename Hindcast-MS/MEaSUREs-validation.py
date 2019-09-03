@@ -19,9 +19,13 @@ from osgeo import gdal
 from mpl_toolkits.basemap import Basemap
 import mpl_toolkits.basemap.pyproj as pyproj
 import shapely.geometry as geom
-from plastic_utilities_v2 import *
-from GL_model_tools import *
-from flowline_class_hierarchy import *
+## Special import for SERMeQ modules
+import sys
+sys.path.insert(0, 'Documents/GitHub/plastic-networks')
+from SERMeQ.plastic_utilities_v2 import *
+from SERMeQ.GL_model_tools import *
+from SERMeQ.flowline_class_hierarchy import *
+
 
 ##-------------------
 ### READING IN OBS
