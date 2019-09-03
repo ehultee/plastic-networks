@@ -18,9 +18,10 @@ from scipy import interpolate
 #from osgeo import gdal
 #from mpl_toolkits.basemap import Basemap
 import mpl_toolkits.basemap.pyproj as pyproj
-#from plastic_utilities_v2 import *
-from GL_model_tools import *
-#from flowline_class_hierarchy import *
+## Special import for SERMeQ modules
+import sys
+sys.path.insert(0, 'Documents/GitHub/plastic-networks')
+from SERMeQ.GL_model_tools import *
 
 
 ##-------------------

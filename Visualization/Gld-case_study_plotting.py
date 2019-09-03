@@ -13,9 +13,13 @@ import matplotlib.patches as mpatches
 from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
-from plastic_utilities_v2 import *
-from GL_model_tools import *
-from flowline_class_hierarchy import *
+## Special import for SERMeQ modules
+import sys
+sys.path.insert(0, 'Documents/GitHub/plastic-networks')
+from SERMeQ.plastic_utilities_v2 import *
+from SERMeQ.GL_model_tools import *
+from SERMeQ.flowline_class_hierarchy import *
+
 
 
 ###--------------------------------------

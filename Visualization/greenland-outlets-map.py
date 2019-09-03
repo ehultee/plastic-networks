@@ -7,7 +7,10 @@ import mpl_toolkits.basemap.pyproj as pyproj
 import numpy as np
 import matplotlib.pyplot as plt
 import shapefile
-from GL_model_tools import Greenland_map, flowline_latlon, read_termini
+## Special import for SERMeQ modules
+import sys
+sys.path.insert(0, 'Documents/GitHub/plastic-networks')
+from SERMeQ.GL_model_tools import Greenland_map, flowline_latlon, read_termini
  
 
 ##--------------------------
