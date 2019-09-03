@@ -13,9 +13,7 @@ from matplotlib import cm
 #from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
-from plastic_utilities_v2 import *
-from GL_model_tools import *
-from flowline_class_hierarchy import *
+from ..SERMeQ import plastic_utilities_v2, GL_model_tools, flowline_class_hierarchy
 
 ##-------------------
 ### READING IN BED
