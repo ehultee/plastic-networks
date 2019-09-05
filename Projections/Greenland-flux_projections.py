@@ -25,7 +25,7 @@ from SERMeQ.flowline_class_hierarchy import *
 ##-------------------
 
 print 'Reading in surface topography'
-gl_bed_path ='Documents/1. Research/2. Flowline networks/Model/Data/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
+gl_bed_path ='Documents/GitHub/Data_unsynced/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
 fh = Dataset(gl_bed_path, mode='r')
 xx = fh.variables['x'][:].copy() #x-coord (polar stereo (70, 45))
 yy = fh.variables['y'][:].copy() #y-coord
