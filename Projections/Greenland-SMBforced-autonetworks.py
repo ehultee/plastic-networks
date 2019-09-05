@@ -124,7 +124,7 @@ for year in range(2006, 2015):
 ### LOADING SAVED GLACIERS
 ##-------------------
 print 'Reading in optimal yield strength dictionary'
-optimal_taus_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/bestfit_taus-B_S_smoothing-fromdate_2019-01-17.csv'
+optimal_taus_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Optimization_analysis/bestfit_taus-B_S_smoothing-fromdate_2019-01-17.csv'
 f_ot = open(optimal_taus_fpath, 'r')
 header = f_ot.readline()
 hdr = header.strip('\r\n')
@@ -152,7 +152,7 @@ for n in not_present:
     except ValueError:
         pass
 
-base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
+base_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
 
 ## Simulation settings
 testyears = arange(0, 20, 0.25)
