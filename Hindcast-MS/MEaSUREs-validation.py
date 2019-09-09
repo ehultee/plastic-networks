@@ -178,7 +178,7 @@ timestepmarker = '8a_dt025a' #and total time and timestep
 glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
 not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
 added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
-errors = (5, 18, 19, 29, 71, 92, 95, 97, 100, 101, 102, 106, 107, 108, 110, 113, 117, 120, 121, 134, 168, 171) #glacier IDs that crashed in hindcasting 12 Mar 2019 *or* showed network problems 21 May 2019
+errors = (5, 17, 18, 19, 29, 51, 71, 92, 95, 97, 100, 101, 102, 106, 107, 108, 109, 110, 113, 115, 117, 120, 121, 134, 168, 171) #glacier IDs that crashed in hindcasting 12 Mar 2019 *or* showed network problems 21 May 2019
 rmv = np.concatenate((not_present, errors))
 for n in rmv:
     try:
