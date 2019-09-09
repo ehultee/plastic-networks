@@ -275,23 +275,22 @@ plt.show()
 
 
 ## Histogram of difference
-diff_bins = np.linspace(-2000, 3000, num=34)
-plt.figure()
+diff_bins = np.linspace(-2000, 2500, num=29) #select number of bins so that each is ~150 m/a
+plt.figure('Difference observed - simulated retreat rates, Greenland outlets 2006-2014')
 plt.hist(np.array(avg_obs_rates)-np.array(avg_sim_rates), bins=diff_bins, weights=obs_weights, color='DarkBlue', alpha=0.5)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 #plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.axes().set_yticks([0, 0.1, 0.2])
 plt.xlabel('$\Delta dL/dt$ [m/a]', fontsize=18)
 plt.ylabel('Density', fontsize=18)
-plt.title('Difference observed - simulated retreat rates, Greenland outlets 2006-2014', fontsize=20)
 plt.show()
 ## generate figure for inset with smoothed distribution
 diff_dens = gaussian_kde((np.array(avg_obs_rates)-np.array(avg_sim_rates))) # calculate in km/a
-xs2 = np.linspace(-2000, 3000, 200)
+xs2 = np.linspace(-2000, 2500, 200)
 plt.figure('dLdt density inset')
 plt.plot(xs2, diff_dens(xs2), lw=3.0, color='DarkBlue') 
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-plt.axes().set_xticks([-2000, 0, 3000])
+plt.axes().set_xticks([-2000, 0, 2500])
 plt.axes().set_yticks([0, 0.001])
 plt.show()
 
