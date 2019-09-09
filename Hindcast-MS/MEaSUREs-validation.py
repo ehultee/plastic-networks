@@ -222,19 +222,19 @@ for gid in glaciers_simulated:
 obs_total = 0.00875*np.array(avg_obs_rates) #converting from rates to total retreat in 8.75 yr period, expressed in km rather than m
 sim_total = 0.00875*np.array(avg_sim_rates)
 
-##Make histogram of observed rates dLdt and plot side-by-side with simulated
-plotting_bins = (-3500, -3000, -2500, -2000, -1500, -1000, -500, 0.1, 500)
-obs_weights = np.ones_like(avg_obs_rates)/float(len(avg_obs_rates))
-sim_weights = np.ones_like(avg_sim_rates)/float(len(avg_sim_rates))
-plt.figure()
-plt.hist([avg_obs_rates, avg_sim_rates], bins=plotting_bins, weights=[obs_weights, sim_weights], color=['Aqua', 'Indigo'], alpha=0.5, label=['MEaSUREs observed', 'Simulated'])
-plt.xlabel('Average dL/dt [m/a]', fontsize=18)
-plt.ylabel('Density', fontsize=18)
-plt.legend(loc='upper left')
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
-plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fontsize=20)
-plt.show()
+###Make histogram of observed rates dLdt and plot side-by-side with simulated
+#plotting_bins = (-3500, -3000, -2500, -2000, -1500, -1000, -500, 0.1, 500)
+#obs_weights = np.ones_like(avg_obs_rates)/float(len(avg_obs_rates))
+#sim_weights = np.ones_like(avg_sim_rates)/float(len(avg_sim_rates))
+#plt.figure()
+#plt.hist([avg_obs_rates, avg_sim_rates], bins=plotting_bins, weights=[obs_weights, sim_weights], color=['Aqua', 'Indigo'], alpha=0.5, label=['MEaSUREs observed', 'Simulated'])
+#plt.xlabel('Average dL/dt [m/a]', fontsize=18)
+#plt.ylabel('Density', fontsize=18)
+#plt.legend(loc='upper left')
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+#plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+#plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fontsize=20)
+#plt.show()
 
 ### Compare probability density functions of retreat rates & plot normalized histograms over
 #obs_dens = gaussian_kde(0.001*np.array(avg_obs_rates)) #estimate density of rates in km/a
