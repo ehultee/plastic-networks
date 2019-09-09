@@ -258,8 +258,8 @@ sim_total = 0.00875*np.array(avg_sim_rates)
 ## Compare PDFs of total retreat & plot normalized histograms over
 obs_dL_dens = gaussian_kde(obs_total) #estimate density of total observed retreat
 sim_dL_dens = gaussian_kde(sim_total)
-xs2 = np.linspace(-25, 5, 200) #space of dL/dt in km/a
-dL_plotting_bins = (-25, -22.5, -20, -17.5, -15, -12.5, -10, -7.5, -5, -2.5, 0.01, 2.5)
+xs2 = np.linspace(-20, 5, 200) #space of dL/dt in km/a
+dL_plotting_bins = (-20, -17.5, -15, -12.5, -10, -7.5, -5, -2.5, 0.01, 2.5)
 plt.figure()
 plt.hist(obs_total, weights = obs_weights, bins=dL_plotting_bins, color='SeaGreen', alpha=0.3)
 plt.hist(sim_total, weights = sim_weights, bins=dL_plotting_bins, color='Indigo', alpha=0.3)
@@ -271,8 +271,6 @@ plt.legend(loc='upper left')
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 plt.axes().set_ylim(0, 1)
-#plt.axes().set_xticks([-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500])
-#plt.axes().set_xticklabels([-35, -30, -25, -20, -15, -10, -5, 0, 5]) #labelling by km total retreat in 10 yr rather than m/a average
 plt.show()
 
 
