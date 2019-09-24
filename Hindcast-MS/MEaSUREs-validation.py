@@ -410,22 +410,36 @@ cm1 = cm.get_cmap('OrRd_r')
 #markers
 terminus_pts = np.asarray([outlet_locations_latlon[gid][0] for gid in glaciers_simulated])
 
+## color-coded by retreat
+#plt.figure()
+#gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+### misfit colors
+##sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='K', cmap=cm1, norm=MidpointNormalize(midpoint=0,vmin=-1500, vmax=2500))
+##cbar = plt.colorbar(sc, orientation='horizontal')
+### total retreat colors
+#sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='face', cmap=cm1, vmin=-15.0, vmax=0.0)
+#cbar = plt.colorbar(sc, orientation='horizontal', extend='min', ticks=[-15, -10, -5, 0])
+#cbar.ax.set_xticklabels(['-15', '-10', '-5', '0'])
+## Now plot the case study glaciers on top
+#for j in (3, 137, 175):
+#    pt = outlet_locations_latlon[j][0]
+#    gld_backdrop.scatter(pt[0], pt[1], s=250, marker='*', color='Yellow', edgecolors='k', latlon=True)
+#cbar.ax.tick_params(labelsize=16)
+#plt.show()
+
+## plain outlet plot for barchart-border map
 plt.figure()
 gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
 ## misfit colors
 #sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='K', cmap=cm1, norm=MidpointNormalize(midpoint=0,vmin=-1500, vmax=2500))
 #cbar = plt.colorbar(sc, orientation='horizontal')
 ## total retreat colors
-sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='face', cmap=cm1, vmin=-15.0, vmax=0.0)
-cbar = plt.colorbar(sc, orientation='horizontal', extend='min', ticks=[-15, -10, -5, 0])
-cbar.ax.set_xticklabels(['-15', '-10', '-5', '0'])
-# Now plot the case study glaciers on top
-for j in (3, 137, 175):
+sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=30, marker='d', color='Aqua', edgecolors='b')
+# Now plot the ticked glaciers
+for j in np.concatenate(((1,), np.arange(10, 201, 10))):
     pt = outlet_locations_latlon[j][0]
-    gld_backdrop.scatter(pt[0], pt[1], s=250, marker='*', color='Yellow', edgecolors='k', latlon=True)
-cbar.ax.tick_params(labelsize=16)
+    gld_backdrop.scatter(pt[0], pt[1], s=30, marker='*', color='k', edgecolors='k', latlon=True)
 plt.show()
-
 
 ####-----------------------------
 ####  REGIONAL PICTURE
