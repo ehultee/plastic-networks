@@ -171,21 +171,22 @@ for j, gid in enumerate(glaciers_to_plot):
     plt.figure('Main line terminus change, GID{}'.format(gid))
     plt.plot(plot_years, -0.001*np.array(sim_termini), linewidth=2, color='k', linestyle='-', label='Modelled')
     plt.errorbar(obs_years, -1*obs_term_centr, yerr = e, fmt='D')
-    plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+    plt.axes().tick_params(axis='both', length=5, width=2, labelsize=30)
     plt.axes().set_xlim(2006, 2014.5)
     plt.axes().set_xticks([2006, 2008, 2010, 2012, 2014])
     plt.axes().set_ylim(-20, 2)
     plt.axes().set_yticks([-20, -15, -10, -5, 0])
     if gid==175:
         plt.axes().set_xticklabels(['2006', '2008', '2010', '2012', '2014'])
-        plt.axes().set_xlabel('Year', size=30)
+        plt.axes().set_xlabel('Year', size=35)
     else:
         plt.axes().set_xticklabels([])
-    if gid==137:
+    if gid==3:
         plt.axes().set_yticklabels(['-20', '', '-10', '', '0'])
-        plt.axes().set_ylabel('Terminus change [km]', size=30)
+        plt.axes().set_ylabel('Terminus change [km]', size=35)
     else:
         plt.axes().set_yticklabels([])
+    plt.axes().set_aspect(0.3)
     plt.show()
 
 
