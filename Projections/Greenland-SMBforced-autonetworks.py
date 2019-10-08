@@ -4,7 +4,8 @@
 from netCDF4 import Dataset
 import numpy as np
 import matplotlib.pyplot as plt
-import mpl_toolkits.basemap.pyproj as pyproj
+#import mpl_toolkits.basemap.pyproj as pyproj
+import pyproj
 import datetime
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
@@ -142,11 +143,13 @@ for i, l in enumerate(lines):
 ### SIMULATING GLACIER NETWORKS
 ##-------------------
 
-print 'Loading and simulating glacier networks'
-glacier_ids = range(1,195) #tell the function which MEaSUREs glacier IDs you want to process.
+## Define which glaciers are in the simulated set
+glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
 not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
 added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
-for n in not_present:
+errors = (5, 18, 19, 29, 71, 92, 95, 97, 100, 101, 102, 106, 107, 108, 110, 113, 117, 120, 121, 134, 168, 171) #glacier IDs that crashed in hindcasting 12 Mar 2019 *or* showed network problems 21 May 2019
+rmv = np.concatenate((not_present, errors))
+for n in rmv:
     try:
         glacier_ids.remove(n)
     except ValueError:
@@ -170,7 +173,7 @@ scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scena
 #gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
 #gids_totest = (50, 100, 155, 179) #test a geographically distributed subset
-gids_totest = (9, 10) #test a single glacier or specific selection
+gids_totest = (3,) #test a single glacier or specific selection
 network_output = []
 
 for gid in gids_totest:
