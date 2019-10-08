@@ -238,12 +238,13 @@ for gid in gids_totest:
     nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=variable_forcing, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=False)
 
     print 'Saving output for {}'.format(nw.name)
+    fpath = 'Documents/GitHub/Data_unsynced/SERMeQ_output/'
     fn = str(nw.name)
     fn1 = fn.replace(" ", "")
     fn2 = fn1.replace("[", "-")
     fn3 = fn2.replace("/", "_")
     fn4 = fn3.replace("]", "")
     fn5 = fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
-    nw.save_network(filename=fn5)
+    nw.save_network(filename=fpath+fn5)
     
     #network_output.append(nw.model_output)
