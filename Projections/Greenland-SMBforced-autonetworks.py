@@ -157,7 +157,7 @@ for n in rmv:
 base_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
 
 ## Simulation settings
-testyears = arange(0, 20, 0.25)
+testyears = arange(0, 100, 0.25)
 start_year=2006 #determined by which MEaSUREs termini we used to initialize a given set
 branch_sep_buffer = 10000/L0 #buffer between tributary intersections
 db = True
@@ -171,8 +171,8 @@ scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scena
 
 #gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
-#gids_totest = (50, 100, 155, 179) #test a geographically distributed subset
-gids_totest = (9, 10) #test a single glacier or specific selection
+gids_totest = (2, 3, 4, 50, 60, 70, 80, 90, 100, 153, 154, 155, 174, 175, 176, 179) #test a geographically distributed subset
+#gids_totest = (3,) #test a single glacier or specific selection
 network_output = []
 
 for gid in gids_totest:
