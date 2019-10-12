@@ -732,8 +732,8 @@ class PlasticNetwork(Ice):
         else:
             cleanfrom = cleanthick #if not testing surface elevation, simply use result of first test
         
-        cleaned_coords = mainline.coords[cleanfrom::]
-        trimmed_width = mainline.width[cleanfrom::]
+        cleaned_coords = mainline.coords[int(cleanfrom)::]
+        trimmed_width = mainline.width[int(cleanfrom)::]
         
         self.flowlines[0].coords = cleaned_coords
         self.flowlines[0].width = trimmed_width
