@@ -103,13 +103,13 @@ regridded_smb_2014 = interpolate.griddata((xs.ravel(), ys.ravel()), smb_2014.rav
 SMB_1980 = interpolate.interp2d(X, Y, regridded_smb_1980, kind='linear')
 SMB_2014 = interpolate.interp2d(X, Y, regridded_smb_2014, kind='linear')
 
-## Hindcasting SMB: year-specific 2006-2014
-SMB_dict = {} #set up a dictionary of surface mass balance fields indexed by year
-for year in range(2006, 2015):
-    index = year - 2015 #so that 2014 will be smb_raw[-1], etc.
-    smb_year = smb_raw[index][0]
-    regridded_smb_year = interpolate.griddata((xs.ravel(), ys.ravel()), smb_year.ravel(), (Xmat, Ymat), method='nearest')
-    SMB_dict[year] = interpolate.interp2d(X, Y, regridded_smb_year, kind='linear')
+### Hindcasting SMB: year-specific 2006-2014
+#SMB_dict = {} #set up a dictionary of surface mass balance fields indexed by year
+#for year in range(2006, 2015):
+#    index = year - 2015 #so that 2014 will be smb_raw[-1], etc.
+#    smb_year = smb_raw[index][0]
+#    regridded_smb_year = interpolate.griddata((xs.ravel(), ys.ravel()), smb_year.ravel(), (Xmat, Ymat), method='nearest')
+#    SMB_dict[year] = interpolate.interp2d(X, Y, regridded_smb_year, kind='linear')
     
 #smb_2081_rcp4pt5 = smb_2081_raw[0]
 #smb_2100_rcp4pt5 = smb_2081_raw[-1] #2100
@@ -171,7 +171,8 @@ scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scena
 
 #gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
-gids_totest = (2, 3, 4, 50, 60, 70, 80, 90, 100, 153, 154, 155, 174, 175, 176, 179) #test a geographically distributed subset
+#gids_totest = (2, 3, 4, 50, 60, 70, 80, 90, 100, 153, 154, 155, 174, 175, 176, 179) #test a geographically distributed subset
+gids_totest = (12, 13, 14, 17)
 #gids_totest = (3,) #test a single glacier or specific selection
 network_output = []
 
