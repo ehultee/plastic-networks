@@ -67,9 +67,11 @@ for n in rmv:
         glacier_ids.remove(n)
     except ValueError:
         pass
-glaciers_simulated = glacier_ids #to plot all
+#glaciers_simulated = glacier_ids #to plot all
+glaciers_simulated = (2, 50, 60, 70, 80, 90, 100, 154, 155, 174, 176, 179)
+#glaciers_simulated = (4, 12, 13, 14, 17)
 
-testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
+testyears = arange(0, 100, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence', 
 #'RCP4pt5', 
 #'RCP8pt5'
@@ -77,14 +79,14 @@ scenarios = ('persistence',
 
 #datemarker = '2019-02-08' #markers on filename to indicate date run
 tempmarker = 'min10Cice' #and temperature of ice
-timestepmarker = '8a_dt025a' #and total time and timestep
+timestepmarker = '99a_dt025a' #and total time and timestep
 
 full_output_dicts = {}
 
 for s in scenarios:
     scenario_output = {'Testyears': testyears}
     for gid in glaciers_simulated:
-        fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
+        fn = glob.glob('Documents/GitHub/Data_unsynced/SERMeQ_output/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     #for i, gid in enumerate(glaciers_simulated):
     #    fn = 'GID{}-{}-{}-{}-{}.pickle'.format(gid, datemarker, s, tempmarker, timestepmarker)
@@ -169,7 +171,7 @@ plt.axes().set_ylabel('Terminus change [km]', size=20)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
 #plt.axes().set_ylim(-100, 1)
 #plt.axes().set_yticks([-75, -50, -25, 0])
-plt.title('Terminus retreat of {} Greenland outlet glaciers 2006-2014 ERA-I, Tice=-10 C'.format(len(glaciers_simulated)), fontsize=20)
+plt.title('Terminus retreat of {} Greenland outlet glaciers 2006-2100 ERA-I, Tice=-10 C'.format(len(glaciers_simulated)), fontsize=20)
 plt.show()
 #
 ##
@@ -207,27 +209,27 @@ plt.show()
 #    plt.show()
     ##
 #######Sea level equivalent
-#plt.figure(figsize=(12,8))
-#for j, gid in enumerate(glaciers_simulated):
-#    #if gid!=10:
-#    ms_selection = mod(gid, len(styles))
-#    plt.plot(testyears[::], scenario_sle[j], linewidth=4, color=colors[ms_selection], label=gid)
-#    plt.plot(testyears[::5], scenario_sle[j][::5], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[ms_selection])
-#    if j==0:
-#        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=0, color=colors[ms_selection], alpha=0.7)  
-#    else:
-#        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=scenario_sle[j-1], color=colors[ms_selection], alpha=0.7)     
-##plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
-##rect = mpatches.Rectangle((98,8.5), width=2, height=4.6, color='k', alpha=0.7) # Nick et al total projection for 2100, A1B
-##rect2 = mpatches.Rectangle((98,11.3), width=2, height=6.2, color='k', alpha=0.7) # Nick et al total projection for 2100, RCP8.5 
-##plt.axes().add_patch(rect)
-##plt.axes().add_patch(rect2)
-#plt.legend(loc='upper left')
-#plt.axes().set_xlabel('Year of simulation', size=20)
-#plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
-#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-##plt.axes().set_xlim(0, 100)
-##plt.axes().set_xticks([0, 25, 50, 75, 100])
-##plt.axes().set_ylim(0, 12)
-##plt.axes().set_yticks([0, 2, 4, 6, 8, 10, 12])
-#plt.show()
+plt.figure(figsize=(12,8))
+for j, gid in enumerate(glaciers_simulated):
+    #if gid!=10:
+    ms_selection = mod(gid, len(styles))
+    plt.plot(testyears[::], scenario_sle[j], linewidth=4, color=colors[ms_selection], label=gid)
+    plt.plot(testyears[::5], scenario_sle[j][::5], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[ms_selection])
+    if j==0:
+        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=0, color=colors[ms_selection], alpha=0.7)  
+    else:
+        plt.fill_between(testyears[::], y1=scenario_sle[j], y2=scenario_sle[j-1], color=colors[ms_selection], alpha=0.7)     
+#plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
+#rect = mpatches.Rectangle((98,8.5), width=2, height=4.6, color='k', alpha=0.7) # Nick et al total projection for 2100, A1B
+#rect2 = mpatches.Rectangle((98,11.3), width=2, height=6.2, color='k', alpha=0.7) # Nick et al total projection for 2100, RCP8.5 
+#plt.axes().add_patch(rect)
+#plt.axes().add_patch(rect2)
+plt.legend(loc='upper left')
+plt.axes().set_xlabel('Year of simulation', size=20)
+plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+#plt.axes().set_xlim(0, 100)
+#plt.axes().set_xticks([0, 25, 50, 75, 100])
+#plt.axes().set_ylim(0, 12)
+#plt.axes().set_yticks([0, 2, 4, 6, 8, 10, 12])
+plt.show()
