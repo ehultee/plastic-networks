@@ -224,6 +224,7 @@ class Flowline(Ice):
             surf = self.surface_function
         
         horiz = linspace(startpoint, endpoint, Npoints)
+        print('Line 227 debug: startpoint={}. endpoint={}, dx={}'.format(startpoint, endpoint, mean(diff(horiz))))
         dx = mean(diff(horiz))
             
         if dx<0:
@@ -982,9 +983,9 @@ class PlasticNetwork(Ice):
             key = round(yr-dt, dt_rounding) #allows dictionary referencing when dt is < 1 a
             
             if k<1:
-                dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[0], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
+                dLdt_annum = float(ref_line.dLdt_dimensional(profile=refdict[0], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor))
             else:
-                dLdt_annum = ref_line.dLdt_dimensional(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor)
+                dLdt_annum = float(ref_line.dLdt_dimensional(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor))
             if np.isnan(dLdt_annum): #happens if retreat hits edge of domain unexpectedly
                 dLdt_annum = refdict['Termrates'][-1] / dt #replace with last non-nan value
             else:
@@ -1056,12 +1057,12 @@ class PlasticNetwork(Ice):
                         dLdt_branch = dLdt_annum
                         branchmodel_full = fl.plastic_profile(startpoint=new_termpos/self.L0, hinit=new_termheight, endpoint=fl_amax, surf=fl.surface_function) #model profile only down to intersection
                         mainbranch_int_idx = (np.abs(branchmodel_full[0] - ArcArray(fl.coords)[fl.intersections[1]])).argmin()
-                        mainbranch_tribheight = refdict[new_key][1][mainbranch_int_idx] #finding surface elevation across main trough based on modelling of main branch
+                        print('Index of intersection is: {}'.format(mainbranch_int_idx))
+                        mainbranch_tribheight = refdict[new_key][1][int(mainbranch_int_idx)] #finding surface elevation across main trough based on modelling of main branch
                         cutoff_yieldheight = BalanceThick(fl.bed_function(separation_distance)/fl.H0, fl.Bingham_num(0,0)) + (fl.bed_function(separation_distance)/fl.H0)
                         ##Note for constant yield, Bingham_num(0,0) = Bingham_num everywhere.  Might introduce bug for Mohr-Coulomb case
-                        
                         branch_termheight = max(mainbranch_tribheight, cutoff_yieldheight) #identify and handle if tributary has separated from main branch based on whether main surface elevation is below reasonable intersection with trib
-                        print 'Main branch tributary height: {}, cutoff yield height {}'.format(mainbranch_tribheight, cutoff_yieldheight)
+                        print('Main branch tributary height: {}, cutoff yield height {}'.format(mainbranch_tribheight, cutoff_yieldheight))
                         if branch_termheight==cutoff_yieldheight: #tributary has fully separated from downstream branch
                             print 'Tributary {} has separated due to thinning disconnection from main branch at time {} a'.format(j, key+dt)
                             branch_terminus = separation_distance * self.L0
