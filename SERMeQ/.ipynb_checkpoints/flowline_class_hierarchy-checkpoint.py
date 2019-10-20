@@ -222,9 +222,9 @@ class Flowline(Ice):
             endpoint = self.length
         if surf is None:
             surf = self.surface_function
-        
-        horiz = linspace(startpoint, endpoint, Npoints)
-        print('Line 227 debug: startpoint={}. endpoint={}, dx={}'.format(startpoint, endpoint, mean(diff(horiz))))
+
+        horiz = linspace(float(startpoint), float(endpoint), Npoints)
+        print('Line 227 debug: startpoint={}. endpoint={}, dx={}. Float correction applied'.format(startpoint, endpoint, mean(diff(horiz))))
         dx = mean(diff(horiz))
             
         if dx<0:
@@ -987,7 +987,7 @@ class PlasticNetwork(Ice):
             else:
                 dLdt_annum = float(ref_line.dLdt_dimensional(profile=refdict[key], alpha_dot=alpha_dot_k, debug_mode=debug_mode, dL=dL, has_smb=has_smb, terminus_balance=terminus_balance, submarine_melt=submarine_melt, rate_factor=rate_factor))
             if np.isnan(dLdt_annum): #happens if retreat hits edge of domain unexpectedly
-                dLdt_annum = refdict['Termrates'][-1] / dt #replace with last non-nan value
+                dLdt_annum = float(refdict['Termrates'][-1] / dt) #replace with last non-nan value
             else:
                 pass
             #Ref branch
