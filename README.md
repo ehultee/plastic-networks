@@ -10,6 +10,7 @@ It self-consistently determines a rate of terminus advance/retreat, and associat
 The repository is called plastic-networks to highlight two key features: the glacier rheology is similar to the _plastic_ approximation of Nye, such that ice can break in a boundary layer along the glacier bed and at the front,
 and the model formulation handles interacting _networks_ of glacier flowlines.
 For more on the model physics, please see
+
 	- Ultee and Bassis (2016). The future is Nye: an extension of the perfect plastic approximation to tidewater glaciers. _Journal of Glaciology_ 62(236), 1143–1152. doi:10.1017/jog.2016.108.
 	- Ultee and Bassis (2017). A plastic network approach to model calving glacier advance and retreat. _Frontiers in Earth Sciences_ 5(24). doi:10.3389/feart.2017.00024.
 	- Bassis and Ultee (2019). A thin film viscoplastic model for calving glaciers: an upper bound on calving retreat. _Journal of Geophysical Research: Earth Surface_. doi:10.1029/2019JF005160.
