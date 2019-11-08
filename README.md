@@ -11,9 +11,9 @@ The repository is called plastic-networks to highlight two key features: the gla
 and the model formulation handles interacting _networks_ of glacier flowlines.
 For more on the model physics, please see
 
-	- Ultee and Bassis (2016). The future is Nye: an extension of the perfect plastic approximation to tidewater glaciers. _Journal of Glaciology_ 62(236), 1143–1152. doi:10.1017/jog.2016.108.
-	- Ultee and Bassis (2017). A plastic network approach to model calving glacier advance and retreat. _Frontiers in Earth Sciences_ 5(24). doi:10.3389/feart.2017.00024.
-	- Bassis and Ultee (2019). A thin film viscoplastic model for calving glaciers: an upper bound on calving retreat. _Journal of Geophysical Research: Earth Surface_. doi:10.1029/2019JF005160.
+	* Ultee and Bassis (2016). The future is Nye: an extension of the perfect plastic approximation to tidewater glaciers. _Journal of Glaciology_ 62(236), 1143–1152. doi:10.1017/jog.2016.108. [PDF](http://ehultee.github.io/files/jog-2016_108.pdf)
+	* Ultee and Bassis (2017). A plastic network approach to model calving glacier advance and retreat. _Frontiers in Earth Sciences_ 5(24). doi:10.3389/feart.2017.00024. [PDF](http://ehultee.github.io/files/feart-2017_00024.pdf)
+	* Bassis and Ultee (2019). A thin film viscoplastic model for calving glaciers: an upper bound on calving retreat. _Journal of Geophysical Research: Earth Surface_. doi:10.1029/2019JF005160. [PDF](http://ehultee.github.io/files/BassisUltee-thin_film_viscoplastic-2019.pdf)
 
 
 ## Authors
