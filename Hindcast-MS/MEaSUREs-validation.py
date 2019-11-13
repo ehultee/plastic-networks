@@ -298,11 +298,12 @@ plt.show()
 
 ## 13 Nov: replace difference with percent error
 def percent_error(obs_list, sim_list):
-    paired = np.zip(obs_list, sim_list)
+    paired = zip(obs_list, sim_list)
     corrected = [(o, s) for (o, s) in paired if o!=0] # avoid divide-by-zero errors
-    pe = [(o-s)/abs(o) for (o,s) in corrected]
-    return pe
+    perc_err = [(o-s)/abs(o) for (o,s) in corrected]
+    return perc_err
 
+pe = percent_error(avg_obs_rates, avg_sim_rates)
 pe_weights = np.ones_like(pe)/float(len(pe))
 pe_bins = np.linspace(-300, 300, num=30) 
 plt.figure('Percent error observed - simulated retreat rates, Greenland outlets 2006-2014')
@@ -310,7 +311,18 @@ plt.hist(pe, bins=pe_bins, weights=pe_weights, color='DarkBlue', alpha=0.5)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 plt.xlabel('Percent error $dL/dt$ [m/a]', fontsize=18)
 plt.ylabel('Normalized frequency', fontsize=18)
+plt.axes().set_yticks([0, 0.2, 0.4, 0.6, 0.8])
 plt.show()
+### smoothed distribution for inset
+pe_dens = gaussian_kde((pe)) # calculate in km/a
+xs3 = np.linspace(-1000, 1000, 200)
+plt.figure('dLdt percent error inset')
+plt.plot(xs3, pe_dens(xs3), lw=3.0, color='DarkBlue') 
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+#plt.axes().set_xticks([-300, 0, 300])
+#plt.axes().set_yticks([0, 0.001])
+plt.show()
+
 
 ## Density plot of obs vs simulated rates
 avsim = 0.001*np.array(avg_sim_rates)
