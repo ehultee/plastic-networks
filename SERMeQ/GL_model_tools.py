@@ -586,7 +586,7 @@ def compare_scenario_SLE(full_output_dictionary):
     
     for s in full_output_dictionary.keys():
         print 'Scenario {}'.format(s)
-        perscenario_SLE.append(scenario_cumulative_SLE(full_output_dictionary(s)))
+        perscenario_SLE.append(scenario_cumulative_SLE(full_output_dictionary(s))[-1])
     
     return perscenario_SLE
     
