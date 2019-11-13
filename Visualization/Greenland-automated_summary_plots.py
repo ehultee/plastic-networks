@@ -25,9 +25,6 @@ from SERMeQ.flowline_class_hierarchy import *
 #### GLACIERS & SCENARIOS TO BE COMPARED
 ###--------------------------------------
 
-#glaciers_simulated = (4, 8, 11, 12, 13, 14, 15, 16, 17, 50) #list MEaSUREs glacier IDs
-#glaciers_simulated = (3,)
-#glaciers_simulated = (9,10) #study problematic ones
 glacier_ids = range(1,195) #tell the function which MEaSUREs glacier IDs you want to process.
 not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
 added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
@@ -40,7 +37,6 @@ for n in rmv:
         pass
 #glaciers_simulated = glacier_ids #to plot all
 glaciers_simulated = (2, 50, 60, 70, 80, 90, 100, 154, 155, 174, 176, 179)
-#glaciers_simulated = (4, 12, 13, 14, 17)
 
 testyears = arange(0, 100, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence', 
@@ -48,7 +44,6 @@ scenarios = ('persistence',
 #'RCP8pt5'
 )
 
-#datemarker = '2019-02-08' #markers on filename to indicate date run
 tempmarker = 'min10Cice' #and temperature of ice
 timestepmarker = '99a_dt025a' #and total time and timestep
 
@@ -59,33 +54,9 @@ for s in scenarios:
     for gid in glaciers_simulated:
         fn = glob.glob('Documents/GitHub/Data_unsynced/SERMeQ_output/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
-    #for i, gid in enumerate(glaciers_simulated):
-    #    fn = 'GID{}-{}-{}-{}-{}.pickle'.format(gid, datemarker, s, tempmarker, timestepmarker)
-    #    lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
 
-perscenario_fluxes = []
-perscenario_SLE = []
-
-for s in full_output_dicts.keys():
-    print 'Scenario {}'.format(s)
-    out = full_output_dicts[s]
-    pernetwork_cumul_fx = []
-    pernetwork_cumul_sle = []
-    for j, gid in enumerate(glaciers_simulated):
-        branch_fx = [np.nan_to_num(out['GID{}'.format(gid)][k]['Terminus_flux']) for k in range(len(out['GID{}'.format(gid)]))]
-        total_fx = sum(branch_fx, axis=0)
-        total_sle = (1E-12)*np.array(total_fx)/(361.8) #Gt ice/mm SLE conversion
-        cumul_fx = np.cumsum(total_fx)
-        cumul_sle = np.cumsum(total_sle)
-        pernetwork_cumul_fx.append(cumul_fx)
-        pernetwork_cumul_sle.append(cumul_sle)
-    scenario_flux = np.cumsum(pernetwork_cumul_fx, axis=0)
-    perscenario_fluxes.append(scenario_flux[-1])
-    scenario_sle = np.cumsum(pernetwork_cumul_sle, axis=0)
-    print max(scenario_sle[-1])
-    print(scenario_sle[-1][-1])
-    perscenario_SLE.append(scenario_sle[-1])
+perscenario_SLE = compare_scenario_sle(full_output_dicts)
 
 ###--------------------------------------
 #### PLOTTING
@@ -101,30 +72,11 @@ scenario_colors = cm.get_cmap('Blues')([0.1, 0.3, 0.5, 0.7, 0.9])
 colors = cmap(linspace(0.1, 0.9, num=len(glaciers_simulated)))
 alt_colors = cm.get_cmap('Greys')([0.2, 0.3, 0.5, 0.7, 0.9])
 
-#plt.figure()
-#for j in range(len(perscenario_SLE)):
-#    plt.plot(testyears, perscenario_SLE[j], color=alt_colors[j+2], label=scenarios[j])
-##for k in range(len(coarser_SLE)):
-##    plt.plot(arange(100, step=0.5), coarser_SLE[k], color=scenario_colors[k+3], label=scenarios[k+3])
-#plt.legend(loc='upper left')
-#plt.axes().set_xlabel('Year of simulation', size=20)
-#plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
-#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-##plt.axes().set_xlim(0, 100)
-##plt.axes().set_xticks([0, 25, 50, 75, 100])
-###plt.axes().set_ylim(-16, 1)
-###plt.axes().set_yticks([0, 1, 2, 3, 4])
-#plt.show()
-
 
 ####-------------------
 ##### INDIVIDUAL SCENARIO BREAKDOWNS
 ####-------------------
 
-##projections_WB = [Jak_main_warmbaseline.model_output, Jak_sec_warmbaseline.model_output, Jak_tert_warmbaseline.model_output, KogeBugt_warmbaseline.model_output, Helheim_warmbaseline.model_output, Kanger_warmbaseline.model_output]
-##projections_CB = [Jak_main_coldbaseline.model_output, Jak_sec_coldbaseline.model_output, Jak_tert_coldbaseline.model_output, KogeBugt_coldbaseline.model_output, Helheim_coldbaseline.model_output, Kanger_coldbaseline.model_output]
-#
-#
 ####terminus
 plt.figure()
 for j, gid in enumerate(glaciers_simulated):
