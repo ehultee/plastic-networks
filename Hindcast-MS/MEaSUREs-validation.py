@@ -32,9 +32,6 @@ from SERMeQ.flowline_class_hierarchy import *
 ### READING IN OBS
 ##-------------------
 
-## Read in MEaSUREs velocity composite
-##Reading in velocities -- function lifted from Greenland-vel-compositing.py
-
 print 'Reading MEaSUREs velocities'
 x_comp, y_comp, v_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-velocity-composite-10Jan19.tif')
 vx_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-x_velocity-composite-10Jan19.tif', return_grid=False)
@@ -51,7 +48,6 @@ vx_a2d = np.array(vx_excludemasked) / days_per_annum
 vy_a2d = np.array(vy_excludemasked) / days_per_annum
 
 
-##Make 2D-interpolated function of velocity field for tracing
 print 'Interpolating MEaSUREs velocity composites for tracing'
 x_flat = x_comp[0,:]
 y_flat = y_comp[:,0]
@@ -74,52 +70,6 @@ for i,b in enumerate(basefiles):
     termini[yr] = read_termini(fn, yr) #creating dictionary for each year
     print len(termini[yr])
     
-### Test earliest year of appearance for each glacier
-#master_initial_termini = {}
-#keys_05 = []
-#keys_06 = []
-#keys_07 = []
-#keys_08 = []
-#keys_12 = []
-#
-#for k in termini[2014].keys():
-#    if k in termini[2000].keys():
-#        master_initial_termini[k] = termini[2000][k]
-#    elif k in termini[2005].keys():
-#        print 'Glacier ID ' + str(k) + ' taken from year 2005'
-#        master_initial_termini[k] = termini[2005][k]
-#        keys_05.append(k)
-#    elif k in termini[2006].keys():
-#        print 'Glacier ID ' + str(k) + ' taken from year 2006'
-#        master_initial_termini[k] = termini[2006][k]
-#        keys_06.append(k)
-#    elif k in termini[2007].keys():
-#        print 'Glacier ID ' + str(k) + ' taken from year 2007'
-#        master_initial_termini[k] = termini[2007][k]
-#        keys_07.append(k)
-#    elif k in termini[2008].keys():
-#        print 'Glacier ID ' + str(k) + 'taken from year 2008'
-#        master_initial_termini[k] = termini[2008][k]
-#        keys_08.append(k)
-#    elif k in termini[2012].keys():
-#        print 'Glacier ID ' + str(k) + ' taken from year 2012'
-#        master_initial_termini[k] = termini[2012][k]
-#        keys_12.append(k)
-#    else:
-#        print 'Glacier ID ' + str(k) + ' not found before 2014'
- 
-       
-#gl_termpos_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-termini'
-##print 'Reading in MEaSUREs terminus positions for year 2000'
-##sf_termpos = shapefile.Reader(gl_termpos_fldr+'/termini_0001_v01_2') #Specify the base filename of the group of files that makes up a shapefile
-#
-#print 'Reading in MEaSUREs terminus positions for year 2014'
-#sf_termpos_1415 = shapefile.Reader(gl_termpos_fldr+'/termini_1415_v01_2') #Specify the base filename of the group of files that makes up a shapefile
-#
-#print 'Reading in MEaSUREs terminus positions for year 2015'
-#sf_termpos_1516 = shapefile.Reader(gl_termpos_fldr+'/termini_1516_v01_2') #Specify the base filename of the group of files that makes up a shapefile
-
-
 ## Find centroid rates of retreat for observed period 2006-2014
 def Centroid_dLdt(termpts1, termpts2, time_interval, vx_func, vy_func):
     """Given two arrays of terminus-spanning coordinates, finds the distance between their centroids and converts to a retreat rate in the given time_interval.
@@ -160,10 +110,10 @@ for i in range(1, len(years)):
         except KeyError:
             print 'No terminus found in year {} for glacier {}'.format(years[i], gid) # happens when glacier terminus is recorded in one year but not the previous
 
+
 ##-------------------
 ### READING IN SIMS
 ##-------------------
-
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence', 
@@ -223,40 +173,10 @@ for gid in glaciers_simulated:
 obs_total = 0.00875*np.array(avg_obs_rates) #converting from rates to total retreat in 8.75 yr period, expressed in km rather than m
 sim_total = 0.00875*np.array(avg_sim_rates)
 
-###Make histogram of observed rates dLdt and plot side-by-side with simulated
-#plotting_bins = (-3500, -3000, -2500, -2000, -1500, -1000, -500, 0.1, 500)
-obs_weights = np.ones_like(avg_obs_rates)/float(len(avg_obs_rates))
-sim_weights = np.ones_like(avg_sim_rates)/float(len(avg_sim_rates))
-#plt.figure()
-#plt.hist([avg_obs_rates, avg_sim_rates], bins=plotting_bins, weights=[obs_weights, sim_weights], color=['Aqua', 'Indigo'], alpha=0.5, label=['MEaSUREs observed', 'Simulated'])
-#plt.xlabel('Average dL/dt [m/a]', fontsize=18)
-#plt.ylabel('Density', fontsize=18)
-#plt.legend(loc='upper left')
-#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-#plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
-#plt.title('Greenland outlet glacier dL/dt 2006-2014, simulated vs. observed', fontsize=20)
-#plt.show()
-
-### Compare probability density functions of retreat rates & plot normalized histograms over
-#obs_dens = gaussian_kde(0.001*np.array(avg_obs_rates)) #estimate density of rates in km/a
-#sim_dens = gaussian_kde(0.001*np.array(avg_sim_rates))
-#xs1 = np.linspace(-3.5, 0.5, 200) #space of dL/dt in km/a
-#plt.figure()
-#plt.hist(0.001*np.array(avg_obs_rates), weights = obs_weights, color='SeaGreen', alpha=0.3)
-#plt.hist(0.001*np.array(avg_sim_rates), weights = sim_weights, color='Indigo', alpha=0.3)
-#plt.plot(xs1, obs_dens(xs1), color='SeaGreen', lw=3.0, label= 'MEaSUREs')
-#plt.plot(xs1, sim_dens(xs1), color='Indigo', lw=3.0, label='SERMeQ')
-#plt.xlabel('dL/dt [km/a]', fontsize=18)
-#plt.ylabel('Density', fontsize=18)
-#plt.legend(loc='upper left')
-#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-#plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
-#plt.axes().set_ylim(0, 1)
-##plt.axes().set_xticks([-3500, -3000, -2500, -2000, -1500, -1000, -500, 0, 500])
-##plt.axes().set_xticklabels([-35, -30, -25, -20, -15, -10, -5, 0, 5]) #labelling by km total retreat in 10 yr rather than m/a average
-#plt.show()
 
 ## Compare PDFs of total retreat & plot normalized histograms over
+obs_weights = np.ones_like(avg_obs_rates)/float(len(avg_obs_rates))
+sim_weights = np.ones_like(avg_sim_rates)/float(len(avg_sim_rates))
 obs_dL_dens = gaussian_kde(obs_total) #estimate density of total observed retreat
 sim_dL_dens = gaussian_kde(sim_total)
 xs2 = np.linspace(-20, 5, 200) #space of dL/dt in km/a
