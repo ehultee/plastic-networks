@@ -21,35 +21,6 @@ from SERMeQ.GL_model_tools import *
 from SERMeQ.flowline_class_hierarchy import *
 
 
-
-
-###-------------------
-#### DEFINING NECESSARY FUNCTIONS
-###-------------------
-
-### Load-in functionality to use only terminus position and flux
-def lightload(filename, glacier_name, output_dictionary):
-    output_dictionary[glacier_name] = {}
-    
-    with open(filename, 'rb') as handle:
-        loadin = pickle.load(handle)
-    
-    N_Flowlines = loadin['N_Flowlines']
-    mainline_termini = loadin['mainline_model_output']['Termini']
-    mainline_flux = loadin['mainline_model_output']['Terminus_flux']
-    output_dictionary[glacier_name][0] ={'Termini': mainline_termini, 'Terminus_flux': mainline_flux}
-    
-    if N_Flowlines >1:
-        for n in range(N_Flowlines)[1::]:
-            key_n = 'model_output_'+str(n)
-            termini_n = loadin[key_n]['Termini']
-            termflux_n = loadin[key_n]['Terminus_flux']
-            output_dictionary[glacier_name][n] = {'Termini': termini_n, 'Terminus_flux': termflux_n}
-    else:
-        pass
-        
-    return output_dictionary
-
 ###--------------------------------------
 #### GLACIERS & SCENARIOS TO BE COMPARED
 ###--------------------------------------
