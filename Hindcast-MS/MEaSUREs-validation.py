@@ -1,6 +1,7 @@
 ## Loading in MEaSUREs terminus position data for Greenland to assess utility for validating hindcasts
 ## 12 Sept 2018  EHU
 ## 20 Mar 2019 edit: use these functions to compare 2006-2014 termini with hindcasted
+## 13 Nov 2019: editing plots to address GRL review comments
 
 from netCDF4 import Dataset
 import numpy as np
@@ -224,8 +225,8 @@ sim_total = 0.00875*np.array(avg_sim_rates)
 
 ###Make histogram of observed rates dLdt and plot side-by-side with simulated
 #plotting_bins = (-3500, -3000, -2500, -2000, -1500, -1000, -500, 0.1, 500)
-#obs_weights = np.ones_like(avg_obs_rates)/float(len(avg_obs_rates))
-#sim_weights = np.ones_like(avg_sim_rates)/float(len(avg_sim_rates))
+obs_weights = np.ones_like(avg_obs_rates)/float(len(avg_obs_rates))
+sim_weights = np.ones_like(avg_sim_rates)/float(len(avg_sim_rates))
 #plt.figure()
 #plt.hist([avg_obs_rates, avg_sim_rates], bins=plotting_bins, weights=[obs_weights, sim_weights], color=['Aqua', 'Indigo'], alpha=0.5, label=['MEaSUREs observed', 'Simulated'])
 #plt.xlabel('Average dL/dt [m/a]', fontsize=18)
@@ -274,26 +275,42 @@ plt.axes().set_ylim(0, 1)
 plt.show()
 
 
-## Histogram of difference
-diff_bins = np.linspace(-2000, 2500, num=29) #select number of bins so that each is ~150 m/a
-plt.figure('Difference observed - simulated retreat rates, Greenland outlets 2006-2014')
-plt.hist(np.array(avg_obs_rates)-np.array(avg_sim_rates), bins=diff_bins, weights=obs_weights, color='DarkBlue', alpha=0.5)
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-#plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
-plt.axes().set_yticks([0, 0.1, 0.2])
-plt.xlabel('$\Delta dL/dt$ [m/a]', fontsize=18)
-plt.ylabel('Density', fontsize=18)
-plt.show()
-## generate figure for inset with smoothed distribution
-diff_dens = gaussian_kde((np.array(avg_obs_rates)-np.array(avg_sim_rates))) # calculate in km/a
-xs2 = np.linspace(-2000, 2500, 200)
-plt.figure('dLdt density inset')
-plt.plot(xs2, diff_dens(xs2), lw=3.0, color='DarkBlue') 
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-plt.axes().set_xticks([-2000, 0, 2500])
-plt.axes().set_yticks([0, 0.001])
-plt.show()
+## REMOVED 13 NOV
+### Histogram of difference
+#diff_bins = np.linspace(-2000, 2500, num=29) #select number of bins so that each is ~150 m/a
+#plt.figure('Difference observed - simulated retreat rates, Greenland outlets 2006-2014')
+#plt.hist(np.array(avg_obs_rates)-np.array(avg_sim_rates), bins=diff_bins, weights=obs_weights, color='DarkBlue', alpha=0.5)
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+##plt.axes().set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+#plt.axes().set_yticks([0, 0.1, 0.2])
+#plt.xlabel('$\Delta dL/dt$ [m/a]', fontsize=18)
+#plt.ylabel('Density', fontsize=18)
+#plt.show()
+### generate figure for inset with smoothed distribution
+#diff_dens = gaussian_kde((np.array(avg_obs_rates)-np.array(avg_sim_rates))) # calculate in km/a
+#xs2 = np.linspace(-2000, 2500, 200)
+#plt.figure('dLdt density inset')
+#plt.plot(xs2, diff_dens(xs2), lw=3.0, color='DarkBlue') 
+#plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+#plt.axes().set_xticks([-2000, 0, 2500])
+#plt.axes().set_yticks([0, 0.001])
+#plt.show()
 
+## 13 Nov: replace difference with percent error
+def percent_error(obs_list, sim_list):
+    paired = np.zip(obs_list, sim_list)
+    corrected = [(o, s) for (o, s) in paired if o!=0] # avoid divide-by-zero errors
+    pe = [(o-s)/abs(o) for (o,s) in corrected]
+    return pe
+
+pe_weights = np.ones_like(pe)/float(len(pe))
+pe_bins = np.linspace(-300, 300, num=30) 
+plt.figure('Percent error observed - simulated retreat rates, Greenland outlets 2006-2014')
+plt.hist(pe, bins=pe_bins, weights=pe_weights, color='DarkBlue', alpha=0.5)
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.xlabel('Percent error $dL/dt$ [m/a]', fontsize=18)
+plt.ylabel('Normalized frequency', fontsize=18)
+plt.show()
 
 ## Density plot of obs vs simulated rates
 avsim = 0.001*np.array(avg_sim_rates)
