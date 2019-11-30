@@ -108,3 +108,37 @@ for j, gid in enumerate(glaciers_to_plot):
 plt.plot(range(-20,2), range(-20,2), c='k', ls='-.')
 plt.axes().set_aspect(1)
 plt.show()
+
+
+### Test from PatchCollection to make filled rectangles
+def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
+                     edgecolor='None', barcolor='None', alpha=0.5):
+    # Create list for all the error patches
+    errorboxes = []
+    # Loop over data points; create box from errors at each point
+    for x, y, xe, ye in zip(xdata, ydata, xerror.T, yerror.T):
+        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum())
+        errorboxes.append(rect)
+    # Create patch collection with specified colour/alpha
+    pc = PatchCollection(errorboxes, facecolor=facecolor, alpha=alpha,
+                         edgecolor=edgecolor)
+    # Add collection to axes
+    ax.add_collection(pc)
+    # Plot errorbars
+    artists = ax.errorbar(xdata, ydata, xerr=xerror, yerr=yerror,
+                          fmt='None', ecolor=barcolor)
+    return artists
+
+
+# Create figure and axes
+fig, ax = plt.subplots(1)
+# Call function to create error boxes
+for j, gid in enumerate(glaciers_to_plot):
+    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    obs_term_centr = obs_termini[:,1]
+    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+    _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*np.array(sim_termini), xerror=e, yerror=0.1*np.ones(shape(e)))
+ax.plot(range(-20,2), range(-20,2), c='k', ls='-.')
+ax.set_aspect(1)
+plt.show()
