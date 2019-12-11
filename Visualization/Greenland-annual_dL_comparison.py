@@ -111,17 +111,20 @@ plt.show()
 
 
 ### Test from PatchCollection to make filled rectangles
-def make_error_boxes(ax, xdata, ydata, xerror, yerror, facecolor='r',
+def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
                      edgecolor='None', barcolor='None', alpha=0.5):
+    """Make a PatchCollection of filled rectangles and add it to axes.
+    Keyword args same as for mpl.patches.Rectangle, except 'colorscheme_indices'
+    colorscheme_indices: array of same length as xdata, ydata setting assignment of facecolors"""
+    
     # Create list for all the error patches
     errorboxes = []
     # Loop over data points; create box from errors at each point
-    for x, y, xe, ye in zip(xdata, ydata, xerror.T, yerror.T):
-        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum())
+    for x, y, xe, ye, c in zip(xdata, ydata, xerror.T, yerror.T, colorscheme_indices):
+        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum(), facecolor=cm.get_cmap('Blues')(c/max(colorscheme_indices)), alpha=alpha, edgecolor=edgecolor)
         errorboxes.append(rect)
     # Create patch collection with specified colour/alpha
-    pc = PatchCollection(errorboxes, facecolor=facecolor, alpha=alpha,
-                         edgecolor=edgecolor)
+    pc = PatchCollection(errorboxes, match_original=True)
     # Add collection to axes
     ax.add_collection(pc)
     # Plot errorbars
@@ -138,7 +141,7 @@ for j, gid in enumerate(glaciers_to_plot):
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
     obs_term_centr = obs_termini[:,1]
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-    _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*np.array(sim_termini), xerror=e, yerror=0.1*np.ones(shape(e)))
+    _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*np.array(sim_termini), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
 ax.plot(range(-20,2), range(-20,2), c='k', ls='-.')
 ax.set_aspect(1)
 plt.show()
