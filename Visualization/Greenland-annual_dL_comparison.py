@@ -121,7 +121,7 @@ def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
     errorboxes = []
     # Loop over data points; create box from errors at each point
     for x, y, xe, ye, c in zip(xdata, ydata, xerror.T, yerror.T, colorscheme_indices):
-        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum(), facecolor=cm.get_cmap('Blues')(c/max(colorscheme_indices)), alpha=alpha, edgecolor=edgecolor)
+        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum(), facecolor=cm.get_cmap('viridis_r')((c-min(colorscheme_indices))/(max(colorscheme_indices)-min(colorscheme_indices))), alpha=alpha, edgecolor=edgecolor)
         errorboxes.append(rect)
     # Create patch collection with specified colour/alpha
     pc = PatchCollection(errorboxes, match_original=True)
