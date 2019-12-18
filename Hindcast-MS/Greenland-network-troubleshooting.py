@@ -2,6 +2,7 @@
 ## 6 Nov 2018  EHU
 ## Edited 2 Jan 2019 - investigating networks that claim very small or negative terminus elevation
 ## Edited 21 May 2019 - investigating networks that retreat >20 km in hindcasted period
+## Edited 17 Dec 2019 - investigating single network on which SERMeQ underestimates observed retreat
 import numpy as np
 from scipy import interpolate, ndimage, misc
 from scipy.ndimage import gaussian_filter
@@ -60,21 +61,21 @@ from SERMeQ.flowline_class_hierarchy import *
 #    else: 
 #        return varr
 #
-### Read in MEaSUREs velocity composite
-#print 'Reading MEaSUREs velocities'
-#x_comp, y_comp, v_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-velocity-composite.tif')
-#vx_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-x_velocity-composite.tif', return_grid=False)
-#vy_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-y_velocity-composite.tif', return_grid=False)
-#v_comp = np.ma.masked_invalid(v_comp_raw)
-#vx_comp = np.ma.masked_invalid(vx_comp_raw)
-#vy_comp = np.ma.masked_invalid(vy_comp_raw)
-#v_excludemasked = np.ma.filled(v_comp, fill_value=0)
-#vx_excludemasked = np.ma.filled(vx_comp, fill_value=0)
-#vy_excludemasked = np.ma.filled(vy_comp, fill_value=0)
-#days_per_annum = 365.242 #need to convert units of MEaSUREs velocity to align with what we used from Sentinel before
-#v_a2d = np.array(v_excludemasked) / days_per_annum
-#vx_a2d = np.array(vx_excludemasked) / days_per_annum
-#vy_a2d = np.array(vy_excludemasked) / days_per_annum
+## Read in MEaSUREs velocity composite
+print 'Reading MEaSUREs velocities'
+x_comp, y_comp, v_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-velocity-composite.tif')
+vx_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-x_velocity-composite.tif', return_grid=False)
+vy_comp_raw = read_velocities('Documents/GitHub/Data_unsynced/gld-y_velocity-composite.tif', return_grid=False)
+v_comp = np.ma.masked_invalid(v_comp_raw)
+vx_comp = np.ma.masked_invalid(vx_comp_raw)
+vy_comp = np.ma.masked_invalid(vy_comp_raw)
+v_excludemasked = np.ma.filled(v_comp, fill_value=0)
+vx_excludemasked = np.ma.filled(vx_comp, fill_value=0)
+vy_excludemasked = np.ma.filled(vy_comp, fill_value=0)
+days_per_annum = 365.242 #need to convert units of MEaSUREs velocity to align with what we used from Sentinel before
+v_a2d = np.array(v_excludemasked) / days_per_annum
+vx_a2d = np.array(vx_excludemasked) / days_per_annum
+vy_a2d = np.array(vy_excludemasked) / days_per_annum
 
 ## Read in BedMachine topography
 print 'Reading in surface topography'
@@ -104,7 +105,7 @@ M = thick_mask[::2,::2]
 fh.close()
 
 unsmoothB = B
-smoothing_sigma = 2 #chooses how much smoothing to apply
+smoothing_sigma = 0 #chooses how much smoothing to apply
 smoothB = gaussian_filter(B, smoothing_sigma)
 
 S_new = np.add(B, H) #alternative surface elevation: bed elevation + ice thickness
@@ -195,7 +196,7 @@ opt_data = read_optimization_analysis(analysis_fn)
 #taus_neg_termini = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Terminal_SE'][i]<0]   
 #SEs_neg_termini = [se for i, se in enumerate(opt_data['Terminal_SE']) if opt_data['Terminal_SE'][i]<0]
 
-IDs_foranalysis = (17, 51, 109, 115)
+IDs_foranalysis = (105,)
 taus_foranalysis = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Glacier_IDs'][i] in IDs_foranalysis]
 
 ## Read in the networks of glaciers with problematic termini--based on Greenland-network_processing_routine.py
@@ -259,12 +260,12 @@ for j, gid in enumerate(IDs_foranalysis):
 ##   EXPLORATORY PLOTTING
 ##-------------------------------
 ### Do networks stored empty have termini that lie 'off the map' of velocity for tracing?
-#plt.figure()
-#plt.contourf(x_comp, y_comp[::], v_comp[::-1, ::])
-#for gid in IDs_stored_empty:
-#    plt.scatter(termini_init[gid][:,0], termini_init[gid][:,1], marker='*', color='r')
-#plt.show()
-### Yes, they do.
+plt.figure()
+plt.contourf(x_comp, y_comp[::], v_comp[::-1, ::])
+for gid in IDs_stored_empty:
+    plt.scatter(termini_init[gid][:,0], termini_init[gid][:,1], marker='*', color='r')
+plt.show()
+## Yes, they do.
 
 
 ## Do the surface profiles of glaciers with small/negative terminus elevation look wonky in other ways?
@@ -301,3 +302,4 @@ for nw in flowlines_foranalysis:
         plt.show()
 ## On GID9, some prominent lumps that are much steeper on downstream side; retrograde bed far upstream
 ## GID10 shows retrograde bed as well, very thin nose sitting in water
+## GID105 shows very thin nose with slight retrograde bed up to 15-20 km upstream
