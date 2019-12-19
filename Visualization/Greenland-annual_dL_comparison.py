@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import csv
 #import collections
 import glob
+from scipy import interpolate
+from scipy.ndimage import gaussian_filter
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
 from matplotlib.patches import Rectangle
@@ -16,6 +18,47 @@ sys.path.insert(0, 'Documents/GitHub/plastic-networks')
 from SERMeQ.plastic_utilities_v2 import *
 from SERMeQ.GL_model_tools import *
 from SERMeQ.flowline_class_hierarchy import *
+
+### Topography needed to remove floating points from saved coords
+###
+print 'Reading in surface topography'
+gl_bed_path ='Documents/1. Research/2. Flowline networks/Model/Data/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
+fh = Dataset(gl_bed_path, mode='r')
+xx = fh.variables['x'][:].copy() #x-coord (polar stereo (70, 45))
+yy = fh.variables['y'][:].copy() #y-coord
+s_raw = fh.variables['surface'][:].copy() #surface elevation
+h_raw=fh.variables['thickness'][:].copy() # Gridded thickness
+b_raw = fh.variables['bed'][:].copy() # bed topo
+thick_mask = fh.variables['mask'][:].copy()
+ss = np.ma.masked_where(thick_mask !=2, s_raw)#mask values: 0=ocean, 1=ice-free land, 2=grounded ice, 3=floating ice, 4=non-Greenland land
+hh = np.ma.masked_where(thick_mask !=2, h_raw) 
+#bb = np.ma.masked_where(thick_mask !=2, b_raw)
+bb = b_raw #don't mask, to allow bed sampling from modern bathymetry (was subglacial in ~2006)
+## Down-sampling
+X = xx[::2]
+Y = yy[::2]
+S = ss[::2, ::2]
+H = hh[::2, ::2] 
+B = bb[::2, ::2]
+M = thick_mask[::2,::2]
+## Not down-sampling
+#X = xx
+#Y = yy
+#S = ss
+fh.close()
+
+#Smoothing bed and surface
+unsmoothB = B
+smoothB = gaussian_filter(B, 2)
+smoothS = gaussian_filter(S, 2)
+#B_processed = np.ma.masked_where(thick_mask !=2, smoothB)
+
+#Replacing interpolated surface with bed+thickness
+S_new = np.add(B, H)
+
+S_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothS.T[::, ::-1])
+H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
+B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 
 
 
@@ -75,7 +118,22 @@ for gid in glaciers_to_plot:
         filename = nw_base_fpath+str(gid)+'-date_2018-10-04.csv' #workaround because I ran these in batches and saved them with the date
     
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
-    mainline = LineString(coords_list[0])
+
+    branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
+    branch_list = [branch_0]
+    #if nlines>0:
+    #    for l in range(1, nlines):
+    #        branch_l = Branch(coords = coords_list[l], index=l, order=1, flows_to=0)
+    #        branch_list.append(branch_l)
+    nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
+    nw.make_full_lines()
+
+    print 'Removing floating points from glacier ID: '+str(gid)
+    nw.process_full_lines(B_interp, S_interp, H_interp)
+    nw.remove_floating()
+    
+    mainline = LineString(nw.flowlines[0].coords)
+    
     for yr in obs_years:
         try:
             termpts = termini[yr][gid] #get terminus points for each year
@@ -144,4 +202,6 @@ for j, gid in enumerate(glaciers_to_plot):
     _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*np.array(sim_termini), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
 ax.plot(range(-20,2), range(-20,2), c='k', ls='-.')
 ax.set_aspect(1)
+ax.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
+ax.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
 plt.show()
