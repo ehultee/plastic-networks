@@ -136,11 +136,13 @@ for gid in gids_totest:
     filename = glob.glob(base_fpath+'{}-date_*.csv'.format(gid))[0] #using glob * to select files of multiple run dates
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
     nlines = len(coords_list)
-    branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
+    seaward_fn = seaward_coords_fpath+'{}-fwd_2000_m.csv'.format(gid)
+    seaward_coords = FlowlineCSV(seaward_fn, has_width=True, flip_order=False)[0]
+    
+    branch_0 = Branch(coords=np.concatenate((coords_list[0],seaward_coords)), index=0, order=0) #saving central branch as main
     branch_list = [branch_0]
     
-    seaward_fn = seaward_coords_fpath+'{}-fwd_2000_m.csv'.format(gid)
-    seaward_coords = FlowlineCSV(seaward_fn, has_width=True, flip_order=False)
+
     if nlines>0:
         for l in append(range(1, nlines), -1):
             branch_l = Branch(coords = coords_list[l], index=l, order=1, flows_to=0)
