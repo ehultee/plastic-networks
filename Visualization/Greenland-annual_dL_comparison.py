@@ -105,18 +105,12 @@ for i,b in enumerate(basefiles):
     termini[yr] = read_termini(fn, yr) #creating dictionary for each year
     print len(termini[yr])
 
-nw_base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
+nw_base_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
 projected_termini = {gid: [] for gid in glaciers_to_plot}
 
 for gid in glaciers_to_plot: 
     print 'Reading in glacier ID: '+str(gid)
-    if gid in added_jan19:
-        filename = nw_base_fpath+str(gid)+'-date_2019-01-10.csv'
-    elif gid<160:
-        filename = nw_base_fpath+str(gid)+'-date_2018-10-03.csv'
-    else:
-        filename = nw_base_fpath+str(gid)+'-date_2018-10-04.csv' #workaround because I ran these in batches and saved them with the date
-    
+    filename = glob.glob(base_fpath+'{}-date_*.csv'.format(gid))[0] #using glob * to select files of different run dates
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
 
     branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
