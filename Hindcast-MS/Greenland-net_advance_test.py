@@ -114,7 +114,8 @@ for i, l in enumerate(lines):
 ##-------------------
 
 print 'Loading and simulating glacier networks'
-gids_totest = (61, 64, 82, 83, 99, 130, 132, 139, 140, 141, 156, 157, 158, 161, 167, 170, 178, 179, 180, 184) 
+#gids_totest = (61, 64, 82, 83, 99, 130, 132, 139, 140, 141, 156, 157, 158, 161, 167, 170, 178, 179, 180, 184) 
+gids_totest=(61,)
 
 base_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
 seaward_coords_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Seaward_coords/Gld-advnetwork-GID' 
@@ -137,25 +138,15 @@ for gid in gids_totest:
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
     nlines = len(coords_list)
     seaward_fn = seaward_coords_fpath+'{}-fwd_2000_m.csv'.format(gid)
-    seaward_coords = FlowlineCSV(seaward_fn, has_width=True, flip_order=False)[0]
+    seaward_coords = Flowline_CSV(seaward_fn, has_width=True, flip_order=True)[0]
     
-    branch_0 = Branch(coords=np.concatenate((coords_list[0],seaward_coords)), index=0, order=0) #saving central branch as main
+    branch_0 = Branch(coords=np.concatenate((seaward_coords, coords_list[0])), index=0, order=0) #saving central branch as main
     branch_list = [branch_0]
-    
-
-    if nlines>0:
-        for l in append(range(1, nlines), -1):
-            branch_l = Branch(coords = coords_list[l], index=l, order=1, flows_to=0)
-            branch_list.append(branch_l)
-    nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
-    nw.make_full_lines()
 
     print 'Now processing glacier ID: '+str(gid)
-    nw.process_full_lines(B_interp, S_interp, H_interp)
-    nw.remove_floating()
+    nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=coords_list[0][0])
     nw.make_full_lines()
-    nw.process_full_lines(B_interp, S_interp, H_interp)
-    
+    nw.process_full_lines(B_interp, S_interp, H_interp)    
     nw.network_tau = optimal_taus[gid][0]
     nw.network_yield_type = optimal_taus[gid][1]
     nw.network_ref_profiles()
@@ -170,7 +161,7 @@ for gid in gids_totest:
     nw.terminus_adot = time_varying_smb[0][0]
     print 'Terminus a_dot: {}'.format(nw.terminus_adot)
     try:
-        nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=catchment_smb_vals, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=output_heavy)
+        nw.terminus_time_evolve(testyears=testyears, initial_term=nw.L0*max(ArcArray(seaward_coords)), alpha_dot_variable=catchment_smb_vals, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=output_heavy)
     except:
         bad_gids.append(gid)   
         continue 
@@ -181,7 +172,7 @@ for gid in gids_totest:
     fn2 = fn1.replace("[", "-")
     fn3 = fn2.replace("/", "_")
     fn4 = fn3.replace("]", "")
-    fn5 = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/'+fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
+    fn5 = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/advance_test/'+fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
     nw.save_network(filename=fn5)
 
     #network_output.append(nw.model_output)
