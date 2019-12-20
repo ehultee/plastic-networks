@@ -161,7 +161,7 @@ for gid in gids_totest:
     nw.terminus_adot = time_varying_smb[0][0]
     print 'Terminus a_dot: {}'.format(nw.terminus_adot)
     try:
-        nw.terminus_time_evolve(testyears=testyears, initial_term=nw.L0*max(ArcArray(seaward_coords)), alpha_dot_variable=catchment_smb_vals, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=output_heavy)
+        nw.terminus_time_evolve(testyears=testyears, initial_term=max(ArcArray(seaward_coords)), alpha_dot_variable=catchment_smb_vals, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=output_heavy)
     except:
         bad_gids.append(gid)   
         continue 
