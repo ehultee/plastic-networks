@@ -976,8 +976,8 @@ class PlasticNetwork(Ice):
             pass
         refdict = model_output_dicts[ref_branch_index]
         if initial_term != 0:
-            initial_term_bed = ref_line.bed_function(initial_term/self.L0)
-            term_balance_height = initial_term_bed + BalanceThick(initial_term_bed/self.H0, ref_line.Bingham_num(initial_term_bed/self.H0, 0)) 
+            initial_term_bed = ref_line.bed_function(initial_term)
+            term_balance_height = (initial_term_bed/self.H0) + BalanceThick(initial_term_bed/self.H0, ref_line.Bingham_num(initial_term_bed/self.H0, 0)) 
             refdict[0] = ref_line.plastic_profile(startpoint=initial_term, hinit=term_balance_height, endpoint=ref_amax, surf=ref_surface) #initial condition for time evolution - needed to calculate calving flux at first timestep
         else: #use initial obs
             refdict[0] = ref_line.plastic_profile(startpoint=0, hinit=ref_surface(0), endpoint=ref_amax, surf=ref_surface) #initial condition for time evolution - needed to calculate calving flux at first timestep
