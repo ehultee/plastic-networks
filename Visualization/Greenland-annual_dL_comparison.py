@@ -68,7 +68,6 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 ## Which glaciers are available
 glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
 not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
-added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
 errors = (5, 17, 18, 19, 29, 51, 71, 92, 95, 97, 100, 101, 102, 106, 107, 108, 109, 110, 113, 115, 117, 120, 121, 134, 168, 171) #glacier IDs that crashed in hindcasting 12 Mar 2019 *or* showed network problems 21 May 2019
 rmv = np.concatenate((not_present, errors))
 for n in rmv:
@@ -76,12 +75,13 @@ for n in rmv:
         glacier_ids.remove(n)
     except ValueError:
         pass
-#glaciers_to_plot = [g for g in glacier_ids if g in (3, 137, 175)]
 glaciers_to_plot=glacier_ids
+## which ones get special treatment
+added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+seaward_projected = (61, 64, 82, 83, 99, 130, 132, 139, 140, 141, 156, 157, 158, 161, 167, 170, 178, 179, 180, 184) 
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence',)
-
 tempmarker = 'min10Cice' #and temperature of ice
 timestepmarker = '8a_dt025a' #and total time and timestep
 
@@ -90,7 +90,10 @@ full_output_dicts = {}
 for s in scenarios:
     scenario_output = {'Testyears': testyears}
     for gid in glaciers_to_plot:
-        fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
+        if gid in seaward_projected:
+            fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/advance_test/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] 
+        else:
+            fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of different run dates
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
 
@@ -105,33 +108,33 @@ for i,b in enumerate(basefiles):
     termini[yr] = read_termini(fn, yr) #creating dictionary for each year
     print len(termini[yr])
 
-nw_base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
+nw_base_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
+seaward_coords_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Seaward_coords/Gld-advnetwork-GID' 
 projected_termini = {gid: [] for gid in glaciers_to_plot}
+termpos_corrections = []
 
 for gid in glaciers_to_plot: 
     print 'Reading in glacier ID: '+str(gid)
-    if gid in added_jan19:
-        filename = nw_base_fpath+str(gid)+'-date_2019-01-10.csv'
-    elif gid<160:
-        filename = nw_base_fpath+str(gid)+'-date_2018-10-03.csv'
-    else:
-        filename = nw_base_fpath+str(gid)+'-date_2018-10-04.csv' #workaround because I ran these in batches and saved them with the date
-    
+    filename = glob.glob(nw_base_fpath+'{}-date_*.csv'.format(gid))[0] #using glob * to select files of different run dates
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
-
-    branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
+    if gid in seaward_projected:
+        seaward_fn = seaward_coords_fpath+'{}-fwd_2000_m.csv'.format(gid)
+        seaward_coords = Flowline_CSV(seaward_fn, has_width=True, flip_order=True)[0]
+        branch_0 = Branch(coords=np.concatenate((seaward_coords, coords_list[0])), index=0, order=0) #saving extended central branch as main
+        termpos_correction = 10*max(ArcArray(seaward_coords)) #how much glacier length has been added to initial line, i.e. how much terminus shifted in coordinate system, in km
+        print termpos_correction
+    else:
+        branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
+        termpos_correction = 0
+    termpos_corrections.append(termpos_correction)
     branch_list = [branch_0]
-    #if nlines>0:
-    #    for l in range(1, nlines):
-    #        branch_l = Branch(coords = coords_list[l], index=l, order=1, flows_to=0)
-    #        branch_list.append(branch_l)
+
     nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
     nw.make_full_lines()
-
-    print 'Removing floating points from glacier ID: '+str(gid)
-    nw.process_full_lines(B_interp, S_interp, H_interp)
-    nw.remove_floating()
-    
+    if gid not in seaward_projected:  #remove floating, but not from lines that have been artificially extended
+        print 'Removing floating points from glacier ID: '+str(gid)
+        nw.process_full_lines(B_interp, S_interp, H_interp)
+        nw.remove_floating()
     mainline = LineString(nw.flowlines[0].coords)
     
     for yr in obs_years:
@@ -140,7 +143,8 @@ for gid in glaciers_to_plot:
             t = projected_term_obs(termpts, mainline) #project onto main flowline
             r = retterm(termpts, mainline) #find most retreated point
             a = advterm(termpts, mainline) #find most advanced point
-            projected_termini[gid].append((a, t, r)) #add these to dictionary of projected termini per glacier
+            print 'GID {}, t={}, r={}, a={}'.format(gid, t, r, a)
+            projected_termini[gid].append((-1*termpos_correction)+np.asarray((a, t, r))) #add these to dictionary of projected termini per glacier
         except KeyError:
             print 'No terminus found in year {} for GID {}.'.format(yr, gid)
             projected_termini[gid].append((0, np.nan, 0))
@@ -153,19 +157,6 @@ for gid in glaciers_to_plot:
 plot_years = 2006+np.array(testyears)
 ids = [i for i in range(len(plot_years)) if plot_years[i] in obs_years] #which terminus positions will we compare
 yr_colors = cm.get_cmap('Blues')(linspace(0.2, 0.9, num=len(ids)))
-
-
-## Compare sim vs obs terminus position
-plt.figure('Yearly terminus comparison')
-for j, gid in enumerate(glaciers_to_plot):
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
-    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-    obs_term_centr = obs_termini[:,1]
-    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-    plt.errorbar(-1*obs_term_centr, -0.001*np.array(sim_termini), xerr=e, mfc='b', ecolor='b', fmt='D')
-plt.plot(range(-20,2), range(-20,2), c='k', ls='-.')
-plt.axes().set_aspect(1)
-plt.show()
 
 
 ### Test from PatchCollection to make filled rectangles
@@ -195,12 +186,13 @@ def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
 fig, ax = plt.subplots(1)
 # Call function to create error boxes
 for j, gid in enumerate(glaciers_to_plot):
+    tc = -1000*termpos_corrections[j]
     sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
     obs_term_centr = obs_termini[:,1]
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-    _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*np.array(sim_termini), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
-ax.plot(range(-20,2), range(-20,2), c='k', ls='-.')
+    _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
+ax.plot(range(-20,20), range(-20,20), c='k', ls='-.')
 ax.set_aspect(1)
 ax.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
 ax.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
