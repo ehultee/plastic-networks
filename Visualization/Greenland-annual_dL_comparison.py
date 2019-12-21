@@ -69,16 +69,22 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
 not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
 errors = (5, 17, 18, 19, 29, 51, 71, 92, 95, 97, 100, 101, 102, 106, 107, 108, 109, 110, 113, 115, 117, 120, 121, 134, 168, 171) #glacier IDs that crashed in hindcasting 12 Mar 2019 *or* showed network problems 21 May 2019
+## which ones get special treatment
+added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+seaward_projected = (61, 64, 82, 83, 99, 130, 132, 139, 140, 141, 156, 157, 158, 161, 167, 170, 178, 179, 180, 184) 
+special_treatment = np.concatenate((added_jan19, seaward_projected))
 rmv = np.concatenate((not_present, errors))
 for n in rmv:
     try:
         glacier_ids.remove(n)
     except ValueError:
         pass
-glaciers_to_plot=glacier_ids
-## which ones get special treatment
-added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
-seaward_projected = (61, 64, 82, 83, 99, 130, 132, 139, 140, 141, 156, 157, 158, 161, 167, 170, 178, 179, 180, 184) 
+glaciers_to_plot=np.copy(glacier_ids).tolist()
+for m in special_treatment:
+    try:
+        glaciers_to_plot.remove(m)
+    except ValueError:
+        pass
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence',)
@@ -89,7 +95,7 @@ full_output_dicts = {}
 
 for s in scenarios:
     scenario_output = {'Testyears': testyears}
-    for gid in glaciers_to_plot:
+    for gid in glacier_ids:
         if gid in seaward_projected:
             fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/advance_test/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] 
         else:
@@ -110,10 +116,10 @@ for i,b in enumerate(basefiles):
 
 nw_base_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
 seaward_coords_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Seaward_coords/Gld-advnetwork-GID' 
-projected_termini = {gid: [] for gid in glaciers_to_plot}
-termpos_corrections = []
+projected_termini = {gid: [] for gid in glacier_ids}
+termpos_corrections = {gid: 0 for gid in glacier_ids}
 
-for gid in glaciers_to_plot: 
+for gid in glacier_ids: 
     print 'Reading in glacier ID: '+str(gid)
     filename = glob.glob(nw_base_fpath+'{}-date_*.csv'.format(gid))[0] #using glob * to select files of different run dates
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
@@ -126,7 +132,7 @@ for gid in glaciers_to_plot:
     else:
         branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
         termpos_correction = 0
-    termpos_corrections.append(termpos_correction)
+    termpos_corrections[gid] = termpos_correction
     branch_list = [branch_0]
 
     nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
@@ -182,11 +188,11 @@ def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
     return artists
 
 
-# Create figure and axes
+# Create figure of 'un-futzed' glaciers
 fig, ax = plt.subplots(1)
 # Call function to create error boxes
-for j, gid in enumerate(glaciers_to_plot):
-    tc = -1000*termpos_corrections[j]
+for gid in glaciers_to_plot:
+    tc = -1000*termpos_corrections[gid]
     sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
     obs_term_centr = obs_termini[:,1]
@@ -196,4 +202,22 @@ ax.plot(range(-20,20), range(-20,20), c='k', ls='-.')
 ax.set_aspect(1)
 ax.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
 ax.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
+ax.set_title('Glaciers with usual processing')
+plt.show()
+
+## Same figure, 'special treatment' glaciers
+fig2, ax2 = plt.subplots(1)
+# Call function to create error boxes
+for gid in seaward_projected:
+    tc = -1000*termpos_corrections[gid]
+    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    obs_term_centr = obs_termini[:,1]
+    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+    _ = make_error_boxes(ax2, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
+ax2.plot(range(-20,20), range(-20,20), c='k', ls='-.')
+ax2.set_aspect(1)
+ax2.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
+ax2.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
+ax2.set_title('Glaciers requiring special handling')
 plt.show()
