@@ -10,7 +10,7 @@ from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Circle
 from matplotlib.collections import PatchCollection
 ## Special import for SERMeQ modules
 import sys
@@ -176,7 +176,7 @@ def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
     errorboxes = []
     # Loop over data points; create box from errors at each point
     for x, y, xe, ye, c in zip(xdata, ydata, xerror.T, yerror.T, colorscheme_indices):
-        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum(), facecolor=cm.get_cmap('viridis_r')((c-min(colorscheme_indices))/(max(colorscheme_indices)-min(colorscheme_indices))), alpha=alpha, edgecolor=edgecolor)
+        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum(), facecolor=cm.get_cmap('winter')((c-min(colorscheme_indices))/(max(colorscheme_indices)-min(colorscheme_indices))), alpha=alpha, edgecolor=edgecolor)
         errorboxes.append(rect)
     # Create patch collection with specified colour/alpha
     pc = PatchCollection(errorboxes, match_original=True)
@@ -198,7 +198,8 @@ for gid in glaciers_to_plot:
     obs_term_centr = obs_termini[:,1]
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
     _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
-ax.plot(range(-20,20), range(-20,20), c='k', ls='-.')
+ax.plot(range(-20,20), range(-20,20), c='b', linestyle='-.')
+ax.axhline(y=0, linestyle='--', color='k')
 ax.set_aspect(1)
 ax.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
 ax.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
@@ -215,9 +216,59 @@ for gid in seaward_projected:
     obs_term_centr = obs_termini[:,1]
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
     _ = make_error_boxes(ax2, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
-ax2.plot(range(-20,20), range(-20,20), c='k', ls='-.')
+ax2.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
 ax2.set_aspect(1)
 ax2.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
 ax2.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
 ax2.set_title('Glaciers requiring special handling')
+plt.show()
+
+
+## 1:1 sim-obs comparison with percent error and unit circle
+def percent_error(obs_list, sim_list):
+    paired = zip(obs_list, sim_list)
+    corrected = [(o, s) for (o, s) in paired if o!=0] # avoid divide-by-zero errors
+    perc_err = [100*abs((o-s)/(o)) for (o,s) in corrected]
+    return perc_err
+
+def unit_circle_compare(sim_pt, obs_pt):
+    norm = np.sqrt(sim_pt**2 + obs_pt**2)
+    return (sim_pt/norm, obs_pt/norm)
+    
+
+annual_pe_by_glacier = {gid: [] for gid in glaciers_to_plot}
+annual_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
+avg_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
+for gid in glaciers_to_plot:
+    sim_termini = -0.001*np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    obs_term_centr = obs_termini[:,1]
+    sim_rates = diff(sim_termini)/diff(obs_years)
+    obs_rates = diff(obs_term_centr)/diff(obs_years)
+    annual_pe_by_glacier[gid] = percent_error(obs_rates, sim_rates)
+    annual_uc_comp_by_glacier[gid] = [unit_circle_compare(sim_rates[i], obs_rates[i]) for i in range(len(obs_rates))]
+    avg_uc_comp_by_glacier[gid] = unit_circle_compare(mean(sim_rates), mean(obs_rates))
+
+## unit circle plot
+fig3, ax3 = plt.subplots(1)
+circ = plt.Circle((0, 0), radius=1, edgecolor='k', facecolor='None')
+ax3.add_patch(circ)
+for gid in glaciers_to_plot:
+    uc_comp = np.asarray(annual_uc_comp_by_glacier[gid])
+    for j in range(len(uc_comp)):
+        ax3.plot((0, uc_comp[j,0]), (0, uc_comp[j,1]))
+ax3.set_aspect(1)
+ax3.axhline(y=0, linestyle='--', color='k')
+ax3.axvline(x=0, linestyle='--', color='k')
+plt.show()
+
+fig4, ax4 = plt.subplots(1)
+circ = plt.Circle((0, 0), radius=1, edgecolor='k', facecolor='None')
+ax4.add_patch(circ)
+for gid in glaciers_to_plot:
+    uc_comp = avg_uc_comp_by_glacier[gid]
+    ax4.plot((0, uc_comp[0]), (0, uc_comp[1]))
+ax4.set_aspect(1)
+ax4.axhline(y=0, linestyle='--', color='k')
+ax4.axvline(x=0, linestyle='--', color='k')
 plt.show()
