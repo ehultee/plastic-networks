@@ -167,7 +167,7 @@ yr_colors = cm.get_cmap('Blues')(linspace(0.2, 0.9, num=len(ids)))
 
 ### Test from PatchCollection to make filled rectangles
 def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
-                     edgecolor='None', barcolor='None', alpha=0.5):
+                     cmap='viridis', edgecolor='None', barcolor='None', alpha=0.5):
     """Make a PatchCollection of filled rectangles and add it to axes.
     Keyword args same as for mpl.patches.Rectangle, except 'colorscheme_indices'
     colorscheme_indices: array of same length as xdata, ydata setting assignment of facecolors"""
@@ -176,7 +176,7 @@ def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
     errorboxes = []
     # Loop over data points; create box from errors at each point
     for x, y, xe, ye, c in zip(xdata, ydata, xerror.T, yerror.T, colorscheme_indices):
-        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum(), facecolor=cm.get_cmap('winter')((c-min(colorscheme_indices))/(max(colorscheme_indices)-min(colorscheme_indices))), alpha=alpha, edgecolor=edgecolor)
+        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum(), facecolor=cm.get_cmap(cmap)((c-min(colorscheme_indices))/(max(colorscheme_indices)-min(colorscheme_indices))), alpha=alpha, edgecolor=edgecolor)
         errorboxes.append(rect)
     # Create patch collection with specified colour/alpha
     pc = PatchCollection(errorboxes, match_original=True)
@@ -237,6 +237,7 @@ def unit_circle_compare(sim_pt, obs_pt):
     
 
 annual_pe_by_glacier = {gid: [] for gid in glaciers_to_plot}
+avg_pe_by_glacier = {gid:[] for gid in glaciers_to_plot}
 annual_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
 avg_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
 for gid in glaciers_to_plot:
@@ -246,6 +247,7 @@ for gid in glaciers_to_plot:
     sim_rates = diff(sim_termini)/diff(obs_years)
     obs_rates = diff(obs_term_centr)/diff(obs_years)
     annual_pe_by_glacier[gid] = abs_percent_error(obs_rates, sim_rates)
+    avg_pe_by_glacier[gid] = np.nanmean(annual_pe_by_glacier[gid])
     annual_uc_comp_by_glacier[gid] = [unit_circle_compare(sim_rates[i], obs_rates[i]) for i in range(len(obs_rates))]
     avg_uc_comp_by_glacier[gid] = unit_circle_compare(mean(sim_rates), mean(obs_rates))
 
@@ -272,21 +274,25 @@ plt.show()
 pe_all = [annual_pe_by_glacier[gid] for gid in glaciers_to_plot]
 pe_arr = np.concatenate(pe_all)
 pe_weights = np.ones_like(pe_arr)/float(len(pe_arr))
+avg_pe = np.ravel([avg_pe_by_glacier[gid] for gid in glaciers_to_plot])
+avg_pe_weights = np.ones_like(avg_pe)/float(len(avg_pe))
 pe_bins = np.linspace(0, 1000, num=20) 
 plt.figure('Absolute percent error observed - simulated annual retreat, Greenland outlets 2006-2014')
-plt.hist(pe_arr, bins=pe_bins, weights=pe_weights, color='DarkBlue', alpha=0.5)
+plt.hist([pe_arr, avg_pe], bins=pe_bins, weights=[pe_weights, avg_pe_weights], color=['LightGrey', 'DarkSlateGrey'], label=['all', 'mean'])
+#plt.hist(avg_pe, bins=pe_bins, weights=avg_pe_weights, color='DarkViolet', alpha=0.5) # plot period-averaged percent diff
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 plt.xlabel('Percent difference $dL/dt$ [m/a]', fontsize=18)
 plt.ylabel('Normalized frequency', fontsize=18)
+plt.legend(loc='best')
 plt.axes().set_yticks([0, 0.1, 0.2])
 plt.axes().set_xlim((0,1000))
 plt.show()
-### smoothed distribution for inset
-pe_dens = gaussian_kde((pe_arr)) # calculate in km/a
-xs3 = np.linspace(0, 1000, 200)
-plt.figure('dLdt percent error inset')
-plt.plot(xs3, pe_dens(xs3), lw=3.0, color='DarkBlue') 
+
+plt.figure('Cumulative distribution observed-simulated annual retreat, Greenland outlets 2006-2014')
+plt.hist([pe_arr, avg_pe], bins=pe_bins, weights=[pe_weights, avg_pe_weights], color=['LightGrey', 'DarkSlateGrey'], label=['all', 'mean'], cumulative=True)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-#plt.axes().set_xticks([-300, 0, 300])
-#plt.axes().set_yticks([0, 0.001])
+plt.xlabel('Percent difference $dL/dt$ [m/a]', fontsize=18)
+plt.ylabel('Cumulative normalized frequency', fontsize=18)
+plt.legend(loc='best')
+plt.axes().set_xlim((0,1000))
 plt.show()
