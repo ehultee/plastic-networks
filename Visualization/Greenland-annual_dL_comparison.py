@@ -225,9 +225,9 @@ plt.show()
 
 
 ## 1:1 sim-obs comparison with percent error and unit circle
-def percent_error(obs_list, sim_list):
+def abs_percent_error(obs_list, sim_list):
     paired = zip(obs_list, sim_list)
-    corrected = [(o, s) for (o, s) in paired if o!=0] # avoid divide-by-zero errors
+    corrected = [(o, s) for (o, s) in paired if (o!=0 and not np.isnan(o) and not np.isnan(s))] # avoid divide-by-zero errors
     perc_err = [100*abs((o-s)/(o)) for (o,s) in corrected]
     return perc_err
 
@@ -245,7 +245,7 @@ for gid in glaciers_to_plot:
     obs_term_centr = obs_termini[:,1]
     sim_rates = diff(sim_termini)/diff(obs_years)
     obs_rates = diff(obs_term_centr)/diff(obs_years)
-    annual_pe_by_glacier[gid] = percent_error(obs_rates, sim_rates)
+    annual_pe_by_glacier[gid] = abs_percent_error(obs_rates, sim_rates)
     annual_uc_comp_by_glacier[gid] = [unit_circle_compare(sim_rates[i], obs_rates[i]) for i in range(len(obs_rates))]
     avg_uc_comp_by_glacier[gid] = unit_circle_compare(mean(sim_rates), mean(obs_rates))
 
@@ -266,4 +266,27 @@ ax3.axhline(y=0, linestyle='--', color='k')
 ax3.axvline(x=0, linestyle='--', color='k')
 plt.axis('off')
 plt.margins(x=0.1, y=0.1)
+plt.show()
+
+## absolute percent error plot
+pe_all = [annual_pe_by_glacier[gid] for gid in glaciers_to_plot]
+pe_arr = np.concatenate(pe_all)
+pe_weights = np.ones_like(pe_arr)/float(len(pe_arr))
+pe_bins = np.linspace(0, 1000, num=20) 
+plt.figure('Absolute percent error observed - simulated annual retreat, Greenland outlets 2006-2014')
+plt.hist(pe_arr, bins=pe_bins, weights=pe_weights, color='DarkBlue', alpha=0.5)
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.xlabel('Percent difference $dL/dt$ [m/a]', fontsize=18)
+plt.ylabel('Normalized frequency', fontsize=18)
+plt.axes().set_yticks([0, 0.1, 0.2])
+plt.axes().set_xlim((0,1000))
+plt.show()
+### smoothed distribution for inset
+pe_dens = gaussian_kde((pe_arr)) # calculate in km/a
+xs3 = np.linspace(0, 1000, 200)
+plt.figure('dLdt percent error inset')
+plt.plot(xs3, pe_dens(xs3), lw=3.0, color='DarkBlue') 
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+#plt.axes().set_xticks([-300, 0, 300])
+#plt.axes().set_yticks([0, 0.001])
 plt.show()
