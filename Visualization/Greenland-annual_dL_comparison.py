@@ -250,25 +250,20 @@ for gid in glaciers_to_plot:
     avg_uc_comp_by_glacier[gid] = unit_circle_compare(mean(sim_rates), mean(obs_rates))
 
 ## unit circle plot
-fig3, ax3 = plt.subplots(1)
-circ = plt.Circle((0, 0), radius=1, edgecolor='k', facecolor='None')
-ax3.add_patch(circ)
+fig3 = plt.figure()
+ax3 = plt.axes([0,0,1,1])
 for gid in glaciers_to_plot:
     uc_comp = np.asarray(annual_uc_comp_by_glacier[gid])
     for j in range(len(uc_comp)):
-        ax3.plot((0, uc_comp[j,0]), (0, uc_comp[j,1]))
+        ax3.plot((0, uc_comp[j,0]), (0, uc_comp[j,1]), color='LightGrey', lw=2.0)
+for gid in glaciers_to_plot: #plot average over top
+    avg_uc_comp = avg_uc_comp_by_glacier[gid]
+    ax3.plot((0, avg_uc_comp[0]), (0, avg_uc_comp[1]), color='DarkSlateGrey', lw=3.0, alpha=0.8)
+circ = plt.Circle((0, 0), radius=1., edgecolor='k', facecolor='None', lw=3.0, zorder=3)
+ax3.add_patch(circ)
 ax3.set_aspect(1)
 ax3.axhline(y=0, linestyle='--', color='k')
 ax3.axvline(x=0, linestyle='--', color='k')
-plt.show()
-
-fig4, ax4 = plt.subplots(1)
-circ = plt.Circle((0, 0), radius=1, edgecolor='k', facecolor='None')
-ax4.add_patch(circ)
-for gid in glaciers_to_plot:
-    uc_comp = avg_uc_comp_by_glacier[gid]
-    ax4.plot((0, uc_comp[0]), (0, uc_comp[1]))
-ax4.set_aspect(1)
-ax4.axhline(y=0, linestyle='--', color='k')
-ax4.axvline(x=0, linestyle='--', color='k')
+plt.axis('off')
+plt.margins(x=0.1, y=0.1)
 plt.show()
