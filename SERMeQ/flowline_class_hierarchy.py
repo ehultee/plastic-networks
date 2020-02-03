@@ -910,11 +910,14 @@ class PlasticNetwork(Ice):
         self.balance_forcing = float(balance_a) #save to this network instance
         return balance_a     
     
-    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, separation_buffer=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, submarine_melt=0, rate_factor=1.7E-24, output_heavy=False, sl_contribution=True):
+    def terminus_time_evolve(self, testyears=arange(100), ref_branch_index=0, initial_term=0, alpha_dot=None, alpha_dot_variable=None, upstream_limits=None, 
+    separation_buffer=None, use_mainline_tau=True, debug_mode=False, dt_rounding=5, dL=None, has_smb=False, terminus_balance=None, 
+    submarine_melt=0, rate_factor=1.7E-24, output_heavy=False, sl_contribution=True):
         """Time evolution on a network of Flowlines, forced from terminus.  Lines should be already optimised and include reference profiles from network_ref_profiles
         Arguments:
             testyears: a range of years to test, indexed by years from nominal date of ref profile (i.e. not calendar years)
             ref_branch_index: which branch to use for forcing.  Default is main branch ("0") but can be changed
+            initial_term: where to initialize, in m relative to initial terminus of main flowline.  Default is 0 (start at initial terminus)
             alpha_dot: spatially averaged accumulation rate (forcing)
         Optional args:   
             alpha_dot_variable: array of the same length as testyears with a different alpha_dot forcing to use in each year
@@ -972,7 +975,12 @@ class PlasticNetwork(Ice):
         else:
             pass
         refdict = model_output_dicts[ref_branch_index]
-        refdict[0] = ref_line.plastic_profile(startpoint=0, hinit=ref_surface(0), endpoint=ref_amax, surf=ref_surface) #initial condition for time evolution - needed to calculate calving flux at first timestep
+        if initial_term != 0:
+            initial_term_bed = ref_line.bed_function(initial_term)
+            term_balance_height = (initial_term_bed/self.H0) + BalanceThick(initial_term_bed/self.H0, ref_line.Bingham_num(initial_term_bed/self.H0, 0)) 
+            refdict[0] = ref_line.plastic_profile(startpoint=initial_term, hinit=term_balance_height, endpoint=ref_amax, surf=ref_surface) #initial condition for time evolution - needed to calculate calving flux at first timestep
+        else: #use initial obs
+            refdict[0] = ref_line.plastic_profile(startpoint=0, hinit=ref_surface(0), endpoint=ref_amax, surf=ref_surface) #initial condition for time evolution - needed to calculate calving flux at first timestep
     
         
         #Assume same terminus

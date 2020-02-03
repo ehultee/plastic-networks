@@ -10,7 +10,7 @@ from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Circle
 from matplotlib.collections import PatchCollection
 ## Special import for SERMeQ modules
 import sys
@@ -68,20 +68,26 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 ## Which glaciers are available
 glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
 not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
-added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
 errors = (5, 17, 18, 19, 29, 51, 71, 92, 95, 97, 100, 101, 102, 106, 107, 108, 109, 110, 113, 115, 117, 120, 121, 134, 168, 171) #glacier IDs that crashed in hindcasting 12 Mar 2019 *or* showed network problems 21 May 2019
+## which ones get special treatment
+added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+seaward_projected = (61, 64, 82, 83, 99, 130, 132, 139, 140, 141, 156, 157, 158, 161, 167, 170, 178, 179, 180, 184) 
+special_treatment = np.concatenate((added_jan19, seaward_projected))
 rmv = np.concatenate((not_present, errors))
 for n in rmv:
     try:
         glacier_ids.remove(n)
     except ValueError:
         pass
-#glaciers_to_plot = [g for g in glacier_ids if g in (3, 137, 175)]
-glaciers_to_plot=glacier_ids
+glaciers_to_plot=np.copy(glacier_ids).tolist()
+for m in special_treatment:
+    try:
+        glaciers_to_plot.remove(m)
+    except ValueError:
+        pass
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence',)
-
 tempmarker = 'min10Cice' #and temperature of ice
 timestepmarker = '8a_dt025a' #and total time and timestep
 
@@ -89,8 +95,11 @@ full_output_dicts = {}
 
 for s in scenarios:
     scenario_output = {'Testyears': testyears}
-    for gid in glaciers_to_plot:
-        fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
+    for gid in glacier_ids:
+        if gid in seaward_projected:
+            fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/advance_test/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] 
+        else:
+            fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of different run dates
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
 
@@ -106,26 +115,33 @@ for i,b in enumerate(basefiles):
     print len(termini[yr])
 
 nw_base_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
-projected_termini = {gid: [] for gid in glaciers_to_plot}
+seaward_coords_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Seaward_coords/Gld-advnetwork-GID' 
+projected_termini = {gid: [] for gid in glacier_ids}
+termpos_corrections = {gid: 0 for gid in glacier_ids}
 
-for gid in glaciers_to_plot: 
+for gid in glacier_ids: 
     print 'Reading in glacier ID: '+str(gid)
-    filename = glob.glob(base_fpath+'{}-date_*.csv'.format(gid))[0] #using glob * to select files of different run dates
-    coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
+    filename = glob.glob(nw_base_fpath+'{}-date_*.csv'.format(gid))[0] #using glob * to select files of different run dates
 
-    branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
+    coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
+    if gid in seaward_projected:
+        seaward_fn = seaward_coords_fpath+'{}-fwd_2000_m.csv'.format(gid)
+        seaward_coords = Flowline_CSV(seaward_fn, has_width=True, flip_order=True)[0]
+        branch_0 = Branch(coords=np.concatenate((seaward_coords, coords_list[0])), index=0, order=0) #saving extended central branch as main
+        termpos_correction = 10*max(ArcArray(seaward_coords)) #how much glacier length has been added to initial line, i.e. how much terminus shifted in coordinate system, in km
+        print termpos_correction
+    else:
+        branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
+        termpos_correction = 0
+    termpos_corrections[gid] = termpos_correction
     branch_list = [branch_0]
-    #if nlines>0:
-    #    for l in range(1, nlines):
-    #        branch_l = Branch(coords = coords_list[l], index=l, order=1, flows_to=0)
-    #        branch_list.append(branch_l)
+
     nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
     nw.make_full_lines()
-
-    print 'Removing floating points from glacier ID: '+str(gid)
-    nw.process_full_lines(B_interp, S_interp, H_interp)
-    nw.remove_floating()
-    
+    if gid not in seaward_projected:  #remove floating, but not from lines that have been artificially extended
+        print 'Removing floating points from glacier ID: '+str(gid)
+        nw.process_full_lines(B_interp, S_interp, H_interp)
+        nw.remove_floating()
     mainline = LineString(nw.flowlines[0].coords)
     
     for yr in obs_years:
@@ -134,7 +150,8 @@ for gid in glaciers_to_plot:
             t = projected_term_obs(termpts, mainline) #project onto main flowline
             r = retterm(termpts, mainline) #find most retreated point
             a = advterm(termpts, mainline) #find most advanced point
-            projected_termini[gid].append((a, t, r)) #add these to dictionary of projected termini per glacier
+            print 'GID {}, t={}, r={}, a={}'.format(gid, t, r, a)
+            projected_termini[gid].append((-1*termpos_correction)+np.asarray((a, t, r))) #add these to dictionary of projected termini per glacier
         except KeyError:
             print 'No terminus found in year {} for GID {}.'.format(yr, gid)
             projected_termini[gid].append((0, np.nan, 0))
@@ -149,22 +166,9 @@ ids = [i for i in range(len(plot_years)) if plot_years[i] in obs_years] #which t
 yr_colors = cm.get_cmap('Blues')(linspace(0.2, 0.9, num=len(ids)))
 
 
-## Compare sim vs obs terminus position
-plt.figure('Yearly terminus comparison')
-for j, gid in enumerate(glaciers_to_plot):
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
-    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-    obs_term_centr = obs_termini[:,1]
-    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-    plt.errorbar(-1*obs_term_centr, -0.001*np.array(sim_termini), xerr=e, mfc='b', ecolor='b', fmt='D')
-plt.plot(range(-20,2), range(-20,2), c='k', ls='-.')
-plt.axes().set_aspect(1)
-plt.show()
-
-
 ### Test from PatchCollection to make filled rectangles
 def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
-                     edgecolor='None', barcolor='None', alpha=0.5):
+                     cmap='viridis', edgecolor='None', barcolor='None', alpha=0.5):
     """Make a PatchCollection of filled rectangles and add it to axes.
     Keyword args same as for mpl.patches.Rectangle, except 'colorscheme_indices'
     colorscheme_indices: array of same length as xdata, ydata setting assignment of facecolors"""
@@ -173,7 +177,7 @@ def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
     errorboxes = []
     # Loop over data points; create box from errors at each point
     for x, y, xe, ye, c in zip(xdata, ydata, xerror.T, yerror.T, colorscheme_indices):
-        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum(), facecolor=cm.get_cmap('viridis_r')((c-min(colorscheme_indices))/(max(colorscheme_indices)-min(colorscheme_indices))), alpha=alpha, edgecolor=edgecolor)
+        rect = Rectangle((x - xe[0], y - ye[0]), xe.sum(), ye.sum(), facecolor=cm.get_cmap(cmap)((c-min(colorscheme_indices))/(max(colorscheme_indices)-min(colorscheme_indices))), alpha=alpha, edgecolor=edgecolor)
         errorboxes.append(rect)
     # Create patch collection with specified colour/alpha
     pc = PatchCollection(errorboxes, match_original=True)
@@ -185,17 +189,111 @@ def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
     return artists
 
 
-# Create figure and axes
+# Create figure of 'un-futzed' glaciers
 fig, ax = plt.subplots(1)
 # Call function to create error boxes
-for j, gid in enumerate(glaciers_to_plot):
+for gid in glaciers_to_plot:
+    tc = -1000*termpos_corrections[gid]
     sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
     obs_term_centr = obs_termini[:,1]
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-    _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*np.array(sim_termini), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
-ax.plot(range(-20,2), range(-20,2), c='k', ls='-.')
+    _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
+ax.plot(range(-20,20), range(-20,20), c='b', linestyle='-.')
+ax.axhline(y=0, linestyle='--', color='k')
 ax.set_aspect(1)
 ax.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
 ax.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
+ax.set_title('Glaciers with usual processing')
+plt.show()
+
+## Same figure, 'special treatment' glaciers
+fig2, ax2 = plt.subplots(1)
+# Call function to create error boxes
+for gid in seaward_projected:
+    tc = -1000*termpos_corrections[gid]
+    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    obs_term_centr = obs_termini[:,1]
+    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+    _ = make_error_boxes(ax2, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
+ax2.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
+ax2.set_aspect(1)
+ax2.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
+ax2.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
+ax2.set_title('Glaciers requiring special handling')
+plt.show()
+
+
+## 1:1 sim-obs comparison with percent error and unit circle
+def abs_percent_error(obs_list, sim_list):
+    paired = zip(obs_list, sim_list)
+    corrected = [(o, s) for (o, s) in paired if (o!=0 and not np.isnan(o) and not np.isnan(s))] # avoid divide-by-zero errors
+    perc_err = [100*abs((o-s)/(o)) for (o,s) in corrected]
+    return perc_err
+
+def unit_circle_compare(sim_pt, obs_pt):
+    norm = np.sqrt(sim_pt**2 + obs_pt**2)
+    return (sim_pt/norm, obs_pt/norm)
+    
+
+annual_pe_by_glacier = {gid: [] for gid in glaciers_to_plot}
+avg_pe_by_glacier = {gid:[] for gid in glaciers_to_plot}
+annual_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
+avg_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
+for gid in glaciers_to_plot:
+    sim_termini = -0.001*np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    obs_term_centr = obs_termini[:,1]
+    sim_rates = diff(sim_termini)/diff(obs_years)
+    obs_rates = diff(obs_term_centr)/diff(obs_years)
+    annual_pe_by_glacier[gid] = abs_percent_error(obs_rates, sim_rates)
+    avg_pe_by_glacier[gid] = np.nanmean(annual_pe_by_glacier[gid])
+    annual_uc_comp_by_glacier[gid] = [unit_circle_compare(sim_rates[i], obs_rates[i]) for i in range(len(obs_rates))]
+    avg_uc_comp_by_glacier[gid] = unit_circle_compare(mean(sim_rates), mean(obs_rates))
+
+## unit circle plot
+fig3 = plt.figure()
+ax3 = plt.axes([0,0,1,1])
+for gid in glaciers_to_plot:
+    uc_comp = np.asarray(annual_uc_comp_by_glacier[gid])
+    for j in range(len(uc_comp)):
+        ax3.plot((0, uc_comp[j,0]), (0, uc_comp[j,1]), color='LightGrey', lw=2.0)
+for gid in glaciers_to_plot: #plot average over top
+    avg_uc_comp = avg_uc_comp_by_glacier[gid]
+    ax3.plot((0, avg_uc_comp[0]), (0, avg_uc_comp[1]), color='DarkSlateGrey', lw=3.0, alpha=0.8)
+circ = plt.Circle((0, 0), radius=1., edgecolor='k', facecolor='None', lw=3.0, zorder=3)
+ax3.add_patch(circ)
+ax3.set_aspect(1)
+ax3.axhline(y=0, linestyle='--', color='k')
+ax3.axvline(x=0, linestyle='--', color='k')
+plt.axis('off')
+plt.margins(x=0.1, y=0.1)
+plt.show()
+
+## absolute percent error plot
+pe_all = [annual_pe_by_glacier[gid] for gid in glaciers_to_plot]
+pe_arr = np.concatenate(pe_all)
+pe_weights = np.ones_like(pe_arr)/float(len(pe_arr))
+avg_pe = np.ravel([avg_pe_by_glacier[gid] for gid in glaciers_to_plot])
+avg_pe_weights = np.ones_like(avg_pe)/float(len(avg_pe))
+pe_bins = np.linspace(0, 1000, num=20) 
+plt.figure('Absolute percent error observed - simulated annual retreat, Greenland outlets 2006-2014')
+plt.hist([pe_arr, avg_pe], bins=pe_bins, weights=[pe_weights, avg_pe_weights], color=['LightGrey', 'DarkSlateGrey'], label=['all', 'mean'])
+#plt.hist(avg_pe, bins=pe_bins, weights=avg_pe_weights, color='DarkViolet', alpha=0.5) # plot period-averaged percent diff
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.xlabel('Percent difference $dL/dt$ [m/a]', fontsize=18)
+plt.ylabel('Normalized frequency', fontsize=18)
+plt.legend(loc='best')
+plt.axes().set_yticks([0, 0.1, 0.2])
+plt.axes().set_xlim((0,1000))
+plt.show()
+
+plt.figure('Cumulative distribution observed-simulated annual retreat, Greenland outlets 2006-2014')
+plt.hist([pe_arr, avg_pe], bins=pe_bins, weights=[pe_weights, avg_pe_weights], color=['LightGrey', 'DarkSlateGrey'], label=['all', 'mean'], cumulative=True)
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.xlabel('Percent difference $dL/dt$ [m/a]', fontsize=18)
+plt.ylabel('Cumulative normalized frequency', fontsize=18)
+plt.legend(loc='best')
+plt.axes().set_xlim((0,1000))
 plt.show()
