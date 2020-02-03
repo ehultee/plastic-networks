@@ -122,6 +122,7 @@ termpos_corrections = {gid: 0 for gid in glacier_ids}
 for gid in glacier_ids: 
     print 'Reading in glacier ID: '+str(gid)
     filename = glob.glob(nw_base_fpath+'{}-date_*.csv'.format(gid))[0] #using glob * to select files of different run dates
+
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
     if gid in seaward_projected:
         seaward_fn = seaward_coords_fpath+'{}-fwd_2000_m.csv'.format(gid)
