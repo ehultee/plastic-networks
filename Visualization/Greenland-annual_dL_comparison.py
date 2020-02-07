@@ -266,23 +266,35 @@ def unit_circle_compare(sim_pt, obs_pt):
 
 def range_normalized_centroid_diff(projected_obs, sim_termpos):
     """Calculate the difference between simulated terminus position and projected centroid of observed 2D terminus.
-    #Calculate only if outside projected range. - test this condition next (7 Feb 2020)
     Normalize by range of projected 2D terminus.
     Input:
         projected_obs: an array of shape (len(obs_years), 3) with an entry (advanced_extreme, centroid, retreated_extreme) for each year
         sim_termpos: an array of shape (len(obs_years)), with a simulated terminus position for each year"""
     joined = zip(projected_obs[:,0], projected_obs[:,2], projected_obs[:,1], sim_termpos)
-    corrected = [(a, r, c, s) for (a,r,c,s) in joined if (abs(r-a)>0.1 and not np.isnan(c) and not np.isnan(s))]
+    corrected = [(a, r, c, s) for (a,r,c,s) in joined if (abs(r-a)>0.1 and sum(np.isnan((a,r,c, s)))==0)]
     normalized_diff = [abs(c-s)/abs(r-a) for (a, r, c, s) in corrected]
+    return normalized_diff        
+
+def range_normalized_maxret_diff(projected_obs, sim_termpos):
+    """Calculate the difference between simulated terminus position and most retreated position of observed 2D terminus.
+    Normalize by range of projected 2D terminus.
+    Input:
+        projected_obs: an array of shape (len(obs_years), 3) with an entry (advanced_extreme, centroid, retreated_extreme) for each year
+        sim_termpos: an array of shape (len(obs_years)), with a simulated terminus position for each year"""
+    joined = zip(projected_obs[:,0], projected_obs[:,2], projected_obs[:,1], sim_termpos)
+    nonans = [(a, r, c, s) for (a,r,c,s) in joined if (abs(r-a)>0.1 and abs(r)>0.1 and sum(np.isnan((a,r,c, s)))==0)]
+    corrected = [(a, min(c,r), s) for (a, r, c, s) in nonans]
+    normalized_diff = [abs(r-s)/abs(r-a) for (a, r, s) in corrected]
     return normalized_diff
-    #obs_ranges = abs(projected_obs[:,2]-projected_obs[:,0]) #compute observational range for each year
-    
+
+
 
 annual_pe_by_glacier = {gid: [] for gid in glaciers_to_plot}
 avg_pe_by_glacier = {gid:[] for gid in glaciers_to_plot}
 annual_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
 avg_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
 annual_rne_by_glacier = {gid: [] for gid in glaciers_to_plot}
+annual_mxrt_by_glacier = {gid: [] for gid in glaciers_to_plot}
 for gid in glaciers_to_plot:
     sim_termini = -0.001*np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
@@ -297,6 +309,7 @@ for gid in glaciers_to_plot:
     annual_uc_comp_by_glacier[gid] = [unit_circle_compare(sim_rates[i], obs_rates[i]) for i in range(len(obs_rates))]
     avg_uc_comp_by_glacier[gid] = unit_circle_compare(mean(sim_rates), mean(obs_rates))
     annual_rne_by_glacier[gid] = range_normalized_centroid_diff(obs_termini, sim_termini)
+    annual_mxrt_by_glacier[gid] = range_normalized_maxret_diff(obs_termini, sim_termini)
 
 ## unit circle plot
 fig4 = plt.figure()
@@ -362,6 +375,23 @@ plt.hist(rne_arr, bins=rne_bins, weights=rne_weights, color='DarkSlateGrey')
 #plt.hist(avg_pe, bins=pe_bins, weights=avg_pe_weights, color='DarkViolet', alpha=0.5) # plot period-averaged percent diff
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
 plt.xlabel('Range-normalized difference $(c_{obs}-c_{sim})/(max_{obs}-min_{obs})$', fontsize=18)
+plt.ylabel('Normalized frequency', fontsize=18)
+plt.legend(loc='best')
+#plt.axes().set_yticks([0, 0.1, 0.2])
+plt.axes().set_xlim((0,20))
+plt.show()
+
+## range-normalized retreat bound plot
+mxrt_all = [annual_mxrt_by_glacier[gid] for gid in glaciers_to_plot]
+mxrt_arr_cnct = np.concatenate(mxrt_all)
+mxrt_arr = [m for m in mxrt_arr_cnct if np.isfinite(m)]
+mxrt_weights = np.ones_like(mxrt_arr)/float(len(mxrt_arr))
+mxrt_bins = np.linspace(0, 20, num=40) 
+plt.figure('Normalized histo, range normalized difference annual minimum terminus position, Greenland outlets 2006-2014')
+plt.hist(mxrt_arr, bins=mxrt_bins, weights=mxrt_weights, color='DarkSlateGrey')
+#plt.hist(avg_pe, bins=pe_bins, weights=avg_pe_weights, color='DarkViolet', alpha=0.5) # plot period-averaged percent diff
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.xlabel('Range-normalized difference $(min_{obs}-c_{sim})/(max_{obs}-min_{obs})$', fontsize=18)
 plt.ylabel('Normalized frequency', fontsize=18)
 plt.legend(loc='best')
 #plt.axes().set_yticks([0, 0.1, 0.2])
