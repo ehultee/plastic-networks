@@ -199,7 +199,7 @@ for gid in glaciers_to_plot:
     obs_term_centr = obs_termini[:,1]
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
     _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
-ax.plot(range(-20,20), range(-20,20), c='b', linestyle='-.')
+ax.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
 ax.axhline(y=0, linestyle='--', color='k')
 ax.set_aspect(1)
 ax.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
@@ -224,18 +224,47 @@ ax2.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
 ax2.set_title('Glaciers requiring special handling')
 plt.show()
 
+## All glaciers together, with futzed glaciers separated by colour
+fig3, ax3 = plt.subplots(1)
+# Call function to create error boxes
+for gid in glaciers_to_plot:
+    tc = -1000*termpos_corrections[gid]
+    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    obs_term_centr = obs_termini[:,1]
+    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+    _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Blues')
+for gid in seaward_projected:
+    tc = -1000*termpos_corrections[gid]
+    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    obs_term_centr = obs_termini[:,1]
+    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+    _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Purples')
+ax3.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
+ax3.axhline(y=0, linestyle='--', color='Grey')
+ax3.set_aspect(1)
+ax3.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
+ax3.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
+ax3.set_xlim((-10, 15))
+ax3.set_ylim((-20, 5))
+ax3.set_title('All glaciers simulated')
+plt.show()
+
+
 
 ## 1:1 sim-obs comparison with percent error and unit circle
 def abs_percent_error(obs_list, sim_list):
     paired = zip(obs_list, sim_list)
-    corrected = [(o, s) for (o, s) in paired if (o!=0 and not np.isnan(o) and not np.isnan(s))] # avoid divide-by-zero errors
+    corrected = [(o, s) for (o, s) in paired if (abs(o)>0.1 and not np.isnan(o) and not np.isnan(s))] # avoid divide-by-zero errors
     perc_err = [100*abs((o-s)/(o)) for (o,s) in corrected]
     return perc_err
 
 def unit_circle_compare(sim_pt, obs_pt):
     norm = np.sqrt(sim_pt**2 + obs_pt**2)
     return (sim_pt/norm, obs_pt/norm)
-    
+
+
 
 annual_pe_by_glacier = {gid: [] for gid in glaciers_to_plot}
 avg_pe_by_glacier = {gid:[] for gid in glaciers_to_plot}
@@ -248,25 +277,28 @@ for gid in glaciers_to_plot:
     sim_rates = diff(sim_termini)/diff(obs_years)
     obs_rates = diff(obs_term_centr)/diff(obs_years)
     annual_pe_by_glacier[gid] = abs_percent_error(obs_rates, sim_rates)
-    avg_pe_by_glacier[gid] = np.nanmean(annual_pe_by_glacier[gid])
+    if len(annual_pe_by_glacier[gid])==0:
+        avg_pe_by_glacier[gid] = np.nan
+    else:
+        avg_pe_by_glacier[gid] = np.nanmean(annual_pe_by_glacier[gid])
     annual_uc_comp_by_glacier[gid] = [unit_circle_compare(sim_rates[i], obs_rates[i]) for i in range(len(obs_rates))]
     avg_uc_comp_by_glacier[gid] = unit_circle_compare(mean(sim_rates), mean(obs_rates))
 
 ## unit circle plot
-fig3 = plt.figure()
-ax3 = plt.axes([0,0,1,1])
+fig4 = plt.figure()
+ax4 = plt.axes([0,0,1,1])
 for gid in glaciers_to_plot:
     uc_comp = np.asarray(annual_uc_comp_by_glacier[gid])
     for j in range(len(uc_comp)):
-        ax3.plot((0, uc_comp[j,0]), (0, uc_comp[j,1]), color='LightGrey', lw=2.0)
+        ax4.plot((0, uc_comp[j,0]), (0, uc_comp[j,1]), color='LightGrey', lw=2.0)
 for gid in glaciers_to_plot: #plot average over top
     avg_uc_comp = avg_uc_comp_by_glacier[gid]
-    ax3.plot((0, avg_uc_comp[0]), (0, avg_uc_comp[1]), color='DarkSlateGrey', lw=3.0, alpha=0.8)
+    ax4.plot((0, avg_uc_comp[0]), (0, avg_uc_comp[1]), color='DarkSlateGrey', lw=3.0, alpha=0.8)
 circ = plt.Circle((0, 0), radius=1., edgecolor='k', facecolor='None', lw=3.0, zorder=3)
-ax3.add_patch(circ)
-ax3.set_aspect(1)
-ax3.axhline(y=0, linestyle='--', color='k')
-ax3.axvline(x=0, linestyle='--', color='k')
+ax4.add_patch(circ)
+ax4.set_aspect(1)
+ax4.axhline(y=0, linestyle='--', color='k')
+ax4.axvline(x=0, linestyle='--', color='k')
 plt.axis('off')
 plt.margins(x=0.1, y=0.1)
 plt.show()
@@ -275,7 +307,7 @@ plt.show()
 pe_all = [annual_pe_by_glacier[gid] for gid in glaciers_to_plot]
 pe_arr = np.concatenate(pe_all)
 pe_weights = np.ones_like(pe_arr)/float(len(pe_arr))
-avg_pe = np.ravel([avg_pe_by_glacier[gid] for gid in glaciers_to_plot])
+avg_pe = np.ravel([avg_pe_by_glacier[gid] for gid in glaciers_to_plot if not np.isnan(avg_pe_by_glacier[gid])])
 avg_pe_weights = np.ones_like(avg_pe)/float(len(avg_pe))
 pe_bins = np.linspace(0, 1000, num=20) 
 plt.figure('Absolute percent error observed - simulated annual retreat, Greenland outlets 2006-2014')
