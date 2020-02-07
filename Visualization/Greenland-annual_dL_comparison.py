@@ -264,12 +264,25 @@ def unit_circle_compare(sim_pt, obs_pt):
     norm = np.sqrt(sim_pt**2 + obs_pt**2)
     return (sim_pt/norm, obs_pt/norm)
 
-
+def range_normalized_centroid_diff(projected_obs, sim_termpos):
+    """Calculate the difference between simulated terminus position and projected centroid of observed 2D terminus.
+    #Calculate only if outside projected range. - test this condition next (7 Feb 2020)
+    Normalize by range of projected 2D terminus.
+    Input:
+        projected_obs: an array of shape (len(obs_years), 3) with an entry (advanced_extreme, centroid, retreated_extreme) for each year
+        sim_termpos: an array of shape (len(obs_years)), with a simulated terminus position for each year"""
+    joined = zip(projected_obs[:,0], projected_obs[:,2], projected_obs[:,1], sim_termpos)
+    corrected = [(a, r, c, s) for (a,r,c,s) in joined if (abs(r-a)>0.1 and not np.isnan(c) and not np.isnan(s))]
+    normalized_diff = [abs(c-s)/abs(r-a) for (a, r, c, s) in corrected]
+    return normalized_diff
+    #obs_ranges = abs(projected_obs[:,2]-projected_obs[:,0]) #compute observational range for each year
+    
 
 annual_pe_by_glacier = {gid: [] for gid in glaciers_to_plot}
 avg_pe_by_glacier = {gid:[] for gid in glaciers_to_plot}
 annual_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
 avg_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
+annual_rne_by_glacier = {gid: [] for gid in glaciers_to_plot}
 for gid in glaciers_to_plot:
     sim_termini = -0.001*np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
@@ -283,6 +296,7 @@ for gid in glaciers_to_plot:
         avg_pe_by_glacier[gid] = np.nanmean(annual_pe_by_glacier[gid])
     annual_uc_comp_by_glacier[gid] = [unit_circle_compare(sim_rates[i], obs_rates[i]) for i in range(len(obs_rates))]
     avg_uc_comp_by_glacier[gid] = unit_circle_compare(mean(sim_rates), mean(obs_rates))
+    annual_rne_by_glacier[gid] = range_normalized_centroid_diff(obs_termini, sim_termini)
 
 ## unit circle plot
 fig4 = plt.figure()
@@ -328,4 +342,28 @@ plt.xlabel('Percent difference $dL/dt$ [m/a]', fontsize=18)
 plt.ylabel('Cumulative normalized frequency', fontsize=18)
 plt.legend(loc='best')
 plt.axes().set_xlim((0,1000))
+plt.show()
+
+
+annual_rne_by_glacier = {gid: [] for gid in glaciers_to_plot}
+for gid in glaciers_to_plot:
+    sim_termini = -0.001*np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    annual_rne_by_glacier[gid] = range_normalized_centroid_diff(obs_termini, sim_termini)
+
+
+## range-normalized error plot
+rne_all = [annual_rne_by_glacier[gid] for gid in glaciers_to_plot]
+rne_arr = np.concatenate(rne_all)
+rne_weights = np.ones_like(rne_arr)/float(len(rne_arr))
+rne_bins = np.linspace(0, 20, num=40) 
+plt.figure('Range normalized difference observed - simulated annual terminus position, Greenland outlets 2006-2014')
+plt.hist(rne_arr, bins=rne_bins, weights=rne_weights, color='DarkSlateGrey')
+#plt.hist(avg_pe, bins=pe_bins, weights=avg_pe_weights, color='DarkViolet', alpha=0.5) # plot period-averaged percent diff
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
+plt.xlabel('Range-normalized difference $(c_{obs}-c_{sim})/(max_{obs}-min_{obs})$', fontsize=18)
+plt.ylabel('Normalized frequency', fontsize=18)
+plt.legend(loc='best')
+#plt.axes().set_yticks([0, 0.1, 0.2])
+plt.axes().set_xlim((0,20))
 plt.show()
