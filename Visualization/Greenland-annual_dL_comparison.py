@@ -341,7 +341,7 @@ plt.figure('Absolute percent error observed - simulated annual retreat, Greenlan
 plt.hist([pe_arr, avg_pe], bins=pe_bins, weights=[pe_weights, avg_pe_weights], color=['LightGrey', 'DarkSlateGrey'], label=['all', 'mean'])
 #plt.hist(avg_pe, bins=pe_bins, weights=avg_pe_weights, color='DarkViolet', alpha=0.5) # plot period-averaged percent diff
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-plt.xlabel('Percent difference $dL/dt$ [m/a]', fontsize=18)
+plt.xlabel('Percent difference $dL/dt$', fontsize=18)
 plt.ylabel('Normalized frequency', fontsize=18)
 plt.legend(loc='best')
 plt.axes().set_yticks([0, 0.1, 0.2])
