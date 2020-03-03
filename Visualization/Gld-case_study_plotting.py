@@ -21,6 +21,48 @@ from SERMeQ.GL_model_tools import *
 from SERMeQ.flowline_class_hierarchy import *
 
 
+### Topography needed to remove floating points from saved coords
+###
+print 'Reading in surface topography'
+gl_bed_path ='Documents/1. Research/2. Flowline networks/Model/Data/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
+fh = Dataset(gl_bed_path, mode='r')
+xx = fh.variables['x'][:].copy() #x-coord (polar stereo (70, 45))
+yy = fh.variables['y'][:].copy() #y-coord
+s_raw = fh.variables['surface'][:].copy() #surface elevation
+h_raw=fh.variables['thickness'][:].copy() # Gridded thickness
+b_raw = fh.variables['bed'][:].copy() # bed topo
+thick_mask = fh.variables['mask'][:].copy()
+ss = np.ma.masked_where(thick_mask !=2, s_raw)#mask values: 0=ocean, 1=ice-free land, 2=grounded ice, 3=floating ice, 4=non-Greenland land
+hh = np.ma.masked_where(thick_mask !=2, h_raw) 
+#bb = np.ma.masked_where(thick_mask !=2, b_raw)
+bb = b_raw #don't mask, to allow bed sampling from modern bathymetry (was subglacial in ~2006)
+## Down-sampling
+X = xx[::2]
+Y = yy[::2]
+S = ss[::2, ::2]
+H = hh[::2, ::2] 
+B = bb[::2, ::2]
+M = thick_mask[::2,::2]
+## Not down-sampling
+#X = xx
+#Y = yy
+#S = ss
+fh.close()
+
+#Smoothing bed and surface
+unsmoothB = B
+smoothB = gaussian_filter(B, 2)
+smoothS = gaussian_filter(S, 2)
+#B_processed = np.ma.masked_where(thick_mask !=2, smoothB)
+
+#Replacing interpolated surface with bed+thickness
+S_new = np.add(B, H)
+
+S_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothS.T[::, ::-1])
+H_interp = interpolate.RectBivariateSpline(X, Y[::-1], H.T[::, ::-1])
+B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
+
+
 
 ###--------------------------------------
 #### GLACIERS TO PLOT
@@ -28,7 +70,10 @@ from SERMeQ.flowline_class_hierarchy import *
 ## Which glaciers are available
 glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
 not_present = (93, 94, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 169) #glacier IDs missing from set
-#added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+## which ones get special treatment
+added_jan19 = (139, 140, 141, 142, 143, 159, 161, 172, 173, 177)
+seaward_projected = (61, 64, 82, 83, 99, 130, 132, 139, 140, 141, 156, 157, 158, 161, 167, 170, 178, 179, 180, 184) 
+special_treatment = np.concatenate((added_jan19, seaward_projected))
 errors = (5, 18, 19, 29, 71, 92, 95, 97, 101, 107, 108, 120, 134) #glacier IDs that crashed in hindcasting 12 Mar 2019
 rmv = np.concatenate((not_present, errors))
 for n in rmv:
@@ -36,22 +81,18 @@ for n in rmv:
         glacier_ids.remove(n)
     except ValueError:
         pass
+#glaciers_to_plot=np.copy(glacier_ids).tolist()
+#for m in special_treatment:
+#    try:
+#        glaciers_to_plot.remove(m)
+#    except ValueError:
+#        pass
 
-#gids_by_name = ((3, 'Jakobshavn/SK'), 
-#(175, 'Helheim'), 
-#(153, 'Kangerlussuaq'),
-#(10, 'Store'),
-#) #array pairing glacier IDs with their recognized  names
-#
-#glaciers_to_plot = [g[0] for g in gids_by_name if g[1] in ('Jakobshavn/SK', 'Helheim', 'Kangerlussuaq', 'Store')] # select gids of glaciers to plot as case studies
-glaciers_to_plot = [g for g in glacier_ids if g in (3, 137, 175)]
+glaciers_to_plot = [g for g in glacier_ids if g in (3, 105, 137, 175)]
 
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
-scenarios = ('persistence', 
-#'RCP4pt5', 
-#'RCP8pt5'
-)
+scenarios = ('persistence',)
 
 #datemarker = '2019-02-08' #markers on filename to indicate date run
 tempmarker = 'min10Cice' #and temperature of ice
@@ -105,26 +146,48 @@ for i,b in enumerate(basefiles):
 
 nw_base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
 projected_termini = {gid: [] for gid in glaciers_to_plot}
+seaward_coords_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Seaward_coords/Gld-advnetwork-GID' 
+termpos_corrections = {gid: 0 for gid in glacier_ids}
+
 
 for gid in glaciers_to_plot:
     print 'Reading in glacier ID: '+str(gid)
     #if gid in added_jan19:
     #    filename = nw_base_fpath+str(gid)+'-date_2019-01-10.csv'
-    if gid<160:
-        filename = nw_base_fpath+str(gid)+'-date_2018-10-03.csv'
-    else:
-        filename = nw_base_fpath+str(gid)+'-date_2018-10-04.csv' #workaround because I ran these in batches and saved them with the date
+    filename = glob.glob(nw_base_fpath+'{}-date_*.csv'.format(gid))[0] #using glob * to select files of different run dates
     
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
-    mainline = LineString(coords_list[0])
-    for yr in obs_years:
-        termpts = termini[yr][gid] #get terminus points for each year
-        t = projected_term_obs(termpts, mainline) #project onto main flowline
-        r = retterm(termpts, mainline) #find most retreated point
-        a = advterm(termpts, mainline) #find most advanced point
-        projected_termini[gid].append((a, t, r)) #add these to dictionary of projected termini per glacier
+    if gid in seaward_projected:
+        seaward_fn = seaward_coords_fpath+'{}-fwd_2000_m.csv'.format(gid)
+        seaward_coords = Flowline_CSV(seaward_fn, has_width=True, flip_order=True)[0]
+        branch_0 = Branch(coords=np.concatenate((seaward_coords, coords_list[0])), index=0, order=0) #saving extended central branch as main
+        termpos_correction = 10*max(ArcArray(seaward_coords)) #how much glacier length has been added to initial line, i.e. how much terminus shifted in coordinate system, in km
+        print termpos_correction
+    else:
+        branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
+        termpos_correction = 0
+    termpos_corrections[gid] = termpos_correction
+    branch_list = [branch_0]
 
+    nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
+    nw.make_full_lines()
+    if gid not in seaward_projected:  #remove floating, but not from lines that have been artificially extended
+        print 'Removing floating points from glacier ID: '+str(gid)
+        nw.process_full_lines(B_interp, S_interp, H_interp)
+        nw.remove_floating()
+    mainline = LineString(nw.flowlines[0].coords)
     
+    for yr in obs_years:
+        try:
+            termpts = termini[yr][gid] #get terminus points for each year
+            t = projected_term_obs(termpts, mainline) #project onto main flowline
+            r = retterm(termpts, mainline) #find most retreated point
+            a = advterm(termpts, mainline) #find most advanced point
+            print 'GID {}, t={}, r={}, a={}'.format(gid, t, r, a)
+            projected_termini[gid].append((-1*termpos_correction)+np.asarray((a, t, r))) #add these to dictionary of projected termini per glacier
+        except KeyError:
+            print 'No terminus found in year {} for GID {}.'.format(yr, gid)
+            projected_termini[gid].append((0, np.nan, 0))    
     
 
 ###--------------------------------------
