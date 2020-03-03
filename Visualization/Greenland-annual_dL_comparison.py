@@ -256,7 +256,7 @@ for gid in np.setdiff1d(added_jan19, seaward_projected): #sketchy flowline selec
         obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
         obs_term_centr = obs_termini[:,1]
         e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-        _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Reds')
+        _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Blues')
 ax3.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
 ax3.axhline(y=0, linestyle='--', color='Grey')
 ax3.set_aspect(1)
