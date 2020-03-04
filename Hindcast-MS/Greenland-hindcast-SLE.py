@@ -51,8 +51,23 @@ for s in scenarios:
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
 
+def scenario_sorted_SLE(scenario_dictionary):
+    sd = scenario_dictionary
+    pernetwork_cumul_fx = []
+    pernetwork_cumul_sle = []
+    for j, gid in enumerate(glaciers_simulated):
+        branch_fx = [np.nan_to_num(sd['GID{}'.format(gid)][k]['Terminus_flux']) for k in range(len(sd['GID{}'.format(gid)]))]
+        total_fx = sum(branch_fx, axis=0)
+        total_sle = (1E-12)*np.array(total_fx)/(361.8) #Gt ice/mm SLE conversion
+        cumul_fx = np.cumsum(total_fx)
+        cumul_sle = np.cumsum(total_sle)
+        pernetwork_cumul_fx.append(cumul_fx)
+        pernetwork_cumul_sle.append(cumul_sle)
+    p = np.asarray(pernetwork_cumul_sle)[np.asarray(pernetwork_cumul_sle)[:,-1].argsort()[::-1]]
+    sorted_sle = np.cumsum(p, axis=0)
+    return sorted_sle
 
-hindcast_sle = scenario_cumulative_SLE(full_output_dicts['persistence'])
+hindcast_sle = scenario_sorted_SLE(full_output_dicts['persistence'])
 
 ##---------------------------
 ### PLOT THE ASSOCIATED FLUX
@@ -61,24 +76,27 @@ hindcast_sle = scenario_cumulative_SLE(full_output_dicts['persistence'])
 ## Settings for plots   
 labels = [str(gid) for gid in glaciers_simulated] #set what the glaciers will be called in plotting.  Default is simply their MEaSUREs ID
 markers = ['o', '.', ',', '^', 'd', '*']
-styles = ['-', ':', '-.', '-', '-', '-']
-cmap = cm.get_cmap('winter')
-scenario_colors = cm.get_cmap('Blues')([0.1, 0.3, 0.5, 0.7, 0.9])
+cmap = cm.get_cmap('Greys')
 #colors = cmap([0.1, 0.2, 0.3, 0.5, 0.7, 0.9])
 colors = cmap(linspace(0.1, 0.9, num=len(glaciers_simulated)))
-alt_colors = cm.get_cmap('Greys')([0.2, 0.3, 0.5, 0.7, 0.9])
+alt_colors = cm.get_cmap('Greys_r')([0, 0.1, 0.3, 0.5, 0.7, 0.8])
 
 
 plt.figure(figsize=(12,8))
-for j, gid in enumerate(glaciers_simulated):
-    #if gid!=10:
-    ms_selection = mod(gid, len(styles))
-    plt.plot(testyears[::], hindcast_sle[j], linewidth=4, color=colors[ms_selection])
-    plt.plot(testyears[::4], hindcast_sle[j][::4], linewidth=0, marker=markers[ms_selection], ms=10, color=colors[ms_selection])
-    if j==0:
-        plt.fill_between(testyears[::], y1=hindcast_sle[j], y2=0, color=colors[ms_selection], alpha=0.7)  
+for j in range(len(hindcast_sle)):
+    if j<5:
+        color_idx=0
+    elif j<10:
+        color_idx=1
     else:
-        plt.fill_between(testyears[::], y1=hindcast_sle[j], y2=hindcast_sle[j-1], color=colors[ms_selection], alpha=0.7)     
+        color_idx = (np.abs(155*np.array([1, 1, 0.3, 0.5, 0.7, 0.8]) - j)).argmin() #replace first two selections as we have manually set them
+    ms_selection = mod(gid, len(markers))
+    plt.plot(testyears[::], hindcast_sle[j], linewidth=2, color=alt_colors[color_idx])
+    plt.plot(testyears[::4], hindcast_sle[j][::4], linewidth=0, marker=markers[ms_selection], ms=10, color=alt_colors[color_idx])
+    if j==0:
+        plt.fill_between(testyears[::], y1=hindcast_sle[j], y2=0, color=alt_colors[color_idx], alpha=0.8)  
+    else:
+        plt.fill_between(testyears[::], y1=hindcast_sle[j], y2=hindcast_sle[j-1], color=alt_colors[color_idx], alpha=0.8)     
 #plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
 plt.axes().set_xlabel('Year of simulation', size=20)
 plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
