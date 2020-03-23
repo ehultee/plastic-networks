@@ -1,14 +1,14 @@
 # Forward projections with calving flux on Greenland glaciers, forced by surface mass balance
 # Sept 2018  EHU
+# Mar 2020 usage: large-scale 21st century projections
 
 from netCDF4 import Dataset
 import numpy as np
 import matplotlib.pyplot as plt
 import mpl_toolkits.basemap.pyproj as pyproj
 import datetime
-#from matplotlib.colors import LogNorm
+import glob
 from matplotlib import cm
-#from shapely.geometry import *
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 ## Special import for SERMeQ modules
@@ -154,8 +154,6 @@ for n in rmv:
     except ValueError:
         pass
 
-base_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
-
 ## Simulation settings
 testyears = arange(0, 100, 0.25)
 start_year=2006 #determined by which MEaSUREs termini we used to initialize a given set
@@ -178,12 +176,9 @@ network_output = []
 
 for gid in gids_totest:
     print 'Reading in glacier ID: '+str(gid)
-    if gid in added_jan19:
-        filename = base_fpath+str(gid)+'-date_2019-01-10.csv'
-    elif gid<160:
-        filename = base_fpath+str(gid)+'-date_2018-10-03.csv'
-    else:
-        filename = base_fpath+str(gid)+'-date_2018-10-04.csv' #workaround because I ran these in batches and saved them with the date
+    for gid in glaciers_simulated:
+        filename = glob.glob('Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID{}-date_*'.format(gid))[0] #using glob * to select from files of multiple save dates
+
     
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
     nlines = len(coords_list)
