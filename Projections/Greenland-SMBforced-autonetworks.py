@@ -69,7 +69,6 @@ gl_smb_path ='Documents/GitHub/Data_unsynced/HIRHAM5-SMB/DMI-HIRHAM5_GL2_ERAI_19
 fh2 = Dataset(gl_smb_path, mode='r')
 x_lon = fh2.variables['lon'][:].copy() #x-coord (latlon)
 y_lat = fh2.variables['lat'][:].copy() #y-coord (latlon)
-#zs = fh2.variables['height'][:].copy() #height in m - is this surface elevation or SMB?
 ts = fh2.variables['time'][:].copy()
 smb_raw = fh2.variables['smb'][:].copy()
 fh2.close()
@@ -79,7 +78,7 @@ fh2.close()
 #fh3 = Dataset(gl_smb_2081_path, mode='r')
 #x_lon_81 = fh3.variables['lon'][:].copy() #x-coord (latlon)
 #y_lat_81 = fh3.variables['lat'][:].copy() #y-coord (latlon)
-##zs = fh2.variables['height'][:].copy() #height in m - is this surface elevation or SMB?
+##zs = fh2.variables['height'][:].copy() #surfac elevation in m
 #ts_81 = fh3.variables['time'][:].copy()
 #smb_2081_raw = fh3.variables['gld'][:].copy() #acc SMB in mm/day weq...need to convert
 #fh3.close()
@@ -91,12 +90,8 @@ psn_gl = pyproj.Proj("+init=epsg:3413") # Polar Stereographic North used by BedM
 xs, ys = pyproj.transform(wgs84, psn_gl, x_lon, y_lat)
 #xs_81, ys_81 = pyproj.transform(wgs84, psn_gl, x_lon_81, y_lat_81)
 
-#Xs = xs[0:,] #flattening; note that x-dimension is 402 according to file header
-#Ys = ys[:,0] #flattening; note that y-dimension is 602 according to file header
-
 smb_1980 = smb_raw[0][0]
 smb_2014 = smb_raw[-1][0]
-#smb_init_interpolated = interpolate.interp2d(ys, xs, smb_init, kind='linear')
 Xmat, Ymat = np.meshgrid(X, Y)
 regridded_smb_1980 = interpolate.griddata((xs.ravel(), ys.ravel()), smb_1980.ravel(), (Xmat, Ymat), method='nearest')
 regridded_smb_2014 = interpolate.griddata((xs.ravel(), ys.ravel()), smb_2014.ravel(), (Xmat, Ymat), method='nearest')
@@ -168,8 +163,8 @@ scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scena
 #scenario, SMB_i, SMB_l = 'RCP8pt5', SMB_2014, SMB_2100_RCP8pt5 #or RCP 8.5
 
 #gids_totest = glacier_ids #test all
-gids_totest = (12, 13, 14, 17) #test a selected subset
 already_simulated = (2, 4, 12, 13, 14, 17, 50, 60, 70, 80, 90, 100, 153, 154, 155, 174, 175, 176, 179) # list which glaciers to skip (manual for now)
+gids_totest = [g for g in range(15) if (g not in rmv and g not in already_simulated)] #test a selected subset
 bad_gids = [] #store and write out poorly behaved glaciers
 simulated_gids = [] # store a list of glaciers simulated for later read-in
 
@@ -200,7 +195,6 @@ for gid in gids_totest:
     print 'Now finding BedMachine terminus'
     idx, term_bm = next((i,c) for i,c in enumerate(nw.flowlines[0].coords) if NearestMaskVal(c[0], c[1])==2) #need to do error handling in case this is nowhere satisfied
     print 'BedMachine terminus is at index {}, coords {}'.format(idx, term_bm)
-    #idx, term_bm = next((i, c) for i, c in enumerate(nw.flowlines[0].coords) if S_interp(c[0], c[1])>2.0) #testing with surface cutoff (2m) for now instead of retrieving mask
     term_arcval = ArcArray(nw.flowlines[0].coords)[idx]
     term_bed = nw.flowlines[0].bed_function(term_arcval)
     term_surface = nw.flowlines[0].surface_function(term_arcval)
