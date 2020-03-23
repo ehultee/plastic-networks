@@ -57,7 +57,7 @@ B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 #### DEFINE WHERE THINGS LIVE, HOW TO READ
 ###---------------------------------------
 flowlines_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/'
-model_output_fpath = 'Desktop/sandbox/hindcasts/'
+model_output_fpath = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/'
 yield_strength_fn = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/bestfit_taus-B_S_smoothing-fromdate_2019-01-17.csv'
 
 #function modified from Greenland-network-troubleshooting to read CSV of yield strengths
