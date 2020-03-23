@@ -196,13 +196,13 @@ opt_data = read_optimization_analysis(analysis_fn)
 #taus_neg_termini = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Terminal_SE'][i]<0]   
 #SEs_neg_termini = [se for i, se in enumerate(opt_data['Terminal_SE']) if opt_data['Terminal_SE'][i]<0]
 
-IDs_foranalysis = (105,)
+IDs_foranalysis = (105, 137, 175,)
 taus_foranalysis = [t for i, t in enumerate(opt_data['Optimal_taus']) if opt_data['Glacier_IDs'][i] in IDs_foranalysis]
 
 ## Read in the networks of glaciers with problematic termini--based on Greenland-network_processing_routine.py
 base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
 flowlines_foranalysis = []
-load_all = True #decide whether to analyse all flowlines of a network or only the central branch
+load_all = False #decide whether to analyse all flowlines of a network or only the central branch
 for j, gid in enumerate(IDs_foranalysis):
     print 'Reading in glacier ID: '+str(gid)
     if gid<160:
@@ -260,11 +260,11 @@ for j, gid in enumerate(IDs_foranalysis):
 ##   EXPLORATORY PLOTTING
 ##-------------------------------
 ### Do networks stored empty have termini that lie 'off the map' of velocity for tracing?
-plt.figure()
-plt.contourf(x_comp, y_comp[::], v_comp[::-1, ::])
-for gid in IDs_stored_empty:
-    plt.scatter(termini_init[gid][:,0], termini_init[gid][:,1], marker='*', color='r')
-plt.show()
+#plt.figure()
+#plt.contourf(x_comp, y_comp[::], v_comp[::-1, ::])
+#for gid in IDs_stored_empty:
+#    plt.scatter(termini_init[gid][:,0], termini_init[gid][:,1], marker='*', color='r')
+#plt.show()
 ## Yes, they do.
 
 

@@ -290,133 +290,133 @@ plt.title('Simulated terminus retreat of {} Greenland outlet glaciers 2006-2014 
 plt.show()
 
 
-##-------------------
-### MAP VISUALISATIONS
-##-------------------
-termini_toplot = termini[2014]
-
-outlet_locations_latlon = {}
-for gid in termini_toplot.keys():
-    latlon_coords = flowline_latlon(termini_toplot[gid])
-    outlet_locations_latlon[gid] = np.asarray(latlon_coords)
-    
-gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=3413, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
-
-
-### Plot total retreat versus latitude (N/S) or longitude (W/E). 
-#plt.figure()
-#for j, gid in enumerate(glaciers_simulated):
-#    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
-#    lngtd = outlet_locations_latlon[gid][0][0]
-#    lttd = outlet_locations_latlon[gid][0][1]
-#    plt.scatter(lttd, term_positions[-1])
-#plt.title('Total retreat by outlet glacier latitude', fontsize=20)
-#plt.show()
+###-------------------
+#### MAP VISUALISATIONS
+###-------------------
+#termini_toplot = termini[2014]
 #
-
-### Map of total retreat (scales linearly with avg rate as calculated above)
-### Use greenland-outlets-map as basis -- some things initialized there first
-#retreat_bins = [-3000, -2500, -2000, -1500, -1000, -500, 0, 500] #bins for average retreat rate
-#marker_bins = [abs(r/500)+1 for r in retreat_bins]
+#outlet_locations_latlon = {}
+#for gid in termini_toplot.keys():
+#    latlon_coords = flowline_latlon(termini_toplot[gid])
+#    outlet_locations_latlon[gid] = np.asarray(latlon_coords)
+#    
 #gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=3413, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
-#plt.figure()
-#gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
-#for i, gid in enumerate(glaciers_simulated):
-#    pt = outlet_locations_latlon[gid][0]
-#    retreat_rate = avg_sim_rates[i]
-#    #markerscale = abs(retreat_rate/np.mean(avg_sim_rates)) #continuous scale
-#    retreatscale = np.digitize(retreat_rate, bins=retreat_bins) 
-#    markerscale = marker_bins[retreatscale] #discrete scale
-#    advret_color = cm.get_cmap('coolwarm')(sign(avg_sim_rates[i]))
-#    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color=advret_color, edgecolors='DarkViolet', latlon=True)
-#    #    term_marker = gld_backdrop(pt[0], pt[1])
-#    #    #offset = 100 * np.mod(k,2)
-#    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
-#plt.show()
 #
-### Map of obs-sim difference
-#plt.figure()
-#gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
-#for i, gid in enumerate(glaciers_simulated):
-#    pt = outlet_locations_latlon[gid][0]
-#    diff = avg_obs_rates[i] - avg_sim_rates[i]
-#    markerscale = abs(diff/np.mean(avg_obs_rates))
-#    advret_color = cm.get_cmap('coolwarm')(sign(diff))
-#    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color='b', edgecolors='DarkViolet', latlon=True)
-#    #    term_marker = gld_backdrop(pt[0], pt[1])
-#    #    #offset = 100 * np.mod(k,2)
-#    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
-#plt.show()
-
-
-### Map highlighting case study glaciers
-## Color-code markers with model misfit
-#colorscale_arr = np.array(avg_obs_rates)-np.array(avg_sim_rates)
-#cm1 = cm.get_cmap('coolwarm')
-## Color-code markers with total retreat
-colorscale_arr = sim_total
-cm1 = cm.get_cmap('OrRd_r')
-
-#markers
-terminus_pts = np.asarray([outlet_locations_latlon[gid][0] for gid in glaciers_simulated])
-
-## color-coded by retreat
+#
+#### Plot total retreat versus latitude (N/S) or longitude (W/E). 
+##plt.figure()
+##for j, gid in enumerate(glaciers_simulated):
+##    term_positions = full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][1::]
+##    lngtd = outlet_locations_latlon[gid][0][0]
+##    lttd = outlet_locations_latlon[gid][0][1]
+##    plt.scatter(lttd, term_positions[-1])
+##plt.title('Total retreat by outlet glacier latitude', fontsize=20)
+##plt.show()
+##
+#
+#### Map of total retreat (scales linearly with avg rate as calculated above)
+#### Use greenland-outlets-map as basis -- some things initialized there first
+##retreat_bins = [-3000, -2500, -2000, -1500, -1000, -500, 0, 500] #bins for average retreat rate
+##marker_bins = [abs(r/500)+1 for r in retreat_bins]
+##gld_backdrop = Basemap(projection='npstere', boundinglat=70, lon_0=315, epsg=3413, llcrnrlon=300, llcrnrlat=57, urcrnrlon=20, urcrnrlat=80, resolution='h')
+##plt.figure()
+##gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+##for i, gid in enumerate(glaciers_simulated):
+##    pt = outlet_locations_latlon[gid][0]
+##    retreat_rate = avg_sim_rates[i]
+##    #markerscale = abs(retreat_rate/np.mean(avg_sim_rates)) #continuous scale
+##    retreatscale = np.digitize(retreat_rate, bins=retreat_bins) 
+##    markerscale = marker_bins[retreatscale] #discrete scale
+##    advret_color = cm.get_cmap('coolwarm')(sign(avg_sim_rates[i]))
+##    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color=advret_color, edgecolors='DarkViolet', latlon=True)
+##    #    term_marker = gld_backdrop(pt[0], pt[1])
+##    #    #offset = 100 * np.mod(k,2)
+##    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+##plt.show()
+##
+#### Map of obs-sim difference
+##plt.figure()
+##gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+##for i, gid in enumerate(glaciers_simulated):
+##    pt = outlet_locations_latlon[gid][0]
+##    diff = avg_obs_rates[i] - avg_sim_rates[i]
+##    markerscale = abs(diff/np.mean(avg_obs_rates))
+##    advret_color = cm.get_cmap('coolwarm')(sign(diff))
+##    gld_backdrop.scatter(pt[0], pt[1], s=100*markerscale, marker='o', color='b', edgecolors='DarkViolet', latlon=True)
+##    #    term_marker = gld_backdrop(pt[0], pt[1])
+##    #    #offset = 100 * np.mod(k,2)
+##    #    plt.annotate(s=str(k), xy=term_marker, fontsize='small', fontweight='demi', color='MediumBlue')
+##plt.show()
+#
+#
+#### Map highlighting case study glaciers
+### Color-code markers with model misfit
+##colorscale_arr = np.array(avg_obs_rates)-np.array(avg_sim_rates)
+##cm1 = cm.get_cmap('coolwarm')
+### Color-code markers with total retreat
+#colorscale_arr = sim_total
+#cm1 = cm.get_cmap('OrRd_r')
+#
+##markers
+#terminus_pts = np.asarray([outlet_locations_latlon[gid][0] for gid in glaciers_simulated])
+#
+### color-coded by retreat
+##plt.figure()
+##gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+#### misfit colors
+###sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='K', cmap=cm1, norm=MidpointNormalize(midpoint=0,vmin=-1500, vmax=2500))
+###cbar = plt.colorbar(sc, orientation='horizontal')
+#### total retreat colors
+##sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='face', cmap=cm1, vmin=-15.0, vmax=0.0)
+##cbar = plt.colorbar(sc, orientation='horizontal', extend='min', ticks=[-15, -10, -5, 0])
+##cbar.ax.set_xticklabels(['-15', '-10', '-5', '0'])
+### Now plot the case study glaciers on top
+##for j in (3, 137, 175):
+##    pt = outlet_locations_latlon[j][0]
+##    gld_backdrop.scatter(pt[0], pt[1], s=250, marker='*', color='Yellow', edgecolors='k', latlon=True)
+##cbar.ax.tick_params(labelsize=16)
+##plt.show()
+#
+### plain outlet plot for barchart-border map
 #plt.figure()
 #gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
 ### misfit colors
 ##sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='K', cmap=cm1, norm=MidpointNormalize(midpoint=0,vmin=-1500, vmax=2500))
 ##cbar = plt.colorbar(sc, orientation='horizontal')
 ### total retreat colors
-#sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='face', cmap=cm1, vmin=-15.0, vmax=0.0)
-#cbar = plt.colorbar(sc, orientation='horizontal', extend='min', ticks=[-15, -10, -5, 0])
-#cbar.ax.set_xticklabels(['-15', '-10', '-5', '0'])
-## Now plot the case study glaciers on top
-#for j in (3, 137, 175):
+#sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=30, marker='d', color='Aqua', edgecolors='b')
+## Now plot the ticked glaciers
+#for j in np.concatenate(((1,), np.arange(10, 201, 10))):
 #    pt = outlet_locations_latlon[j][0]
-#    gld_backdrop.scatter(pt[0], pt[1], s=250, marker='*', color='Yellow', edgecolors='k', latlon=True)
-#cbar.ax.tick_params(labelsize=16)
+#    gld_backdrop.scatter(pt[0], pt[1], s=30, marker='*', color='k', edgecolors='k', latlon=True)
 #plt.show()
-
-## plain outlet plot for barchart-border map
-plt.figure()
-gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
-## misfit colors
-#sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=60, marker='o', color=colorscale_arr, edgecolors='K', cmap=cm1, norm=MidpointNormalize(midpoint=0,vmin=-1500, vmax=2500))
-#cbar = plt.colorbar(sc, orientation='horizontal')
-## total retreat colors
-sc = gld_backdrop.scatter(terminus_pts[:,0], terminus_pts[:,1], latlon=True, s=30, marker='d', color='Aqua', edgecolors='b')
-# Now plot the ticked glaciers
-for j in np.concatenate(((1,), np.arange(10, 201, 10))):
-    pt = outlet_locations_latlon[j][0]
-    gld_backdrop.scatter(pt[0], pt[1], s=30, marker='*', color='k', edgecolors='k', latlon=True)
-plt.show()
-
-####-----------------------------
-####  REGIONAL PICTURE
-####-----------------------------
-#### Bin glaciers into regions
-#r1_limits = (1, 18) # Disko GIDs - split with geq lower, less than upper
-#r2_limits = (18, 93) # northwest
-#r3_limits = (93, 122) # northeast
-#r4_limits = (122, 144) # Geikie
-#r5_limits = (144, 195) # southeast
-#limits = (r1_limits, r2_limits, r3_limits, r4_limits, r5_limits)
 #
-#region_ids = []
-#region_termini = []
-#region_dLs = []
-#
-#for k, rl in enumerate(limits):
-#    termini = np.asarray([outlet_locations_latlon[gid][0] for gid in glaciers_simulated if gid>=rl[0] and gid<rl[1]])
-#    ids = np.asarray([gid for gid in glaciers_simulated if gid>=rl[0] and gid<rl[1]])
-#    sim_dLs = [-0.001*full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][-1] for gid in ids] # net retreat over period, expressed in km
-#    region_ids.append(ids)
-#    region_termini.append(termini)
-#    region_dLs.append(sim_dLs)
-#
-#    plt.figure('Region {} outlets'.format(k))
-#    gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
-#    sc = gld_backdrop.scatter(termini[:,0], termini[:,1], latlon=True, s=200, marker='o', color=sim_dLs, edgecolors='K', cmap=cm1, vmin=-15.0, vmax=0.0)
-#    cbar = plt.colorbar(sc, orientation='horizontal', extend='min', ticks=[-15, -10, -5, 0])
-#    cbar.ax.set_xticklabels(['-15', '-10', '-5', '0'])
-#    plt.show()
+#####-----------------------------
+#####  REGIONAL PICTURE
+#####-----------------------------
+##### Bin glaciers into regions
+##r1_limits = (1, 18) # Disko GIDs - split with geq lower, less than upper
+##r2_limits = (18, 93) # northwest
+##r3_limits = (93, 122) # northeast
+##r4_limits = (122, 144) # Geikie
+##r5_limits = (144, 195) # southeast
+##limits = (r1_limits, r2_limits, r3_limits, r4_limits, r5_limits)
+##
+##region_ids = []
+##region_termini = []
+##region_dLs = []
+##
+##for k, rl in enumerate(limits):
+##    termini = np.asarray([outlet_locations_latlon[gid][0] for gid in glaciers_simulated if gid>=rl[0] and gid<rl[1]])
+##    ids = np.asarray([gid for gid in glaciers_simulated if gid>=rl[0] and gid<rl[1]])
+##    sim_dLs = [-0.001*full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'][-1] for gid in ids] # net retreat over period, expressed in km
+##    region_ids.append(ids)
+##    region_termini.append(termini)
+##    region_dLs.append(sim_dLs)
+##
+##    plt.figure('Region {} outlets'.format(k))
+##    gld_backdrop.arcgisimage(service='ESRI_Imagery_World_2D', xpixels=5000)
+##    sc = gld_backdrop.scatter(termini[:,0], termini[:,1], latlon=True, s=200, marker='o', color=sim_dLs, edgecolors='K', cmap=cm1, vmin=-15.0, vmax=0.0)
+##    cbar = plt.colorbar(sc, orientation='horizontal', extend='min', ticks=[-15, -10, -5, 0])
+##    cbar.ax.set_xticklabels(['-15', '-10', '-5', '0'])
+##    plt.show()
