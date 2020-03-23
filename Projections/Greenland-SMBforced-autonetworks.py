@@ -168,11 +168,8 @@ scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scena
 #scenario, SMB_i, SMB_l = 'RCP8pt5', SMB_2014, SMB_2100_RCP8pt5 #or RCP 8.5
 
 #gids_totest = glacier_ids #test all
-#gids_totest = range(9,12) #test a subset
-#gids_totest = (2, 3, 4, 50, 60, 70, 80, 90, 100, 153, 154, 155, 174, 175, 176, 179) #test a geographically distributed subset
-gids_totest = (12, 13, 14, 17)
-#gids_totest = (3,) #test a single glacier or specific selection
-network_output = []
+gids_totest = (12, 13, 14, 17) #test a selected subset
+bad_gids = [] #store and write out poorly behaved glaciers
 
 for gid in gids_totest:
     print 'Reading in glacier ID: '+str(gid)
@@ -215,12 +212,6 @@ for gid in gids_totest:
     print 'a_dot from SMB: {}'.format(nw.smb_alphadot)
     nw.terminus_adot = gl_smb_init[0]
     print 'Terminus a_dot: {}'.format(nw.terminus_adot)
-    #gl.sec_mainline = np.asarray([SEC_i(gl.flowlines[0].coords[i,0], gl.flowlines[0].coords[i,1]) for i in range(len(gl.flowlines[0].coords))])
-    #away_from_edge = np.argmin(gl.sec_mainline)
-    #gl.sec_alphadot = np.mean(gl.sec_mainline[away_from_edge::])
-    #variable_forcing = linspace(start=gl.sec_alphadot, stop=2*gl.sec_alphadot, num=len(testyears))
-    #gl.terminus_sec = float(min(gl.sec_mainline.flatten()))#using min because values close to edge get disrupted by mask interpolation
-    #gl.terminus_time_evolve(testyears=testyears, alpha_dot=gl.smb_alphadot, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=gl.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=False) 
     gl_smb_2100 = [0.001*365.26*SMB_l(nw.flowlines[0].coords[i,0], nw.flowlines[0].coords[i,1]) for i in range(len(nw.flowlines[0].coords))]
     nw.smb_2100_alphadot = np.mean(gl_smb_2100)
     steps_til_2100 = (2100-start_year) / mean(diff(testyears)) #length of linspace array that will determine forcing up to 2100 (HIRHAM-5 end 21st Century time)
@@ -230,8 +221,12 @@ for gid in gids_totest:
         forcing_after_2100 = np.full(shape=steps_after_2100, fill_value=nw.smb_2100_alphadot) #persist with 2100 SMB for timesteps after 2100
         variable_forcing = np.concatenate((forcing_til_2100, forcing_after_2100))
     else:
-        variable_forcing = forcing_til_2100[:len(testyears)]
-    nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=variable_forcing, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=False)
+        variable_forcing = forcing_til_2100[:len(testyears)]  
+    try:
+        nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=variable_forcing, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=False)
+    except: ## move on to next glacier if this one won't behave
+        bad_gids.append(gid)
+        continue
 
     print 'Saving output for {}'.format(nw.name)
     fpath = 'Documents/GitHub/Data_unsynced/SERMeQ_output/'
@@ -243,4 +238,7 @@ for gid in gids_totest:
     fn5 = fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
     nw.save_network(filename=fpath+fn5)
     
-    #network_output.append(nw.model_output)
+    
+##Output errors to csv file
+error_fn = 'Documents/GitHub/Data_unsynced/SERMeQ_output/error_gids-{}.csv'.format(datetime.date.today())
+np.savetxt(error_fn, np.asarray(bad_gids), delimiter=',')
