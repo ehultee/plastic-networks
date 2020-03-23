@@ -78,7 +78,6 @@ fh2.close()
 #fh3 = Dataset(gl_smb_2081_path, mode='r')
 #x_lon_81 = fh3.variables['lon'][:].copy() #x-coord (latlon)
 #y_lat_81 = fh3.variables['lat'][:].copy() #y-coord (latlon)
-##zs = fh2.variables['height'][:].copy() #surfac elevation in m
 #ts_81 = fh3.variables['time'][:].copy()
 #smb_2081_raw = fh3.variables['gld'][:].copy() #acc SMB in mm/day weq...need to convert
 #fh3.close()
@@ -171,10 +170,8 @@ simulated_gids = [] # store a list of glaciers simulated for later read-in
 
 for gid in gids_totest:
     print 'Reading in glacier ID: '+str(gid)
-    for gid in glaciers_simulated:
-        filename = glob.glob('Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID{}-date_*'.format(gid))[0] #using glob * to select from files of multiple save dates
+    filename = glob.glob('Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID{}-date_*'.format(gid))[0] #using glob * to select from files of multiple save dates
 
-    
     coords_list = Flowline_CSV(filename, has_width=True, flip_order=False)
     nlines = len(coords_list)
     branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
