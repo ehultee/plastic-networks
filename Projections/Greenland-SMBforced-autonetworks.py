@@ -169,7 +169,10 @@ scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scena
 
 #gids_totest = glacier_ids #test all
 gids_totest = (12, 13, 14, 17) #test a selected subset
+already_simulated = (2, 4, 12, 13, 14, 17, 50, 60, 70, 80, 90, 100, 153, 154, 155, 174, 175, 176, 179) # list which glaciers to skip (manual for now)
 bad_gids = [] #store and write out poorly behaved glaciers
+simulated_gids = [] # store a list of glaciers simulated for later read-in
+
 
 for gid in gids_totest:
     print 'Reading in glacier ID: '+str(gid)
@@ -237,8 +240,11 @@ for gid in gids_totest:
     fn4 = fn3.replace("]", "")
     fn5 = fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
     nw.save_network(filename=fpath+fn5)
+    simulated_gids.append(gid)
     
     
-##Output errors to csv file
+##Output errors and successes to csv file
 error_fn = 'Documents/GitHub/Data_unsynced/SERMeQ_output/error_gids-{}.csv'.format(datetime.date.today())
 np.savetxt(error_fn, np.asarray(bad_gids), delimiter=',')
+error_fn = 'Documents/GitHub/Data_unsynced/SERMeQ_output/simulated_gids-{}.csv'.format(datetime.date.today())
+np.savetxt(error_fn, np.asarray(simulated_gids), delimiter=',')
