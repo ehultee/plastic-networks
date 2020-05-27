@@ -1,16 +1,15 @@
 ## Scatter plot of year-by-year dL/dt observed versus simulated
 ## 26 Nov 2019  EHU
 
+from netCDF4 import Dataset
 import numpy as np
 import matplotlib.pyplot as plt
-import csv
-#import collections
 import glob
 from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 #from matplotlib.colors import LogNorm
 from matplotlib import cm
-from matplotlib.patches import Rectangle, Circle
+from matplotlib.patches import Rectangle
 from matplotlib.collections import PatchCollection
 ## Special import for SERMeQ modules
 import sys
@@ -21,8 +20,8 @@ from SERMeQ.flowline_class_hierarchy import *
 
 ### Topography needed to remove floating points from saved coords
 ###
-print 'Reading in surface topography'
-gl_bed_path ='Documents/1. Research/2. Flowline networks/Model/Data/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
+print('Reading in surface topography')
+gl_bed_path ='/Users/lizz/Documents/GitHub/Data_unsynced/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
 fh = Dataset(gl_bed_path, mode='r')
 xx = fh.variables['x'][:].copy() #x-coord (polar stereo (70, 45))
 yy = fh.variables['y'][:].copy() #y-coord
@@ -86,24 +85,24 @@ for m in special_treatment:
     except ValueError:
         pass
 
-testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
+testyears = np.arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence',)
 tempmarker = 'min10Cice' #and temperature of ice
 timestepmarker = '8a_dt025a' #and total time and timestep
 
-full_output_dicts = {}
+# full_output_dicts = {}
 
-for s in scenarios:
-    scenario_output = {'Testyears': testyears}
-    for gid in glacier_ids:
-        if gid in seaward_projected:
-            fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/advance_test/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] 
-        else:
-            fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of different run dates
-        lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
-    full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
+# for s in scenarios:
+#     scenario_output = {'Testyears': testyears}
+#     for gid in glacier_ids:
+#         if gid in seaward_projected:
+#             fn = glob.glob('/Users/lizz/Documents/GitHub/Data_unsynced/Hindcasted_networks/advance_test/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] 
+#         else:
+#             fn = glob.glob('/Users/lizz/Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of different run dates
+#         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
+#     full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
 
-gl_termpos_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-termini'
+gl_termpos_fldr = '/Users/lizz/Documents/GitHub/Data_unsynced/MEaSUREs-termini'
 basefiles = ['/termini_0607_v01_2', '/termini_0708_v01_2', '/termini_0809_v01_2', '/termini_1213_v01_2', '/termini_1415_v01_2']
 obs_years = [2006.75, 2007.75, 2009.0, 2013.0, 2014.75] #compare with years of hindcast, 2006-2014
 
@@ -114,8 +113,8 @@ for i,b in enumerate(basefiles):
     termini[yr] = read_termini(fn, yr) #creating dictionary for each year
     print len(termini[yr])
 
-nw_base_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
-seaward_coords_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Seaward_coords/Gld-advnetwork-GID' 
+nw_base_fpath = '/Users/lizz/Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
+seaward_coords_fpath = '/Users/lizz/Documents/GitHub/Data_unsynced/Auto_selected-networks/Seaward_coords/Gld-advnetwork-GID' 
 projected_termini = {gid: [] for gid in glacier_ids}
 termpos_corrections = {gid: 0 for gid in glacier_ids}
 
@@ -194,9 +193,10 @@ fig, ax = plt.subplots(1)
 # Call function to create error boxes
 for gid in glaciers_to_plot:
     tc = -1000*termpos_corrections[gid]
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    # sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
     obs_term_centr = obs_termini[:,1]
+    sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
     _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
 ax.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
@@ -212,17 +212,19 @@ fig2, ax2 = plt.subplots(1)
 # Call function to create error boxes
 for gid in np.setdiff1d(seaward_projected, added_jan19):
     tc = -1000*termpos_corrections[gid]
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    # sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
     obs_term_centr = obs_termini[:,1]
+    sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
     _ = make_error_boxes(ax2, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Purples')
 for gid in np.setdiff1d(added_jan19, seaward_projected): #sketchy flowline selection, but not projected forward
     if gid not in rmv:
         tc = -1000*termpos_corrections[gid]
-        sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+        # sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
         obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
         obs_term_centr = obs_termini[:,1]
+        sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
         e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
         _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Reds')
 ax2.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
@@ -237,24 +239,27 @@ fig3, ax3 = plt.subplots(1)
 # Call function to create error boxes
 for gid in glaciers_to_plot:
     tc = -1000*termpos_corrections[gid]
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    # sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
     obs_term_centr = obs_termini[:,1]
+    sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
     _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Blues')
 for gid in np.setdiff1d(seaward_projected, added_jan19): #projected forward, but otherwise trustworthy
     tc = -1000*termpos_corrections[gid]
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    # sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
     obs_term_centr = obs_termini[:,1]
+    sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
     _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Purples')
 for gid in np.setdiff1d(added_jan19, seaward_projected): #sketchy flowline selection, but not projected forward
     if gid not in rmv:
         tc = -1000*termpos_corrections[gid]
-        sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+        # sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
         obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
         obs_term_centr = obs_termini[:,1]
+        sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
         e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
         _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Blues')
 ax3.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
@@ -312,9 +317,10 @@ avg_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
 annual_rne_by_glacier = {gid: [] for gid in glaciers_to_plot}
 annual_mxrt_by_glacier = {gid: [] for gid in glaciers_to_plot}
 for gid in glaciers_to_plot:
-    sim_termini = -0.001*np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    # sim_termini = -0.001*np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
     obs_term_centr = obs_termini[:,1]
+    sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
     sim_rates = diff(sim_termini)/diff(obs_years)
     obs_rates = diff(obs_term_centr)/diff(obs_years)
     annual_pe_by_glacier[gid] = abs_percent_error(obs_rates, sim_rates)
@@ -376,8 +382,9 @@ plt.show()
 
 annual_rne_by_glacier = {gid: [] for gid in glaciers_to_plot}
 for gid in glaciers_to_plot:
-    sim_termini = -0.001*np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+    # sim_termini = -0.001*np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+    sim_termini=np.zeros_like(obs_termini)[:,1]
     annual_rne_by_glacier[gid] = range_normalized_centroid_diff(obs_termini, sim_termini)
 
 
