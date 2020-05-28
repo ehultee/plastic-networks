@@ -53,7 +53,7 @@ libxml2==2.9.2
 MarkupSafe==0.23
 matplotlib==1.5.1
 mayavi==4.4.2
-mistune==0.6
+mistune==0.8.1
 MKL==2017.0.1
 mock==1.0.1
 netCDF4==1.1.7.1
