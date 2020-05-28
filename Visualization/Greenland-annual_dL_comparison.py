@@ -250,6 +250,10 @@ plt.show()
 
 ## All glaciers together, with futzed glaciers separated by colour
 fig3, ax3 = plt.subplots(1)
+x1 = range(-20, 20)
+y1 = x1
+ax3.plot(x1, y1, c='k', linestyle='-.')
+ax3.fill_between(x1, y1=np.concatenate((range(-20,0), np.zeros(20))), y2=ax3.get_ylim()[0], color='DarkSlateGrey', alpha=0.5)
 # Call function to create error boxes
 for gid in glaciers_to_plot:
     tc = -1000*termpos_corrections[gid]
@@ -276,7 +280,6 @@ for gid in np.setdiff1d(added_jan19, seaward_projected): #sketchy flowline selec
         # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
         e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
         _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Blues')
-ax3.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
 ax3.axhline(y=0, linestyle='--', color='Grey')
 ax3.set_yscale('symlog')
 ax3.set_xscale('symlog')
