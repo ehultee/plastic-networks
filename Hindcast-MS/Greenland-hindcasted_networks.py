@@ -1,6 +1,7 @@
 # Hindcast simulations with calving flux on Greenland glaciers, forced by historical surface mass balance
 # 4 Mar 2019  EHU
 # 5 Jul 2019 use: run with output_heavy to generate surface profile snapshots
+# 4 Jun 2020: test using flotation condition for dLdt computations on specific glaciers
 
 from netCDF4 import Dataset
 import numpy as np
@@ -77,16 +78,6 @@ ts = fh2.variables['time'][:].copy()
 smb_raw = fh2.variables['smb'][:].copy()
 fh2.close()
 
-#print 'Reading in RCP 4.5 SMB'
-#gl_smb_2081_path = 'Documents/GitHub/Data_unsynced/DMI-HIRHAM5_G6s2_ECEARTH_RCP45_2081_2100_gld_YM.nc'
-#fh3 = Dataset(gl_smb_2081_path, mode='r')
-#x_lon_81 = fh3.variables['lon'][:].copy() #x-coord (latlon)
-#y_lat_81 = fh3.variables['lat'][:].copy() #y-coord (latlon)
-##zs = fh2.variables['height'][:].copy() #height in m - is this surface elevation or SMB?
-#ts_81 = fh3.variables['time'][:].copy()
-#smb_2081_raw = fh3.variables['gld'][:].copy() #acc SMB in mm/day weq...need to convert
-#fh3.close()
-
 
 print 'Now transforming coordinate system of SMB'
 wgs84 = pyproj.Proj("+init=EPSG:4326") # LatLon with WGS84 datum used by GPS units and Google Earth
@@ -102,15 +93,6 @@ for year in range(2006, 2015):
     regridded_smb_year = interpolate.griddata((xs.ravel(), ys.ravel()), smb_year.ravel(), (Xmat, Ymat), method='nearest')
     SMB_dict[year] = interpolate.interp2d(X, Y, regridded_smb_year, kind='linear')
     
-#smb_2081_rcp4pt5 = smb_2081_raw[0]
-#smb_2100_rcp4pt5 = smb_2081_raw[-1] #2100
-#regridded_smb_2081 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2081_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
-#regridded_smb_2100 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2100_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
-#SMB_2081_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2081, kind='linear')
-#SMB_2100_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2100, kind='linear')
-
-## Add RCP 8.5 when available
-
 ##-------------------
 ### LOADING SAVED GLACIERS
 ##-------------------
@@ -155,14 +137,11 @@ test_A, icetemp = 3.5E-25, 'min10C' # -10 C, good guess for Greenland
 #test_A, icetemp = 3.7E-26, 'min30C' #-30 C, cold ice that should show slower response
 
 scenario = 'persistence'
-#scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scenario - persistence of 1981-2014 climatology
-#scenario, SMB_i, SMB_l = 'RCP4pt5', SMB_2014, SMB_2100_RCP4pt5 #or RCP 4.5
-#scenario, SMB_i, SMB_l = 'RCP8pt5', SMB_2014, SMB_2100_RCP8pt5 #or RCP 8.5
 
 #gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
 #gids_totest = (3, 153, 175) #test the biggies: Jakobshavn, Kanger, Helheim
-gids_totest = (3, 87, 131, 185) #test specific glaciers
+gids_totest = (2, 9, 36, 42, 66, 68, 69, 70, 72, 75, 76, 78, 98, 103, 105, 112, 116, 127, 137, 154, 164, 175) #test specific glaciers
 output_heavy = True #pref for output--should be False for efficient running, True for saving full surface profiles
 network_output = []
 bad_gids = []
@@ -192,14 +171,6 @@ for gid in gids_totest:
     nw.remove_floating()
     nw.make_full_lines()
     nw.process_full_lines(B_interp, S_interp, H_interp)
-
-    #print 'Now finding BedMachine terminus'
-    #idx, term_bm = next((i,c) for i,c in enumerate(nw.flowlines[0].coords) if NearestMaskVal(c[0], c[1])==2) #need to do error handling in case this is nowhere satisfied
-    #print 'BedMachine terminus is at index {}, coords {}'.format(idx, term_bm)
-    ##idx, term_bm = next((i, c) for i, c in enumerate(nw.flowlines[0].coords) if S_interp(c[0], c[1])>2.0) #testing with surface cutoff (2m) for now instead of retrieving mask
-    #term_arcval = ArcArray(nw.flowlines[0].coords)[idx]
-    #term_bed = nw.flowlines[0].bed_function(term_arcval)
-    #term_surface = nw.flowlines[0].surface_function(term_arcval)
     
     nw.network_tau = optimal_taus[gid][0]
     nw.network_yield_type = optimal_taus[gid][1]
@@ -226,7 +197,7 @@ for gid in gids_totest:
     fn2 = fn1.replace("[", "-")
     fn3 = fn2.replace("/", "_")
     fn4 = fn3.replace("]", "")
-    fn5 = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/'+fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
+    fn5 = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/flotation_test/'+fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
     nw.save_network(filename=fn5)
 
     #network_output.append(nw.model_output)

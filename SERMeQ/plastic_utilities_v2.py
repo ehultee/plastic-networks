@@ -38,11 +38,14 @@ def BalanceThick(bed,B):
         B is nondim yield strength
     Returns nondim ice thickness for water balance.
     """
-    if bed<0:
-        D = -1*bed
-    else:
-        D = 0
-    return (2*B*H0/L0) + math.sqrt((rho_sea*(D**2)/rho_ice)+(H0*B/L0)**2)
+    #if bed<0:
+    #    D = -1*bed
+    #else:
+    #    D = 0
+    #return (2*B*H0/L0) + math.sqrt((rho_sea*(D**2)/rho_ice)+(H0*B/L0)**2)
+    
+    ## test with ==FlotationThick
+    return FlotationThick(bed)
 
 #------------------------------
 def FlotationThick(bed):
