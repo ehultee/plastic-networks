@@ -491,14 +491,14 @@ class Flowline(Ice):
         s_mindL = BalanceThick(bed_mindL, Bghm_terminus) + bed_mindL
         profile_mindL = self.plastic_profile(startpoint=x_fwd, hinit = s_mindL, endpoint = xmax, surf = self.surface_function)
         H_mindL = np.array(profile_mindL[1]) - np.array(profile_mindL[2]) #array of ice thickness from profile
-        Hx_mindL = interpolate.interp1d(profile_mindL[0], H_mindL, bounds_error=False, fill_value=0)
+        Hx_mindL = interpolate.interp1d(profile_mindL[0].squeeze(), H_mindL.squeeze(), bounds_error=False, fill_value=0)
         
         #Profile retreated by dL
         bed_plusdL = (self.bed_function(x_bk))/self.H0
         s_plusdL = BalanceThick(bed_plusdL, Bghm_terminus) + bed_plusdL
         profile_plusdL = self.plastic_profile(startpoint = x_bk, hinit = s_plusdL, endpoint = xmax, surf=self.surface_function)
         H_plusdL = np.array(profile_plusdL[1]) - np.array(profile_plusdL[2]) #array of ice thickness
-        Hx_plusdL = interpolate.interp1d(profile_plusdL[0], H_plusdL, bounds_error=False, fill_value=0)
+        Hx_plusdL = interpolate.interp1d(profile_plusdL[0].squeeze(), H_plusdL.squeeze(), bounds_error=False, fill_value=0)
         
         dHdLx = lambda x: (Hx_mindL(x) - Hx_plusdL(x))/(2*dL)
         
