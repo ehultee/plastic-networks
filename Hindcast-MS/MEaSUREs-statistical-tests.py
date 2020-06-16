@@ -8,6 +8,22 @@ Namespace of Greenland-annual_dL_comparison for now
 @author: EHU
 """
 
+# Input file for obs/sim comparison
+obs_data = np.loadtxt('/Users/lizz/Desktop/observed_terminus_centroids.csv',delimiter=',',skiprows=1)
+sim_data = np.loadtxt('/Users/lizz/Desktop/simulated_termini.csv',delimiter=',',skiprows=1)
+dense_sim_data = np.loadtxt('/Users/lizz/Desktop/dense_simulated_termini.csv',delimiter=',',skiprows=1)
+
+obs_by_gid = {}
+sim_by_gid = {}
+for o,s in zip(obs_data, sim_data):
+    if o[0] not in obs_by_gid.keys():
+        k= o[0]
+        obs_by_gid[k] = [o[2]]
+        sim_by_gid[k] = [s[2]]
+    else:
+        obs_by_gid[k].append(o[2])
+        sim_by_gid[k].append(s[2])
+        
 ## Regular set--"un-futzed" glaciers
 corrs = []
 spearmans = []
