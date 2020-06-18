@@ -12,3 +12,6 @@ Data/MEaSUREs-velocities/greenland_vel_mosaic500_2016_2017_vy_v2.tif
 *.pyc
 GL_model_tools.pyc
 *.pyc
+Hindcast-MS/.ipynb_checkpoints/Gld_sim-walkthrough-checkpoint.ipynb
+Hindcast-MS/.ipynb_checkpoints/Greenland-hindcasted_networks-checkpoint.py
+Hindcast-MS/.ipynb_checkpoints/Untitled-checkpoint.ipynb
