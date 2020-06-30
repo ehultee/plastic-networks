@@ -81,7 +81,7 @@ PyWavelets==0.5.2
 pyzmq==14.7.0
 Qt==4.8.5
 readline==6.2.1
-requests==2.7.0
+requests==2.20.0
 scikit-learn==0.16.1
 scikits.image==0.13.0
 scikits.statsmodels==0.3.1
