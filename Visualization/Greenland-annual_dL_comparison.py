@@ -13,7 +13,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.collections import PatchCollection
 ## Special import for SERMeQ modules
 import sys
-sys.path.insert(0, 'Documents/GitHub/plastic-networks')
+sys.path.insert(0, '/Users/lizz/Documents/GitHub/plastic-networks')
 from SERMeQ.plastic_utilities_v2 import *
 from SERMeQ.GL_model_tools import *
 from SERMeQ.flowline_class_hierarchy import *
@@ -28,6 +28,7 @@ yy = fh.variables['y'][:].copy() #y-coord
 s_raw = fh.variables['surface'][:].copy() #surface elevation
 h_raw=fh.variables['thickness'][:].copy() # Gridded thickness
 b_raw = fh.variables['bed'][:].copy() # bed topo
+e_raw = fh.variables['errbed'][:].copy() # error in bed topo or ice thickness
 thick_mask = fh.variables['mask'][:].copy()
 ss = np.ma.masked_where(thick_mask !=2, s_raw)#mask values: 0=ocean, 1=ice-free land, 2=grounded ice, 3=floating ice, 4=non-Greenland land
 hh = np.ma.masked_where(thick_mask !=2, h_raw) 
@@ -39,6 +40,7 @@ Y = yy[::2]
 S = ss[::2, ::2]
 H = hh[::2, ::2] 
 B = bb[::2, ::2]
+E = e_raw[::2, ::2]
 M = thick_mask[::2,::2]
 ## Not down-sampling
 #X = xx
