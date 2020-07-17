@@ -86,8 +86,10 @@ fig, ax = plt.subplots(1)
 _,_, bars = ax.hist(st[~np.isnan(st)], bins=[-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1.0], color='k')
 for bar in bars:
     if bar.get_x()<0:
-        bar.set_facecolor('Grey')
+        bar.set_facecolor('LightGrey')
         bar.set_hatch('/')
-ax.set_xlabel(r'Rank correlation $\rho$, observed vs. simulated termini', fontsize=14)
-ax.set_ylabel('Count', fontsize=14)
+ax.set_xlabel(r'Rank correlation $\rho$, observed vs. simulated termini', fontsize=18)
+ax.set_ylabel('Count', fontsize=18)
+ax.set_xticks([-1, -0.5, 0, 0.5, 1])
+ax.tick_params(axis='both', length=5, width=2, labelsize=16)
 plt.show()

@@ -220,7 +220,7 @@ for gid in np.setdiff1d(added_jan19, seaward_projected): #sketchy flowline selec
         obs_term_centr = obs_termini[:,1]
         # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
         e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-        _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Reds')
+        _ = make_error_boxes(ax2, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Reds')
 ax2.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
 ax2.set_aspect(1)
 ax2.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
@@ -273,17 +273,6 @@ plt.show()
 
 
 
-## 1:1 sim-obs comparison with percent error and unit circle
-def abs_percent_error(obs_list, sim_list):
-    paired = zip(obs_list, sim_list)
-    corrected = [(o, s) for (o, s) in paired if (abs(o)>0.1 and not np.isnan(o) and not np.isnan(s))] # avoid divide-by-zero errors
-    perc_err = [100*abs((o-s)/(o)) for (o,s) in corrected]
-    return perc_err
-
-def unit_circle_compare(sim_pt, obs_pt):
-    norm = np.sqrt(sim_pt**2 + obs_pt**2)
-    return (sim_pt/norm, obs_pt/norm)
-
 def range_normalized_centroid_diff(projected_obs, sim_termpos):
     """Calculate the difference between simulated terminus position and projected centroid of observed 2D terminus.
     Normalize by range of projected 2D terminus.
@@ -292,76 +281,8 @@ def range_normalized_centroid_diff(projected_obs, sim_termpos):
         sim_termpos: an array of shape (len(obs_years)), with a simulated terminus position for each year"""
     joined = zip(projected_obs[:,0], projected_obs[:,2], projected_obs[:,1], sim_termpos)
     corrected = [(a, r, c, s) for (a,r,c,s) in joined if (abs(r-a)>0.1 and sum(np.isnan((a,r,c, s)))==0)]
-    normalized_diff = [abs(c-s)/abs(r-a) for (a, r, c, s) in corrected]
+    normalized_diff = [(c-s)/abs(r-a) for (a, r, c, s) in corrected]
     return normalized_diff        
-
-
-# annual_pe_by_glacier = {gid: [] for gid in glaciers_to_plot}
-# avg_pe_by_glacier = {gid:[] for gid in glaciers_to_plot}
-# annual_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
-# avg_uc_comp_by_glacier = {gid:[] for gid in glaciers_to_plot}
-# annual_rne_by_glacier = {gid: [] for gid in glaciers_to_plot}
-# for gid in glaciers_to_plot:
-#     sim_term_raw = [float(t) for t in full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini']]
-#     sim_termini = -0.001*np.take(sim_term_raw, indices=ids)
-#     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-#     obs_term_centr = obs_termini[:,1]
-#     sim_rates = diff(sim_termini)/diff(obs_years)
-#     obs_rates = diff(obs_term_centr)/diff(obs_years)
-#     annual_pe_by_glacier[gid] = abs_percent_error(obs_rates, sim_rates)
-#     if len(annual_pe_by_glacier[gid])==0:
-#         avg_pe_by_glacier[gid] = np.nan
-#     else:
-#         avg_pe_by_glacier[gid] = np.nanmean(annual_pe_by_glacier[gid])
-#     annual_uc_comp_by_glacier[gid] = [unit_circle_compare(sim_rates[i], obs_rates[i]) for i in range(len(obs_rates))]
-#     avg_uc_comp_by_glacier[gid] = unit_circle_compare(mean(sim_rates), mean(obs_rates))
-#     annual_rne_by_glacier[gid] = range_normalized_centroid_diff(obs_termini, sim_termini)
-
-# ## unit circle plot
-# fig4 = plt.figure()
-# ax4 = plt.axes([0,0,1,1])
-# for gid in glaciers_to_plot:
-#     uc_comp = np.asarray(annual_uc_comp_by_glacier[gid])
-#     for j in range(len(uc_comp)):
-#         ax4.plot((0, uc_comp[j,0]), (0, uc_comp[j,1]), color='LightGrey', lw=2.0)
-# for gid in glaciers_to_plot: #plot average over top
-#     avg_uc_comp = avg_uc_comp_by_glacier[gid]
-#     ax4.plot((0, avg_uc_comp[0]), (0, avg_uc_comp[1]), color='DarkSlateGrey', lw=3.0, alpha=0.8)
-# circ = plt.Circle((0, 0), radius=1., edgecolor='k', facecolor='None', lw=3.0, zorder=3)
-# ax4.add_patch(circ)
-# ax4.set_aspect(1)
-# ax4.axhline(y=0, linestyle='--', color='k')
-# ax4.axvline(x=0, linestyle='--', color='k')
-# plt.axis('off')
-# plt.margins(x=0.1, y=0.1)
-# plt.show()
-
-# ## absolute percent error plot
-# pe_all = [annual_pe_by_glacier[gid] for gid in glaciers_to_plot]
-# pe_arr = np.concatenate(pe_all)
-# pe_weights = np.ones_like(pe_arr)/float(len(pe_arr))
-# avg_pe = np.ravel([avg_pe_by_glacier[gid] for gid in glaciers_to_plot if not np.isnan(avg_pe_by_glacier[gid])])
-# avg_pe_weights = np.ones_like(avg_pe)/float(len(avg_pe))
-# pe_bins = np.linspace(0, 1000, num=20) 
-# plt.figure('Absolute percent error observed - simulated annual retreat, Greenland outlets 2006-2014')
-# plt.hist([pe_arr, avg_pe], bins=pe_bins, weights=[pe_weights, avg_pe_weights], color=['LightGrey', 'DarkSlateGrey'], label=['all', 'mean'])
-# #plt.hist(avg_pe, bins=pe_bins, weights=avg_pe_weights, color='DarkViolet', alpha=0.5) # plot period-averaged percent diff
-# plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-# plt.xlabel('Percent difference $dL/dt$', fontsize=18)
-# plt.ylabel('Normalized frequency', fontsize=18)
-# plt.legend(loc='best')
-# plt.axes().set_yticks([0, 0.1, 0.2])
-# plt.axes().set_xlim((0,1000))
-# plt.show()
-
-# plt.figure('Cumulative distribution observed-simulated annual retreat, Greenland outlets 2006-2014')
-# plt.hist([pe_arr, avg_pe], bins=pe_bins, weights=[pe_weights, avg_pe_weights], color=['LightGrey', 'DarkSlateGrey'], label=['all', 'mean'], cumulative=True)
-# plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-# plt.xlabel('Percent difference $dL/dt$ [m/a]', fontsize=18)
-# plt.ylabel('Cumulative normalized frequency', fontsize=18)
-# plt.legend(loc='best')
-# plt.axes().set_xlim((0,1000))
-# plt.show()
 
 
 annual_rne_by_glacier = {gid: [] for gid in glaciers_to_plot}
@@ -376,33 +297,12 @@ for gid in glaciers_to_plot:
 rne_all = [annual_rne_by_glacier[gid] for gid in glaciers_to_plot]
 rne_arr = np.concatenate(rne_all)
 rne_weights = np.ones_like(rne_arr)/float(len(rne_arr))
-rne_bins = np.linspace(0, 20, num=20) 
+rne_bins = np.linspace(-5, 20, num=26)
 fig, ax = plt.subplots(1)
-# plt.figure('Range normalized difference observed - simulated annual terminus position, Greenland outlets 2006-2014')
-#plt.fill_between(x=(0, 1), y1=0.25, y2=0, color='DarkGreen', alpha=0.5)
-#plt.fill_between(x=(1, 20), y1=0.25, y2=0, color='LightGreen', alpha=0.5)
-ax.hist(rne_arr, bins=rne_bins, weights=rne_weights, color='DarkSlateGrey')
-#plt.hist(avg_pe, bins=pe_bins, weights=avg_pe_weights, color='DarkViolet', alpha=0.5) # plot period-averaged percent diff
+ax.axvline(0, ls=':', color='Grey')
+ax.hist(rne_arr, bins=rne_bins, weights=rne_weights, color='k')
 ax.tick_params(axis='both', length=5, width=2, labelsize=16)
-ax.set_xlabel(r'Range-normalized difference $\frac{c_{obs}-c_{sim}}{\text{max}_{obs}-\text{min}_{obs}}$', fontsize=18)
+ax.set_xlabel(r'Range-normalized difference $\frac{c_{obs.}-x_{term. sim}}{\mathrm{max}_{obs}-\mathrm{min}_{obs}}$', fontsize=18)
 ax.set_ylabel('Normalized frequency', fontsize=18)
-ax.legend(loc='best')
-ax.set(yticks=[0, 0.1, 0.2, 0.3, 0.4], xlim=(0,20))
-plt.show()
-
-## range-normalized retreat bound plot
-mxrt_all = [annual_mxrt_by_glacier[gid] for gid in glaciers_to_plot]
-mxrt_arr_cnct = np.concatenate(mxrt_all)
-mxrt_arr = [m for m in mxrt_arr_cnct if np.isfinite(m)]
-mxrt_weights = np.ones_like(mxrt_arr)/float(len(mxrt_arr))
-mxrt_bins = np.linspace(0, 20, num=40) 
-plt.figure('Normalized histo, range normalized difference annual minimum terminus position, Greenland outlets 2006-2014')
-plt.hist(mxrt_arr, bins=mxrt_bins, weights=mxrt_weights, color='DarkSlateGrey')
-#plt.hist(avg_pe, bins=pe_bins, weights=avg_pe_weights, color='DarkViolet', alpha=0.5) # plot period-averaged percent diff
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=16)
-plt.xlabel('Range-normalized difference $(min_{obs}-c_{sim})/(max_{obs}-min_{obs})$', fontsize=18)
-plt.ylabel('Normalized frequency', fontsize=18)
-plt.legend(loc='best')
-#plt.axes().set_yticks([0, 0.1, 0.2])
-plt.axes().set_xlim((0,20))
+ax.set(yticks=[0, 0.1, 0.2, 0.3, 0.4], xlim=(-2,20))
 plt.show()
