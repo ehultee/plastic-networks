@@ -7,11 +7,13 @@ Namespace of Greenland-annual_dL_comparison for now
 
 @author: EHU
 """
+import numpy as np
+from scipy.stats import spearmanr, kendalltau
 
 # Input file for obs/sim comparison
-obs_data = np.loadtxt('/Users/lizz/Desktop/observed_terminus_centroids.csv',delimiter=',',skiprows=1)
-sim_data = np.loadtxt('/Users/lizz/Desktop/simulated_termini.csv',delimiter=',',skiprows=1)
-dense_sim_data = np.loadtxt('/Users/lizz/Desktop/dense_simulated_termini.csv',delimiter=',',skiprows=1)
+obs_data = np.loadtxt('/Users/lizz/Desktop/Hindcasted_networks/observed_terminus_centroids.csv',delimiter=',',skiprows=1)
+sim_data = np.loadtxt('/Users/lizz/Desktop/Hindcasted_networks/simulated_termini.csv',delimiter=',',skiprows=1)
+dense_sim_data = np.loadtxt('/Users/lizz/Desktop/Hindcasted_networks/dense_simulated_termini.csv',delimiter=',',skiprows=1)
 
 obs_by_gid = {}
 sim_by_gid = {}
@@ -80,3 +82,12 @@ st = np.squeeze(spearmans_t)
 kt = np.squeeze(kendalls_t)
 
 
+fig, ax = plt.subplots(1)
+_,_, bars = ax.hist(st[~np.isnan(st)], bins=[-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1.0], color='k')
+for bar in bars:
+    if bar.get_x()<0:
+        bar.set_facecolor('Grey')
+        bar.set_hatch('/')
+ax.set_xlabel(r'Rank correlation $\rho$, observed vs. simulated termini', fontsize=14)
+ax.set_ylabel('Count', fontsize=14)
+plt.show()
