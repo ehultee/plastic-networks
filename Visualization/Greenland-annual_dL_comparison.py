@@ -167,109 +167,109 @@ ids = [i for i in range(len(plot_years)) if plot_years[i] in obs_years] #which t
 yr_colors = cm.get_cmap('Blues')(linspace(0.2, 0.9, num=len(ids)))
 
 
-def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
-                     cmap='viridis', edgecolor='None', barcolor='None', alpha=0.5):
-    """Make a collection of even-width lines (not rectangles) and add it to axes.
-    Keyword args same as for mpl.patches.Rectangle, except 'colorscheme_indices'
-    colorscheme_indices: array of same length as xdata, ydata setting assignment of facecolors"""
+# def make_error_boxes(ax, xdata, ydata, xerror, yerror, colorscheme_indices,
+#                      cmap='viridis', edgecolor='None', barcolor='None', alpha=0.5):
+#     """Make a collection of even-width lines (not rectangles) and add it to axes.
+#     Keyword args same as for mpl.patches.Rectangle, except 'colorscheme_indices'
+#     colorscheme_indices: array of same length as xdata, ydata setting assignment of facecolors"""
     
-    # Plot horizontal lines
-    for x, y, xe, ye, c in zip(xdata, ydata, xerror.T, yerror.T, colorscheme_indices):
-        ax.hlines(y=y, xmin=x-xe[0], xmax=x+xe[1], lw=3.0, color=cm.get_cmap(cmap)((c-min(colorscheme_indices))/(max(colorscheme_indices)-min(colorscheme_indices))), alpha=alpha)
-    artists = ax.errorbar(xdata, ydata, xerr=xerror, yerr=yerror,
-                          fmt='None', ecolor=barcolor)
-    return artists
+#     # Plot horizontal lines
+#     for x, y, xe, ye, c in zip(xdata, ydata, xerror.T, yerror.T, colorscheme_indices):
+#         ax.hlines(y=y, xmin=x-xe[0], xmax=x+xe[1], lw=3.0, color=cm.get_cmap(cmap)((c-min(colorscheme_indices))/(max(colorscheme_indices)-min(colorscheme_indices))), alpha=alpha)
+#     artists = ax.errorbar(xdata, ydata, xerr=xerror, yerr=yerror,
+#                           fmt='None', ecolor=barcolor)
+#     return artists
 
 
 
-# Create figure of 'un-futzed' glaciers
-fig, ax = plt.subplots(1)
-# Call function to create error boxes
-for gid in glaciers_to_plot:
-    tc = -1000*termpos_corrections[gid]
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
-    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-    obs_term_centr = obs_termini[:,1]
-    # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
-    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-    _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
-ax.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
-ax.axhline(y=0, linestyle='--', color='k')
-ax.set_aspect(1)
-ax.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
-ax.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
-ax.set_title('Glaciers with usual processing')
-plt.show()
+# # Create figure of 'un-futzed' glaciers
+# fig, ax = plt.subplots(1)
+# # Call function to create error boxes
+# for gid in glaciers_to_plot:
+#     tc = -1000*termpos_corrections[gid]
+#     sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+#     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+#     obs_term_centr = obs_termini[:,1]
+#     # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
+#     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+#     _ = make_error_boxes(ax, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years)
+# ax.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
+# ax.axhline(y=0, linestyle='--', color='k')
+# ax.set_aspect(1)
+# ax.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
+# ax.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
+# ax.set_title('Glaciers with usual processing')
+# plt.show()
 
-## Same figure, 'special treatment' glaciers
-fig2, ax2 = plt.subplots(1)
-# Call function to create error boxes
-for gid in np.setdiff1d(seaward_projected, added_jan19):
-    tc = -1000*termpos_corrections[gid]
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
-    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-    obs_term_centr = obs_termini[:,1]
-    # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
-    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-    _ = make_error_boxes(ax2, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Purples')
-for gid in np.setdiff1d(added_jan19, seaward_projected): #sketchy flowline selection, but not projected forward
-    if gid not in rmv:
-        tc = -1000*termpos_corrections[gid]
-        sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
-        obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-        obs_term_centr = obs_termini[:,1]
-        # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
-        e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-        _ = make_error_boxes(ax2, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Reds')
-ax2.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
-ax2.set_aspect(1)
-ax2.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
-ax2.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
-ax2.set_title('Glaciers requiring special handling')
-plt.show()
+# ## Same figure, 'special treatment' glaciers
+# fig2, ax2 = plt.subplots(1)
+# # Call function to create error boxes
+# for gid in np.setdiff1d(seaward_projected, added_jan19):
+#     tc = -1000*termpos_corrections[gid]
+#     sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+#     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+#     obs_term_centr = obs_termini[:,1]
+#     # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
+#     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+#     _ = make_error_boxes(ax2, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Purples')
+# for gid in np.setdiff1d(added_jan19, seaward_projected): #sketchy flowline selection, but not projected forward
+#     if gid not in rmv:
+#         tc = -1000*termpos_corrections[gid]
+#         sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+#         obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+#         obs_term_centr = obs_termini[:,1]
+#         # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
+#         e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+#         _ = make_error_boxes(ax2, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Reds')
+# ax2.plot(range(-20,20), range(-20,20), c='k', linestyle='-.')
+# ax2.set_aspect(1)
+# ax2.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
+# ax2.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
+# ax2.set_title('Glaciers requiring special handling')
+# plt.show()
 
-## All glaciers together, with futzed glaciers separated by colour
-fig3, ax3 = plt.subplots(1)
-x1 = range(-20, 20)
-y1 = x1
-ax3.plot(x1, y1, c='k', linestyle='-.')
-ax3.fill_between(x1, y1=np.concatenate((range(-20,0), np.zeros(20))), y2=ax3.get_ylim()[0], color='DarkSlateGrey', alpha=0.5)
-# Call function to create error boxes
-for gid in glaciers_to_plot:
-    tc = -1000*termpos_corrections[gid]
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
-    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-    obs_term_centr = obs_termini[:,1]
-    # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
-    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-    _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Blues')
-for gid in np.setdiff1d(seaward_projected, added_jan19): #projected forward, but otherwise trustworthy
-    tc = -1000*termpos_corrections[gid]
-    sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
-    obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-    obs_term_centr = obs_termini[:,1]
-    # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
-    e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-    _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Purples')
-for gid in np.setdiff1d(added_jan19, seaward_projected): #sketchy flowline selection, but not projected forward
-    if gid not in rmv:
-        tc = -1000*termpos_corrections[gid]
-        sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
-        obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
-        obs_term_centr = obs_termini[:,1]
-        # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
-        e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
-        _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Blues')
-ax3.axhline(y=0, linestyle='--', color='Grey')
-ax3.set_yscale('symlog')
-ax3.set_xscale('symlog')
-# ax3.set_aspect(1)
-ax3.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
-ax3.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
-ax3.set_xlim((-10, 15))
-ax3.set_ylim((-20, 5))
-ax3.set_title('All glaciers simulated')
-plt.show()
+# ## All glaciers together, with futzed glaciers separated by colour
+# fig3, ax3 = plt.subplots(1)
+# x1 = range(-20, 20)
+# y1 = x1
+# ax3.plot(x1, y1, c='k', linestyle='-.')
+# ax3.fill_between(x1, y1=np.concatenate((range(-20,0), np.zeros(20))), y2=ax3.get_ylim()[0], color='DarkSlateGrey', alpha=0.5)
+# # Call function to create error boxes
+# for gid in glaciers_to_plot:
+#     tc = -1000*termpos_corrections[gid]
+#     sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+#     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+#     obs_term_centr = obs_termini[:,1]
+#     # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
+#     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+#     _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Blues')
+# for gid in np.setdiff1d(seaward_projected, added_jan19): #projected forward, but otherwise trustworthy
+#     tc = -1000*termpos_corrections[gid]
+#     sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+#     obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+#     obs_term_centr = obs_termini[:,1]
+#     # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
+#     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+#     _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Purples')
+# for gid in np.setdiff1d(added_jan19, seaward_projected): #sketchy flowline selection, but not projected forward
+#     if gid not in rmv:
+#         tc = -1000*termpos_corrections[gid]
+#         sim_termini = np.take(full_output_dicts['persistence']['GID{}'.format(gid)][0]['Termini'], indices=ids)
+#         obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
+#         obs_term_centr = obs_termini[:,1]
+#         # sim_termini = np.zeros_like(obs_term_centr) # test constant 0 terminus
+#         e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
+#         _ = make_error_boxes(ax3, -1*obs_term_centr, -0.001*(tc + np.array(sim_termini)), xerror=e, yerror=0.1*np.ones(shape(e)), colorscheme_indices=obs_years, alpha=0.8, cmap='Blues')
+# ax3.axhline(y=0, linestyle='--', color='Grey')
+# ax3.set_yscale('symlog')
+# ax3.set_xscale('symlog')
+# # ax3.set_aspect(1)
+# ax3.set_ylabel('Simulated $x_{term}$ [km]', fontsize=14)
+# ax3.set_xlabel('Observed $x_{term}$ [km]', fontsize=14)
+# ax3.set_xlim((-10, 15))
+# ax3.set_ylim((-20, 5))
+# ax3.set_title('All glaciers simulated')
+# plt.show()
 
 
 
@@ -304,5 +304,5 @@ ax.hist(rne_arr, bins=rne_bins, weights=rne_weights, color='k')
 ax.tick_params(axis='both', length=5, width=2, labelsize=16)
 ax.set_xlabel(r'Range-normalized difference $\frac{c_{obs.}-x_{term. sim}}{\mathrm{max}_{obs}-\mathrm{min}_{obs}}$', fontsize=18)
 ax.set_ylabel('Normalized frequency', fontsize=18)
-ax.set(yticks=[0, 0.1, 0.2, 0.3, 0.4], xlim=(-2,20))
+ax.set(yticks=[0, 0.1, 0.2, 0.3, 0.4], xticks=[0, 5, 10, 15, 20], xlim=(-2,20))
 plt.show()
