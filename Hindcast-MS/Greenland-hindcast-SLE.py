@@ -9,7 +9,7 @@ import glob
 from matplotlib import cm
 ## Special import for SERMeQ modules
 import sys
-sys.path.insert(0, 'Documents/GitHub/plastic-networks')
+sys.path.insert(0, '/Users/lizz/Documents/GitHub/plastic-networks')
 from SERMeQ.plastic_utilities_v2 import *
 from SERMeQ.GL_model_tools import *
 from SERMeQ.flowline_class_hierarchy import *
@@ -40,14 +40,14 @@ for n in rmv:
         glacier_ids.remove(n)
     except ValueError:
         pass
-glaciers_simulated = glacier_ids #adjust this to reflect whether you want to examine the whole set or a subset
+glaciers_simulated = (3,) #adjust this to reflect whether you want to examine the whole set or a subset
 
 
 full_output_dicts = {}
 for s in scenarios:
     scenario_output = {'Testyears': testyears}
     for gid in glaciers_simulated:
-        fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
+        fn = glob.glob('/Users/lizz/Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
 
