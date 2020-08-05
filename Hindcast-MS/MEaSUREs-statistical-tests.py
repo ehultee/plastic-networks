@@ -67,6 +67,7 @@ sf = np.squeeze(spearmans_f)
 
 ## All together
 spearmans_t = []
+spearmans_p = []
 kendalls_t = []
 for gid in (set(glaciers_to_plot) | set(added_jan19) | set(seaward_projected)): #set union of fussy glaciers
     if gid not in rmv:
@@ -76,9 +77,13 @@ for gid in (set(glaciers_to_plot) | set(added_jan19) | set(seaward_projected)): 
         obs_termini = np.asarray(projected_termini[gid]) #will be of shape (len(obs_years), 3) with an entry (lower, centroid, upper) for each year
         obs_term_centr = obs_termini[:,1]
         otc = -1*obs_term_centr
-        spearmans_t.append(spearmanr(st, otc)[0])
+        s, p = spearmanr(st, otc)
+        # spearmans_t.append(spearmanr(st, otc)[0])
+        spearmans_t.append(s)
+        spearmans_p.append(p)
         kendalls_t.append(kendalltau(st, otc)[0])
 st = np.squeeze(spearmans_t)
+sp = np.squeeze(spearmans_p)
 kt = np.squeeze(kendalls_t)
 
 
