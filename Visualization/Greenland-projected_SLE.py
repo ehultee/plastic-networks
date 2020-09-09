@@ -79,22 +79,19 @@ projected_sle = scenario_sorted_SLE(full_output_dicts['persistence'])
 ## Settings for plots   
 labels = [str(gid) for gid in glaciers_simulated] #set what the glaciers will be called in plotting.  Default is simply their MEaSUREs ID
 markers = ['o', '.', ',', '^', 'd', '*']
-cmap = cm.get_cmap('Greys')
-#colors = cmap([0.1, 0.2, 0.3, 0.5, 0.7, 0.9])
-colors = cmap(linspace(0.1, 0.9, num=len(glaciers_simulated)))
-alt_colors = cm.get_cmap('winter')([0, 0.1, 0.3, 0.5, 0.7, 0.8])
-
+divergent_cmap = cm.get_cmap('coolwarm')
+colors = divergent_cmap([-0.5, 1.0])
 
 plt.figure(figsize=(12,8))
 for j in range(len(projected_sle)):
     color_idx = (np.abs(155*np.array([1, 1, 0.3, 0.5, 0.7, 0.8]) - j)).argmin() #replace first two selections as we have manually set them
     ms_selection = mod(gid, len(markers))
-    plt.plot(testyears[::], projected_sle[j], linewidth=1, color=alt_colors[color_idx])
+    plt.plot(testyears[::], projected_sle[j], linewidth=1, color='LightGrey')
     plt.plot(testyears[::4], projected_sle[j][::4], linewidth=0, marker=markers[ms_selection], ms=10, color=alt_colors[color_idx])
-    if j==0:
-        plt.fill_between(testyears[::], y1=projected_sle[j], y2=0, color=alt_colors[color_idx], alpha=0.8)  
+    if projected_sle[j][-1]<0:
+        plt.fill_between(testyears[::], y1=projected_sle[j], y2=0, color=colors[0], alpha=0.8)  
     else:
-        plt.fill_between(testyears[::], y1=projected_sle[j], y2=projected_sle[j-1], color=alt_colors[color_idx], alpha=0.8)     
+        plt.fill_between(testyears[::], y1=projected_sle[j], y2=projected_sle[j-1], color=colors[1], alpha=0.8)     
 #plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
 plt.axes().set_xlabel('Year of simulation', size=20)
 plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
