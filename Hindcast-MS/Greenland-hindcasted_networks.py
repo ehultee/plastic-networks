@@ -2,6 +2,7 @@
 # 4 Mar 2019  EHU
 # 5 Jul 2019 use: run with output_heavy to generate surface profile snapshots
 # 4 Jun 2020: test using flotation condition for dLdt computations on specific glaciers
+# 9 Sept 2020: using flotation condition for lower bound on all outlets
 
 from netCDF4 import Dataset
 import numpy as np
@@ -138,10 +139,10 @@ test_A, icetemp = 3.5E-25, 'min10C' # -10 C, good guess for Greenland
 
 scenario = 'persistence'
 
-#gids_totest = glacier_ids #test all
+gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
 #gids_totest = (3, 153, 175) #test the biggies: Jakobshavn, Kanger, Helheim
-gids_totest = (2, 9, 36, 42, 66, 68, 69, 70, 72, 75, 76, 78, 98, 103, 105, 112, 116, 127, 137, 154, 164, 175) #test specific glaciers
+#gids_totest = (2, 9, 36, 42, 66, 68, 69, 70, 72, 75, 76, 78, 98, 103, 105, 112, 116, 127, 137, 154, 164, 175) #test specific glaciers
 output_heavy = False #pref for output--should be False for efficient running, True for saving full surface profiles
 network_output = []
 bad_gids = []

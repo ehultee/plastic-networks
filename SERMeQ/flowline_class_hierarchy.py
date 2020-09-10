@@ -550,14 +550,16 @@ class Flowline(Ice):
         Bed_terminus = profile[2][0] * self.H0
         H_terminus = SE_terminus - Bed_terminus 
         Bghm_terminus = self.Bingham_num(Bed_terminus/self.H0, H_terminus/self.H0)
-        Hy_terminus = BalanceThick(Bed_terminus/self.H0, Bghm_terminus) * self.H0
+        #Hy_terminus = BalanceThick(Bed_terminus/self.H0, Bghm_terminus) * self.H0
+        Hy_terminus = FlotationThick(Bed_terminus/self.H0) * self.H0 #test with flotation thickness for lower bound
     
         #Quantities at adjacent grid point
         SE_adj = profile[1][1] *self.H0
         Bed_adj = profile[2][1] *self.H0
         H_adj = SE_adj - Bed_adj
         Bghm_adj = self.Bingham_num(Bed_adj/self.H0, H_adj/self.H0)
-        Hy_adj = BalanceThick(Bed_adj/self.H0, Bghm_adj) * self.H0
+        #Hy_adj = BalanceThick(Bed_adj/self.H0, Bghm_adj) * self.H0
+        Hy_adj = FlotationThick(Bed_adj/self.H0) * self.H0 # set equal to flotation thickness for lower bound
         
         #Diffs
         dx_term = abs(profile[0][1] - profile[0][0]) *self.L0 #should be ~2m in physical units
