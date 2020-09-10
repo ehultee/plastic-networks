@@ -51,7 +51,7 @@ for glacier_id in glaciers_to_plot:
 
         # This will filter out weird simulation data
         if pvalue2>0.05:
-            print('Glacier ID',glacier_id,'p-value exceeds 0.15')
+            print('Glacier ID',glacier_id,'p-value exceeds 0.05')
             count = count + 1
         else:
             if ~np.isnan(m1):
