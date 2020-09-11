@@ -82,12 +82,33 @@ markers = ['o', '.', ',', '^', 'd', '*']
 divergent_cmap = cm.get_cmap('coolwarm')
 colors = divergent_cmap([-0.5, 1.0])
 
+#build negative SLE first
+plt.figure(figsize=(12,8))
+for j in range(len(projected_sle)):
+    color_idx = (np.abs(155*np.array([1, 1, 0.3, 0.5, 0.7, 0.8]) - j)).argmin() #replace first two selections as we have manually set them
+    ms_selection = mod(gid, len(markers))
+    if projected_sle[j][-1]<0:
+        plt.plot(testyears[::], projected_sle[j], linewidth=1, color='LightGrey')
+        plt.plot(testyears[::4], projected_sle[j][::4], linewidth=0, marker=markers[ms_selection], ms=10, color='LightGrey')
+        plt.fill_between(testyears[::], y1=projected_sle[j], y2=0, color=colors[0], alpha=0.8)  
+    #else:
+    #    plt.fill_between(testyears[::], y1=projected_sle[j], y2=projected_sle[j-1], color=colors[1], alpha=0.8)     
+#plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
+plt.axes().set_xlabel('Year of simulation', size=20)
+plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
+plt.axes().set_xticks([0, 19, 44, 69, 94])
+plt.axes().set_xlim(0, 94)
+plt.axes().set_xticklabels(['', '2025', '2050', '2075', '2100'])
+plt.axes().set_ylim(-50, 250)
+plt.show()
+
 plt.figure(figsize=(12,8))
 for j in range(len(projected_sle)):
     color_idx = (np.abs(155*np.array([1, 1, 0.3, 0.5, 0.7, 0.8]) - j)).argmin() #replace first two selections as we have manually set them
     ms_selection = mod(gid, len(markers))
     plt.plot(testyears[::], projected_sle[j], linewidth=1, color='LightGrey')
-    plt.plot(testyears[::4], projected_sle[j][::4], linewidth=0, marker=markers[ms_selection], ms=10, color=alt_colors[color_idx])
+    plt.plot(testyears[::4], projected_sle[j][::4], linewidth=0, marker=markers[ms_selection], ms=10, color='LightGrey')
     if projected_sle[j][-1]<0:
         plt.fill_between(testyears[::], y1=projected_sle[j], y2=0, color=colors[0], alpha=0.8)  
     else:
@@ -96,7 +117,8 @@ for j in range(len(projected_sle)):
 plt.axes().set_xlabel('Year of simulation', size=20)
 plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
 plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-#plt.axes().set_xticks([0, 2, 4, 6, 8])
-#plt.axes().set_xlim(0, 8.75)
-#plt.axes().set_xticklabels(['2006', '2008', '2010', '2012', '2014'])
+plt.axes().set_xticks([0, 19, 44, 69, 94])
+plt.axes().set_xlim(0, 94)
+plt.axes().set_xticklabels(['', '2025', '2050', '2075', '2100'])
+plt.axes().set_ylim(-50, 250)
 plt.show()
