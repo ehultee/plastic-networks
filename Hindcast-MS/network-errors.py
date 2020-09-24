@@ -62,7 +62,7 @@ for n in rmv:
 
 in_fpath = '/Users/lizz/Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
 out_fpath = '/Users/lizz/Documents/GitHub/Data_unsynced/Autonetwork_data_QC/Gld-lines_errors-GID'
-for gid in (1,): 
+for gid in glacier_ids: 
     input_fn = glob.glob(in_fpath+'{}-date_*.csv'.format(gid))[0] #using glob * to select files of different run dates
     output_fn = out_fpath+'{}.csv'.format(gid)
     with open(input_fn, 'r') as read_obj, \
