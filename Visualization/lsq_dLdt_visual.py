@@ -56,7 +56,7 @@ for glacier_id in range(min_glacier_id,max_glacier_id+1):
 
         # This will filter out weird simulation data
         if pvalue2>0.05:
-            print('Glacier ID',glacier_id,'p-value exceeds 0.15')
+            print('Glacier ID',glacier_id,'p-value exceeds 0.05')
             count = count + 1
         else:
             if ~np.isnan(m1):

@@ -2,6 +2,7 @@
 # 4 Mar 2019  EHU
 # 5 Jul 2019 use: run with output_heavy to generate surface profile snapshots
 # 4 Jun 2020: test using flotation condition for dLdt computations on specific glaciers
+# 9 Sept 2020: using flotation condition for lower bound on all outlets
 
 from netCDF4 import Dataset
 import numpy as np
@@ -131,18 +132,18 @@ base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/
 testyears = arange(0, 9, 0.25) #test only 2006-2015, for comparison
 start_year=2006 #determined by which MEaSUREs termini we used to initialize a given set
 branch_sep_buffer = 10000/L0 #buffer between tributary intersections
-db = True
+db = False
 #test_A, icetemp = 1.7E-24, 'min2C' # -2 C, warm ice
 test_A, icetemp = 3.5E-25, 'min10C' # -10 C, good guess for Greenland
 #test_A, icetemp = 3.7E-26, 'min30C' #-30 C, cold ice that should show slower response
 
 scenario = 'persistence'
 
-#gids_totest = glacier_ids #test all
+gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
 #gids_totest = (3, 153, 175) #test the biggies: Jakobshavn, Kanger, Helheim
-gids_totest = (2, 9, 36, 42, 66, 68, 69, 70, 72, 75, 76, 78, 98, 103, 105, 112, 116, 127, 137, 154, 164, 175) #test specific glaciers
-output_heavy = True #pref for output--should be False for efficient running, True for saving full surface profiles
+#gids_totest = (2, 9, 36, 42, 66, 68, 69, 70, 72, 75, 76, 78, 98, 103, 105, 112, 116, 127, 137, 154, 164, 175) #test specific glaciers
+output_heavy = False #pref for output--should be False for efficient running, True for saving full surface profiles
 network_output = []
 bad_gids = []
 
@@ -159,10 +160,10 @@ for gid in gids_totest:
     nlines = len(coords_list)
     branch_0 = Branch(coords=coords_list[0], index=0, order=0) #saving central branch as main
     branch_list = [branch_0]
-    if nlines>0:
-        for l in range(1, nlines):
-            branch_l = Branch(coords = coords_list[l], index=l, order=1, flows_to=0)
-            branch_list.append(branch_l)
+    #if nlines>0:
+    #    for l in range(1, nlines):
+    #        branch_l = Branch(coords = coords_list[l], index=l, order=1, flows_to=0)
+    #        branch_list.append(branch_l)
     nw = PlasticNetwork(name='GID'+str(gid), init_type='Branch', branches=branch_list, main_terminus=branch_0.coords[0])
     nw.make_full_lines()
 

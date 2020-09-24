@@ -566,12 +566,12 @@ def lightload(filename, glacier_name, output_dictionary):
         
     return output_dictionary
 
-def scenario_cumulative_SLE(scenario_dictionary):
+def scenario_cumulative_SLE(scenario_dictionary, glaciers_to_analyse):
     sd = scenario_dictionary
     pernetwork_cumul_fx = []
     pernetwork_cumul_sle = []
-    for j, gid in enumerate(glaciers_simulated):
-        branch_fx = [np.nan_to_num(sd['GID{}'.format(gid)][k]['Terminus_flux']) for k in range(len(sd['GID{}'.format(gid)]))]
+    for gid in glaciers_to_analyse:
+        branch_fx = [np.nan_to_num(sd['GID{}'.format(gid)][k]['Terminus_flux']) for k in sd['GID{}'.format(gid)].keys()]
         total_fx = sum(branch_fx, axis=0)
         total_sle = (1E-12)*np.array(total_fx)/(361.8) #Gt ice/mm SLE conversion
         cumul_fx = np.cumsum(total_fx)
@@ -587,7 +587,7 @@ def compare_scenario_SLE(full_output_dictionary):
     
     for s in full_output_dictionary.keys():
         print 'Scenario {}'.format(s)
-        perscenario_SLE.append(scenario_cumulative_SLE(full_output_dictionary(s))[-1])
+        perscenario_SLE.append(scenario_cumulative_SLE(full_output_dictionary[s])[-1])
     
     return perscenario_SLE
     
