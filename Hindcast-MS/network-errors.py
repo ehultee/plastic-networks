@@ -15,39 +15,41 @@ from scipy.ndimage import gaussian_filter
 import csv as csv
 
 
-### Topography needed to remove floating points from saved coords
+### Read in BedMachine
 print('Reading in surface topography')
 gl_bed_path ='/Users/lizz/Documents/GitHub/Data_unsynced/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
 fh = Dataset(gl_bed_path, mode='r')
 xx = fh.variables['x'][:].copy() #x-coord (polar stereo (70, 45))
 yy = fh.variables['y'][:].copy() #y-coord
-s_raw = fh.variables['surface'][:].copy() #surface elevation
-h_raw=fh.variables['thickness'][:].copy() # Gridded thickness
 b_raw = fh.variables['bed'][:].copy() # bed topo
 e_raw = fh.variables['errbed'][:].copy()
 thick_mask = fh.variables['mask'][:].copy()
-ss = np.ma.masked_where(thick_mask !=2, s_raw)#mask values: 0=ocean, 1=ice-free land, 2=grounded ice, 3=floating ice, 4=non-Greenland land
-hh = np.ma.masked_where(thick_mask !=2, h_raw) 
-#bb = np.ma.masked_where(thick_mask !=2, b_raw)
 bb = b_raw #don't mask, to allow bed sampling from modern bathymetry (was subglacial in ~2006)
 ## Down-sampling
 X = xx[::2]
 Y = yy[::2]
-S = ss[::2, ::2]
-H = hh[::2, ::2] 
 B = bb[::2, ::2]
 E = e_raw[::2, ::2]
 M = thick_mask[::2,::2]
-## Not down-sampling
-#X = xx
-#Y = yy
-#S = ss
 fh.close()
 
 #Smoothing bed for sampling
 smoothB = gaussian_filter(B, 2)
 B_interp = interpolate.RectBivariateSpline(X, Y[::-1], smoothB.T[::, ::-1])
 E_interp = interpolate.RectBivariateSpline(X, Y[::-1], E.T[::,::-1])
+
+### Read in ENVEO surface velocity
+print('Reading in surface velocity error')
+gl_vel_path ='/Users/lizz/Documents/GitHub/Data_unsynced/Sentinel-velocity/greenland_iv_500m_s1_20161223_20170227_v1_0.nc'
+fh1 = Dataset(gl_vel_path, mode='r')
+x_vel = fh1.variables['x'][:].copy() #x-coord (polar stereo (70, 45))
+y_vel = fh1.variables['y'][:].copy() #y-coord
+vv = fh1.variables['land_ice_surface_velocity_magnitude'][:].copy()
+stdev_vel = fh1.variables['land_ice_surface_velocity_stddev'][:].copy()
+fh1.close()
+
+stdv = np.ma.filled(stdev_vel, fill_value=np.max(stdev_vel)+10)
+Stdev_vel_interp = interpolate.interp2d(x_vel, y_vel, stdv)
 
 ## Read in flowline coordinates and write out error
 glacier_ids = range(1,195) #MEaSUREs glacier IDs to process.
@@ -69,16 +71,19 @@ for gid in glacier_ids:
         open(output_fn, 'w') as write_obj:
             reader = csv.DictReader(read_obj)
             headers = reader.fieldnames
-            headers.extend(['bed-topo', 'bed-error'])
+            headers.extend(['bed-topo', 'bed-error', 'velocity-stddev'])
             writer = csv.DictWriter(write_obj, fieldnames=headers)
+            writer.writeheader()
             for row in reader:
                 ln = row['Line-number']
-                x = row['x-coord']
-                y = row['y-coord']
-                w = row['width'] 
+                x = float(row['x-coord'])
+                y = float(row['y-coord'])
+                w = float(row['width'])
                 b = B_interp(x,y) 
                 e = E_interp(x,y)
+                stdev_v = Stdev_vel_interp(x,y)
                 row['bed-topo'] = float(b)
                 row['bed-error'] = float(e)
+                row['velocity-stddev'] = float(stdev_v)
                 writer.writerow(row)
     
