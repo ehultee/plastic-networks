@@ -1,13 +1,10 @@
 ## Plotting individual glacier results for case studies
 ## 24 Apr 2019  EHU
 
+from netCDF4 import Dataset
 import numpy as np
 import matplotlib.pyplot as plt
-import csv
-import shapefile
-#import collections
 import glob
-#from matplotlib.colors import LogNorm
 from matplotlib import cm
 import matplotlib.patches as mpatches
 from shapely.geometry import *
@@ -23,18 +20,18 @@ from SERMeQ.flowline_class_hierarchy import *
 
 ### Topography needed to remove floating points from saved coords
 ###
-print 'Reading in surface topography'
-gl_bed_path ='Documents/1. Research/2. Flowline networks/Model/Data/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
+print('Reading in surface topography')
+gl_bed_path ='/Users/lizz/Documents/GitHub/Data_unsynced/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
 fh = Dataset(gl_bed_path, mode='r')
 xx = fh.variables['x'][:].copy() #x-coord (polar stereo (70, 45))
 yy = fh.variables['y'][:].copy() #y-coord
 s_raw = fh.variables['surface'][:].copy() #surface elevation
 h_raw=fh.variables['thickness'][:].copy() # Gridded thickness
 b_raw = fh.variables['bed'][:].copy() # bed topo
+e_raw = fh.variables['errbed'][:].copy() # error in bed topo or ice thickness
 thick_mask = fh.variables['mask'][:].copy()
 ss = np.ma.masked_where(thick_mask !=2, s_raw)#mask values: 0=ocean, 1=ice-free land, 2=grounded ice, 3=floating ice, 4=non-Greenland land
 hh = np.ma.masked_where(thick_mask !=2, h_raw) 
-#bb = np.ma.masked_where(thick_mask !=2, b_raw)
 bb = b_raw #don't mask, to allow bed sampling from modern bathymetry (was subglacial in ~2006)
 ## Down-sampling
 X = xx[::2]
@@ -42,12 +39,10 @@ Y = yy[::2]
 S = ss[::2, ::2]
 H = hh[::2, ::2] 
 B = bb[::2, ::2]
+E = e_raw[::2, ::2]
 M = thick_mask[::2,::2]
-## Not down-sampling
-#X = xx
-#Y = yy
-#S = ss
 fh.close()
+
 
 #Smoothing bed and surface
 unsmoothB = B
@@ -88,13 +83,10 @@ for n in rmv:
 #    except ValueError:
 #        pass
 
-glaciers_to_plot = [g for g in glacier_ids if g in (3, 105, 137, 175)]
-
+glaciers_to_plot = [g for g in glacier_ids if g in (3, 137, 175)]
 
 testyears = arange(0, 9, step=0.25)#array of the years tested, with year "0" reflecting initial nominal date of MEaSUREs read-in (generally 2006)
 scenarios = ('persistence',)
-
-#datemarker = '2019-02-08' #markers on filename to indicate date run
 tempmarker = 'min10Cice' #and temperature of ice
 timestepmarker = '8a_dt025a' #and total time and timestep
 
@@ -103,11 +95,8 @@ full_output_dicts = {}
 for s in scenarios:
     scenario_output = {'Testyears': testyears}
     for gid in glaciers_to_plot:
-        fn = glob.glob('Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
+        fn = glob.glob('/Users/lizz/Documents/GitHub/Data_unsynced/Hindcasted_networks/GID{}-*-{}-{}-{}.pickle'.format(gid, s, tempmarker, timestepmarker))[0] #using glob * to select files of multiple run dates
         lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
-    #for i, gid in enumerate(glaciers_to_plot):
-    #    fn = 'GID{}-{}-{}-{}-{}.pickle'.format(gid, datemarker, s, tempmarker, timestepmarker)
-    #    lightload(fn, glacier_name = 'GID{}'.format(gid), output_dictionary = scenario_output)
     full_output_dicts[s] = scenario_output #add output from this scenario to the dictionary of all output, with scenario name as key
 
 perscenario_fluxes = []
@@ -133,7 +122,7 @@ for s in full_output_dicts.keys():
     print(scenario_sle[-1][-1])
     perscenario_SLE.append(scenario_sle[-1])
 
-gl_termpos_fldr = 'Documents/GitHub/Data_unsynced/MEaSUREs-termini'
+gl_termpos_fldr = '/Users/lizz/Documents/GitHub/Data_unsynced/MEaSUREs-termini'
 basefiles = ['/termini_0607_v01_2', '/termini_0708_v01_2', '/termini_0809_v01_2', '/termini_1213_v01_2', '/termini_1415_v01_2', '/termini_1516_v01_2']
 obs_years = [2006, 2007, 2008, 2012, 2014, 2015] #compare with term of hindcast, 2006-2014
 
@@ -144,9 +133,9 @@ for i,b in enumerate(basefiles):
     termini[yr] = read_termini(fn, yr) #creating dictionary for each year
     print len(termini[yr])
 
-nw_base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
+nw_base_fpath = '/Users/lizz/Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
 projected_termini = {gid: [] for gid in glaciers_to_plot}
-seaward_coords_fpath = 'Documents/GitHub/Data_unsynced/Auto_selected-networks/Seaward_coords/Gld-advnetwork-GID' 
+seaward_coords_fpath = '/Users/lizz/Documents/GitHub/Data_unsynced/Auto_selected-networks/Seaward_coords/Gld-advnetwork-GID' 
 termpos_corrections = {gid: 0 for gid in glacier_ids}
 
 
@@ -201,8 +190,7 @@ markers = ['o', '.', ',', '^', 'd', '*']
 styles = ['-', ':', '-.', '-', '-', '-']
 cmap = cm.get_cmap('winter')
 scenario_colors = cm.get_cmap('Blues')([0.1, 0.3, 0.5, 0.7, 0.9])
-#colors = cmap([0.1, 0.2, 0.3, 0.5, 0.7, 0.9])
-colors = cmap(linspace(0.1, 0.9, num=len(glaciers_to_plot)))
+colors = cmap(np.linspace(0.1, 0.9, num=len(glaciers_to_plot)))
 alt_colors = cm.get_cmap('Greys')([0.2, 0.3, 0.5, 0.7, 0.9])
 plot_years = 2006+np.array(testyears)
 
@@ -233,7 +221,7 @@ for j, gid in enumerate(glaciers_to_plot):
     e = np.asarray([(min(ot[0]-ot[1], ot[0]), ot[1]-ot[2]) for ot in obs_termini]).T #error lower (more advanced), upper (less advanced)
     plt.figure('Main line terminus change, GID{}'.format(gid))
     plt.plot(plot_years, -0.001*np.array(sim_termini), linewidth=2, color='k', linestyle='-', label='Modelled')
-    plt.errorbar(obs_years, -1*obs_term_centr, yerr = e, fmt='D')
+    plt.errorbar(obs_years, -1*obs_term_centr, yerr = e, color='b', fmt='D')
     plt.axes().tick_params(axis='both', length=5, width=2, labelsize=30)
     plt.axes().set_xlim(2006, 2014.5)
     plt.axes().set_xticks([2006, 2008, 2010, 2012, 2014])
@@ -244,12 +232,13 @@ for j, gid in enumerate(glaciers_to_plot):
         plt.axes().set_xlabel('Year', size=35)
     else:
         plt.axes().set_xticklabels([])
-    if gid==3:
+    if gid==137:
         plt.axes().set_yticklabels(['-20', '', '-10', '', '0'])
         plt.axes().set_ylabel('Terminus change [km]', size=35)
     else:
         plt.axes().set_yticklabels([])
     plt.axes().set_aspect(0.3)
+    plt.tight_layout()
     plt.show()
 
 
