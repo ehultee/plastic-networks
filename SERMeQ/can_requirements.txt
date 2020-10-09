@@ -4,9 +4,6 @@ atom==0.3.9
 backports-abc==0.4
 backports.ssl-match-hostname==3.2a3
 basemap==1.0.7
-Canopy==1.5.1.dev7367
-canopydebugger==0.1.1.dev0
-canopydebugger-addon==0.1.1.dev0
 casuarius==1.1
 certifi==2016.2.28
 chaco==4.5.0
@@ -53,7 +50,7 @@ libxml2==2.9.2
 MarkupSafe==0.23
 matplotlib==1.5.1
 mayavi==4.4.2
-mistune==0.6
+mistune==0.8.1
 MKL==2017.0.1
 mock==1.0.1
 netCDF4==1.1.7.1
@@ -62,9 +59,8 @@ nose==1.3.4
 numpy==1.11.3
 pandas==0.16.2
 PIL-remove==1.0.0
-pillow==4.0.0
 ply==3.6
-psutil==2.1.1
+psutil==5.6.6
 ptyprocess==0.4
 pycrypto==2.6.1
 pyface==4.5.0
@@ -81,7 +77,7 @@ PyWavelets==0.5.2
 pyzmq==14.7.0
 Qt==4.8.5
 readline==6.2.1
-requests==2.7.0
+requests==2.20.0
 scikit-learn==0.16.1
 scikits.image==0.13.0
 scikits.statsmodels==0.3.1
