@@ -82,7 +82,7 @@ colors = cmap(linspace(0.1, 0.9, num=len(glaciers_simulated)))
 alt_colors = cm.get_cmap('Greys_r')([0, 0.1, 0.3, 0.5, 0.7, 0.8])
 
 
-plt.figure(figsize=(12,8))
+plt.figure(figsize=(12,4))
 for j in range(len(hindcast_sle)):
     if j<5:
         color_idx=0
@@ -92,16 +92,15 @@ for j in range(len(hindcast_sle)):
         color_idx = (np.abs(155*np.array([1, 1, 0.3, 0.5, 0.7, 0.8]) - j)).argmin() #replace first two selections as we have manually set them
     ms_selection = mod(gid, len(markers))
     plt.plot(testyears[::], hindcast_sle[j], linewidth=2, color=alt_colors[color_idx])
-    plt.plot(testyears[::4], hindcast_sle[j][::4], linewidth=0, marker=markers[ms_selection], ms=10, color=alt_colors[color_idx])
+    plt.plot(testyears[::8], hindcast_sle[j][::8], linewidth=0, marker=markers[ms_selection], ms=10, color=alt_colors[color_idx])
     if j==0:
-        plt.fill_between(testyears[::], y1=hindcast_sle[j], y2=0, color=alt_colors[color_idx], alpha=0.8)  
+        plt.fill_between(testyears[::], y1=hindcast_sle[j], y2=0, color=alt_colors[color_idx], alpha=0.7)  
     else:
-        plt.fill_between(testyears[::], y1=hindcast_sle[j], y2=hindcast_sle[j-1], color=alt_colors[color_idx], alpha=0.8)     
+        plt.fill_between(testyears[::], y1=hindcast_sle[j], y2=hindcast_sle[j-1], color=alt_colors[color_idx], alpha=0.7)     
 #plt.plot([0, 20, 40, 60], [0, 14, 28, 42], color='k', linewidth=1, ls='-', alpha=0.8) #GRACE linear trend
-plt.axes().set_xlabel('Year of simulation', size=20)
-plt.axes().set_ylabel('Cumulative sea level contribution [mm]', size=20)
-plt.axes().tick_params(axis='both', length=5, width=2, labelsize=20)
-plt.axes().set_xticks([0, 2, 4, 6, 8])
-plt.axes().set_xlim(0, 8.75)
-plt.axes().set_xticklabels(['2006', '2008', '2010', '2012', '2014'])
+plt.axes().set_xlabel('Year of simulation', size=24)
+plt.axes().set_ylabel('Cumul. SLE [mm]', size=24)
+plt.axes().tick_params(axis='both', length=5, width=2, labelsize=24)
+plt.axes().set(xticks=[0, 2, 4, 6], xticklabels=['2006', '2008', '2010', '2012'],
+               xlim=(0, 6.5), ylim=(0, 4.5), yticks=[0,2,4])
 plt.show()
