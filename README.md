@@ -1,7 +1,10 @@
 # plastic-networks Readme
 ====================
 
-Welcome!  This is a working repository associated with the SERMeQ model for marine-terminating glaciers.  You'll find core model code in the SERMeQ folder; with working examples separated by their science application.
+Welcome!  This is a working repository that applies the SERMeQ model for marine-terminating glaciers and visualises its results.  Core model code in the SERMeQ folder; working examples separated by their science application in other labelled folders.
+
+[![DOI](https://zenodo.org/badge/92973544.svg)](https://zenodo.org/badge/latestdoi/92973544) Tagged release associated with a 2020 submission to Geophysical Research Letters.
+
 
 ## The model
 SERMeQ - the Simple Estimator of Retreat Magnitude and Ice Flux (Q) - is a vertically-integrated, width-averaged model that tracks the loss of glacier mass to iceberg calving.
