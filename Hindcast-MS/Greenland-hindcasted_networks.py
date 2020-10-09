@@ -5,7 +5,7 @@
 from netCDF4 import Dataset
 import numpy as np
 import matplotlib.pyplot as plt
-import mpl_toolkits.basemap.pyproj as pyproj
+import pyproj as pyproj
 import csv
 import collections
 import datetime
@@ -16,7 +16,7 @@ from scipy import interpolate
 from scipy.ndimage import gaussian_filter
 ## Special import for SERMeQ modules
 import sys
-sys.path.insert(0, 'Documents/GitHub/plastic-networks')
+sys.path.insert(0, '/Users/lizz/Documents/GitHub/plastic-networks')
 from SERMeQ.plastic_utilities_v2 import *
 from SERMeQ.GL_model_tools import *
 from SERMeQ.flowline_class_hierarchy import *
@@ -28,7 +28,7 @@ from SERMeQ.flowline_class_hierarchy import *
 ##-------------------
 
 print 'Reading in surface topography'
-gl_bed_path ='Documents/1. Research/2. Flowline networks/Model/Data/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
+gl_bed_path ='/Users/lizz/Documents/GitHub/Data_unsynced/BedMachine-Greenland/BedMachineGreenland-2017-09-20.nc'
 fh = Dataset(gl_bed_path, mode='r')
 xx = fh.variables['x'][:].copy() #x-coord (polar stereo (70, 45))
 yy = fh.variables['y'][:].copy() #y-coord
@@ -68,7 +68,7 @@ def NearestMaskVal(x0,y0):
 
 
 print 'Reading in surface mass balance from 1981-2010 climatology'
-gl_smb_path ='Documents/GitHub/Data_unsynced/HIRHAM5-SMB/DMI-HIRHAM5_GL2_ERAI_1980_2014_SMB_YM.nc'
+gl_smb_path ='/Users/lizz/Documents/GitHub/Data_unsynced/HIRHAM5-SMB/DMI-HIRHAM5_GL2_ERAI_1980_2014_SMB_YM.nc'
 fh2 = Dataset(gl_smb_path, mode='r')
 x_lon = fh2.variables['lon'][:].copy() #x-coord (latlon)
 y_lat = fh2.variables['lat'][:].copy() #y-coord (latlon)
@@ -76,16 +76,6 @@ y_lat = fh2.variables['lat'][:].copy() #y-coord (latlon)
 ts = fh2.variables['time'][:].copy()
 smb_raw = fh2.variables['smb'][:].copy()
 fh2.close()
-
-#print 'Reading in RCP 4.5 SMB'
-#gl_smb_2081_path = 'Documents/GitHub/Data_unsynced/DMI-HIRHAM5_G6s2_ECEARTH_RCP45_2081_2100_gld_YM.nc'
-#fh3 = Dataset(gl_smb_2081_path, mode='r')
-#x_lon_81 = fh3.variables['lon'][:].copy() #x-coord (latlon)
-#y_lat_81 = fh3.variables['lat'][:].copy() #y-coord (latlon)
-##zs = fh2.variables['height'][:].copy() #height in m - is this surface elevation or SMB?
-#ts_81 = fh3.variables['time'][:].copy()
-#smb_2081_raw = fh3.variables['gld'][:].copy() #acc SMB in mm/day weq...need to convert
-#fh3.close()
 
 
 print 'Now transforming coordinate system of SMB'
@@ -102,20 +92,12 @@ for year in range(2006, 2015):
     regridded_smb_year = interpolate.griddata((xs.ravel(), ys.ravel()), smb_year.ravel(), (Xmat, Ymat), method='nearest')
     SMB_dict[year] = interpolate.interp2d(X, Y, regridded_smb_year, kind='linear')
     
-#smb_2081_rcp4pt5 = smb_2081_raw[0]
-#smb_2100_rcp4pt5 = smb_2081_raw[-1] #2100
-#regridded_smb_2081 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2081_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
-#regridded_smb_2100 = interpolate.griddata((xs_81.ravel(), ys_81.ravel()), smb_2100_rcp4pt5.ravel(), (Xmat, Ymat), method='nearest')
-#SMB_2081_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2081, kind='linear')
-#SMB_2100_RCP4pt5 = interpolate.interp2d(X, Y, regridded_smb_2100, kind='linear')
-
-## Add RCP 8.5 when available
 
 ##-------------------
 ### LOADING SAVED GLACIERS
 ##-------------------
 print 'Reading in optimal yield strength dictionary'
-optimal_taus_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Optimization_analysis/bestfit_taus-B_S_smoothing-fromdate_2019-01-17.csv'
+optimal_taus_fpath = '/Users/lizz/Documents/GitHub/Data_unsynced/Auto_selected-networks/Optimization_analysis/bestfit_taus-B_S_smoothing-fromdate_2019-01-17.csv'
 f_ot = open(optimal_taus_fpath, 'r')
 header = f_ot.readline()
 hdr = header.strip('\r\n')
@@ -143,7 +125,7 @@ for n in not_present:
     except ValueError:
         pass
 
-base_fpath = 'Documents/1. Research/2. Flowline networks/Auto_selected-networks/Gld-autonetwork-GID'
+base_fpath = '/Users/lizz/Documents/GitHub/Data_unsynced/Auto_selected-networks/Gld-autonetwork-GID'
 
 ## Simulation settings
 testyears = arange(0, 9, 0.25) #test only 2006-2015, for comparison
@@ -155,14 +137,11 @@ test_A, icetemp = 3.5E-25, 'min10C' # -10 C, good guess for Greenland
 #test_A, icetemp = 3.7E-26, 'min30C' #-30 C, cold ice that should show slower response
 
 scenario = 'persistence'
-#scenario, SMB_i, SMB_l = 'persistence', SMB_2014, SMB_2014 #choose climate scenario - persistence of 1981-2014 climatology
-#scenario, SMB_i, SMB_l = 'RCP4pt5', SMB_2014, SMB_2100_RCP4pt5 #or RCP 4.5
-#scenario, SMB_i, SMB_l = 'RCP8pt5', SMB_2014, SMB_2100_RCP8pt5 #or RCP 8.5
 
 #gids_totest = glacier_ids #test all
 #gids_totest = range(9,12) #test a subset
 #gids_totest = (3, 153, 175) #test the biggies: Jakobshavn, Kanger, Helheim
-gids_totest = (3, 87, 131, 185) #test specific glaciers
+gids_totest = (3,) #test specific glaciers
 output_heavy = True #pref for output--should be False for efficient running, True for saving full surface profiles
 network_output = []
 bad_gids = []
@@ -215,7 +194,11 @@ for gid in gids_totest:
     nw.terminus_adot = time_varying_smb[0][0]
     print 'Terminus a_dot: {}'.format(nw.terminus_adot)
     try:
-        nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=catchment_smb_vals, dL=1/L0, separation_buffer=10000/L0, has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, debug_mode=db, rate_factor=test_A, output_heavy=output_heavy)
+        nw.terminus_time_evolve(testyears=testyears, alpha_dot_variable=catchment_smb_vals, 
+                                dL=1/L0, separation_buffer=10000/L0, rate_factor=test_A,
+                                has_smb=True, terminus_balance=nw.terminus_adot, submarine_melt = 0, 
+                                debug_mode=db, output_heavy=output_heavy, sl_contribution=False
+                                )
     except:
         bad_gids.append(gid)   
         continue 
@@ -226,11 +209,11 @@ for gid in gids_totest:
     fn2 = fn1.replace("[", "-")
     fn3 = fn2.replace("/", "_")
     fn4 = fn3.replace("]", "")
-    fn5 = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/'+fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
+    fn5 = '/Users/lizz/Desktop/Hindcasted_networks/'+fn4+'-{}-{}-{}ice-{}a_dt025a.pickle'.format(datetime.date.today(), scenario, icetemp, int(max(testyears)))
     nw.save_network(filename=fn5)
 
     #network_output.append(nw.model_output)
 
 ##Output errors to csv file
-error_fn = 'Documents/GitHub/Data_unsynced/Hindcasted_networks/error_gids-{}.csv'.format(datetime.date.today())
+error_fn = '/Users/lizz/Desktop/Hindcasted_networks/error_gids-{}.csv'.format(datetime.date.today())
 np.savetxt(error_fn, np.asarray(bad_gids), delimiter=',')
