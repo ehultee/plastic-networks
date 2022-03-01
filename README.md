@@ -5,6 +5,8 @@ Welcome!  This is a working repository that applies the SERMeQ model for marine-
 
 [![DOI](https://zenodo.org/badge/92973544.svg)](https://zenodo.org/badge/latestdoi/92973544) Tagged release associated with a 2020 submission to Geophysical Research Letters.
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ehultee/plastic-networks/master?labpath=https%3A%2F%2Fgithub.com%2Fehultee%2Fplastic-networks%2Fblob%2Fmaster%2FHindcast-MS%2FGld_sim-walkthrough.ipynb) For an interactive walkthrough
+
 
 ## The model
 SERMeQ - the Simple Estimator of Retreat Magnitude and Ice Flux (Q) - is a vertically-integrated, width-averaged model that tracks the loss of glacier mass to iceberg calving.
