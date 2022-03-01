@@ -1,0 +1,22 @@
+name: sermeq
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - cloudpickle
+  - gdal
+  - geos
+  - hdf4
+  - hdf5
+  - matplotlib
+  - netcdf4
+  - numpy
+  - pandas
+  - pip
+  - proj4
+  - pyproj
+  - pyshp
+  - python<2.8
+  - scipy
+  - shapely
+prefix: /opt/anaconda3/envs/sermeq
