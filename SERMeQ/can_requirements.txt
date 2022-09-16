@@ -91,6 +91,6 @@ terminado==0.5
 tornado==4.3
 traits==4.5.0
 traitsui==4.5.1
-VTK==6.2.0
+VTK==9.0.1
 wxPython==3.0.2.0
 zeromq==4.0.5
