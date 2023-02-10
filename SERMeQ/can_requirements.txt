@@ -34,7 +34,7 @@ geos==3.5.0
 grits-client==0.1
 hdf5==1.8.16
 idle==2.7.3
-ipython==3.2.1
+ipython==8.10.0
 jsonpickle==0.4.0
 jsonschema==2.4.0
 kernmagic==0.2.0
